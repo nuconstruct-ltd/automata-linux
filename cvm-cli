@@ -1,0 +1,256 @@
+#!/bin/bash
+
+usage() {
+    echo "Usage: ./cvm-cli <command> [options]"
+    echo ""
+    echo "Commands:"
+    echo "  deploy-azure        Deploy a VM onto Azure using disk.vhd."
+    echo "  deploy-aws          Deploy a VM onto AWS using disk.vmdk."
+    echo "  deploy-gcp          Deploy a VM onto GCP using disk.raw."
+    echo "  update-workload     Update the workload on a deployed CVM."
+    echo ""
+    echo "Optional arguments for 'deploy-azure' command:"
+    echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
+    echo "  --vm_name <name>            The name of the virtual machine. Default: cvm_test"
+    echo "  --region <region>           The region where the VM will be deployed. Default: \"East US 2\""
+    echo "  --resource_group <group>    The resource group for the deployment. Default: tdx_testRg"
+    echo "  --vm_type <type>            The type of VM to be deployed. Default: \"Standard_DC2es_v5\""
+    echo "  --storage_account <name>    The name of a custom storage account. This is only used for SEV-SNP VM."
+    echo "                                  Default: snpcvm<random number>"
+    echo ""
+    echo "Arguments for 'deploy-gcp' command:"
+    echo "  --project_id <id>           The project id for the deployment. **Mandatory**"
+    echo "  --bucket <name>             The name of a gcp bucket to store the vm image to. **Mandatory**"
+    echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
+    echo "  --vm_name <name>            The name of the virtual machine. Default: cvm-test"
+    echo "  --region <region>           The region where the VM will be deployed. Default: \"asia-southeast1-b\""
+    echo "  --vm_type <type>            The type of VM to be deployed. Default: \"c3-standard-4\""
+    echo ""
+    echo "Arguments for 'deploy-aws' command:"
+    echo "  --bucket <name>             The name of an AWS bucket to store the vm image to. **Mandatory**"
+    echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
+    echo "  --vm_name <name>            The name of the virtual machine. Default: cvm-test"
+    echo "  --region <region>           The region where the VM will be deployed. Default: \"us-east-2\""
+    echo "  --vm_type <type>            The type of VM to be deployed. Default: \"m6a.large\""
+    echo ""
+    echo "Additional arguments for the 'update-workload' command:"
+    echo "  <VM IP>                 The IP of the VM running on the CSP."
+    echo "  <API TOKEN>             API token authorize the workload change."
+    echo ""
+    exit 1
+}
+
+COMMAND=$1
+shift 1  # Shift to process other arguments
+
+if [[ -z "$COMMAND" ]]; then
+    usage
+fi
+
+case "$COMMAND" in
+    deploy-aws)
+        VM_NAME="cvm-test"
+        BUCKET=""
+        REGION="us-east-2"
+        VM_TYPE="m6a.large"
+        ADDITIONAL_PORTS=""
+        
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+                --additional_ports)
+                    ADDITIONAL_PORTS=$2
+                    shift 2
+                    ;;
+                --vm_name)
+                    VM_NAME=$2
+                    shift 2
+                    ;;
+                --region)
+                    REGION=$2
+                    shift 2
+                    ;;
+                --vm_type)
+                    VM_TYPE=$2
+                    shift 2
+                    ;;
+                --bucket)
+                    BUCKET=$2
+                    shift 2
+                    ;;
+                *)
+                    echo "Unknown argument: $1"
+                    usage
+                    ;;
+            esac
+        done
+
+        if [[ -z "$BUCKET" ]]; then
+            usage
+        fi
+
+        # If API token does not exist, create it and put it on the disk.
+        if [[ ! -f token ]]; then
+            ./scripts/create_api_token.sh disk.vmdk
+        fi
+
+        echo "Deploying disk.vmdk with the following parameters:"
+        echo "🔹VM Name: $VM_NAME"
+        echo "🔹Region: $REGION"
+        echo "🔹VM Type: $VM_TYPE"
+        echo "🔹Bucket : $BUCKET"
+        echo "🔹Additional Ports: $ADDITIONAL_PORTS"
+        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        ./scripts/print_api_token.sh
+        ;;
+        
+    deploy-gcp)
+        # Default values
+        PROJECT_ID=""
+        BUCKET=""
+        VM_NAME="cvm-test"
+        REGION="asia-southeast1-b"
+        VM_TYPE="c3-standard-4"
+        # To specify additional workload ports, pass them as a comma-separated string
+        # eg. "80,443"
+        ADDITIONAL_PORTS=""
+
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+                --additional_ports)
+                    ADDITIONAL_PORTS=$2
+                    shift 2
+                    ;;
+                --vm_name)
+                    VM_NAME=$2
+                    shift 2
+                    ;;
+                --region)
+                    REGION=$2
+                    shift 2
+                    ;;
+                --project_id)
+                    PROJECT_ID=$2
+                    shift 2
+                    ;;
+                --vm_type)
+                    VM_TYPE=$2
+                    shift 2
+                    ;;
+                --bucket)
+                    BUCKET=$2
+                    shift 2
+                    ;;
+                *)
+                    echo "Unknown argument: $1"
+                    usage
+                    ;;
+            esac
+        done
+
+        if [[ -z "$PROJECT_ID" || -z "$BUCKET" ]]; then
+            usage
+        fi
+
+        # If API token does not exist, create it and put it on the disk.
+        if [[ ! -f token ]]; then
+            ./scripts/create_api_token.sh disk.raw
+        fi
+
+        echo "Deploying disk.raw with the following parameters:"
+        echo "🔹VM Name: $VM_NAME"
+        echo "🔹Region: $REGION"
+        echo "🔹Project ID: $PROJECT_ID"
+        echo "🔹VM Type: $VM_TYPE"
+        echo "🔹Bucket : $BUCKET"
+        echo "🔹Additional Ports: $ADDITIONAL_PORTS"
+        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        ./scripts/print_api_token.sh
+        ;;
+
+    deploy-azure)
+        # Default values
+        VM_NAME="cvm_test"
+        REGION="East US 2"
+        RESOURCE_GROUP="cvm_testRg"
+        VM_TYPE="Standard_DC2es_v5"
+        # To specify additional workload ports, pass them as a comma-separated string
+        # eg. "80,443"
+        ADDITIONAL_PORTS=""
+        SUFFIX=$(date +%y%m%d | sha256sum | head -c 10)
+        STORAGE_ACC="snpcvm${SUFFIX}"
+        
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+                --additional_ports)
+                    ADDITIONAL_PORTS=$2
+                    shift 2
+                    ;;
+                --vm_name)
+                    VM_NAME=$2
+                    shift 2
+                    ;;
+                --region)
+                    REGION=$2
+                    shift 2
+                    ;;
+                --resource_group)
+                    RESOURCE_GROUP=$2
+                    shift 2
+                    ;;
+                --vm_type)
+                    VM_TYPE=$2
+                    shift 2
+                    ;;
+                --storage_account)
+                    STORAGE_ACC=$2
+                    shift 2
+                    ;;
+                *)
+                    echo "Unknown argument: $1"
+                    usage
+                    ;;
+            esac
+        done
+
+        # If API token does not exist, create it and put it on the disk.
+        if [[ ! -f token ]]; then
+            ./scripts/create_api_token.sh disk.vhd
+        fi
+
+        echo "Deploying disk.vhd with the following parameters:"
+        echo "🔹VM Name: $VM_NAME"
+        echo "🔹Region: $REGION"
+        echo "🔹Resource Group: $RESOURCE_GROUP"
+        echo "🔹VM Type: $VM_TYPE"
+        echo "🔹Additional Ports: $ADDITIONAL_PORTS"
+        if [[ "$VM_TYPE" == Standard_DC?as_v5 ]]; then
+            echo "🔹Storage Account: $STORAGE_ACC"
+            echo "  → SEV-SNP VM selected..."
+            ./scripts/make_azure_snp_vm.sh "$VM_NAME" "$REGION" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS" "$STORAGE_ACC"
+        elif [[ "$VM_TYPE" == Standard_DC?es_v5 ]]; then
+            echo "  → TDX VM selected..."
+            ./scripts/make_azure_tdx_vm.sh "$VM_NAME" "$REGION" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"
+        else
+            echo "Unknown VM selected!"
+            usage
+        fi
+        ./scripts/print_api_token.sh
+        ;;
+
+    update-workload)
+        IP=$1
+        PASSWORD=$2
+        shift 2
+        if [[ -z "$IP" || -z "$PASSWORD" ]]; then
+            usage
+        fi
+        ./scripts/update-remote-workload.sh $IP $PASSWORD
+        ;;
+    
+    *)
+        echo "Unknown command: $COMMAND"
+        usage
+        ;;
+esac
+
+exit 0
