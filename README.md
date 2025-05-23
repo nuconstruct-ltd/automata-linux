@@ -136,7 +136,7 @@ For on-chain: TODO.
 
 ## Verifying the image and workload
 To verify that the workload is running a CVM with the expected measurements, the verifier can undertake the following steps:
-1. Retrieve the golden measurements published by the developer.
+1. Retrieve the published golden measurements.
 2. Use the cvm-agent to retrieve the collaterals required during verification: 
 ```
 curl 127.0.0.1:7999/collaterals
