@@ -1,4 +1,4 @@
-# cvm-uki
+# cvm-base-image
 
 ## Prerequisites
 
