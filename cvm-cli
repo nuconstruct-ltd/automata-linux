@@ -39,8 +39,6 @@ usage() {
     exit 1
 }
 
-set -e
-
 COMMAND=$1
 shift 1  # Shift to process other arguments
 
@@ -90,6 +88,7 @@ case "$COMMAND" in
         fi
 
         # If API token does not exist, create it and put it on the disk.
+        set -e
         if [[ ! -f token ]]; then
             ./scripts/create_api_token.sh disk.vmdk
         fi
@@ -102,6 +101,7 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
         ./scripts/print_api_token.sh
+        set +e
         ;;
 
     deploy-gcp)
@@ -153,6 +153,7 @@ case "$COMMAND" in
         fi
 
         # If API token does not exist, create it and put it on the disk.
+        set -e
         if [[ ! -f token ]]; then
             ./scripts/create_api_token.sh disk.raw
         fi
@@ -166,6 +167,7 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
         ./scripts/print_api_token.sh
+        set +e
         ;;
 
     deploy-azure)
@@ -217,6 +219,7 @@ case "$COMMAND" in
         fi
 
         # If API token does not exist, create it and put it on the disk.
+        set -e
         if [[ ! -f token ]]; then
             ./scripts/create_api_token.sh disk.vhd
         fi
@@ -230,6 +233,7 @@ case "$COMMAND" in
         echo "🔹Shared Image Gallery: $GALLERY_NAME"
         ./scripts/make_azure_vm.sh "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS" "$STORAGE_ACC" "$GALLERY_NAME"
         ./scripts/print_api_token.sh
+        set +e
         ;;
 
     update-workload)
@@ -248,5 +252,4 @@ case "$COMMAND" in
         ;;
 esac
 
-set +e
 exit 0
