@@ -25,20 +25,61 @@ sudo apt install zip
 4. Additional dependencies if deploying to GCP:
 - A GCP bucket to store the disk: [Guide](https://cloud.google.com/storage/docs/creating-buckets#console)
 
-5. Additional things you need to do if deploying to Azure:
-- You need to modify the python script used by az cli:
+5. Additional dependencies if deploying to Azure:
+- A resource group, a storage account, and image gallery
+  - Note: Resource group, storage account, and shared image gallery must be in the same region as the VM you want to create. Please see the next section for details on the CVM types available in each region.
+  - Note: SEV-SNP VMs may not be supported in the same region as TDX, so you may need to create separate resource groups, storage account and shared image gallery if you wish to support both CVM types on Azure.
+  - Note: storage account name and shared image gallery name must be unique.
 ```bash
-# on Linux
-sudo vim /opt/az/lib/python3.12/site-packages/azure/mgmt/compute/v2023_04_02/models/_compute_management_client_enums.py
-# on mac
-sudo vim /opt/homebrew/Cellar/azure-cli/${AZ_CLI_VERSION}/libexec/lib/python3.12/site-packages/azure/mgmt/compute/v2023_04_02/models/_compute_management_client_enums.py
+# Fill up the variables with a name of your choice.
+RG="<resource group name>"
+REGION="<region>"
+STORAGE_ACCOUNT="<storage account name>" # lowercase letters and numbers only, length 3-24.
+GALLERY_NAME="<gallery name>"
 
-# Below the line with this Enum Class
-# class DiskSecurityTypes
-# add this line:
-    CONFIDENTIAL_VM_NON_PERSISTED_TPM = "ConfidentialVM_NonPersistedTPM"
-    """Indicates Confidential VM disk with no encryption"""
+# Create a resource group
+az group create --name "$RG" --location "$REGION"
+
+# Create a storage account
+az storage account create --resource-group "$RG" --name "$STORAGE_ACCOUNT" --location "$REGION" --sku "Standard_LRS"
+
+# Create a shared image gallery
+az sig create --resource-group "$RG" --gallery-name "$GALLERY_NAME"
 ```
+
+## CVM Information for each Cloud Provider 
+This section outlines the confidential computing capabilities offered by major cloud providers, specifying supported CVM technologies—SEV-SNP and TDX—along with their corresponding instance families and available regions.
+
+### AWS
+
+- SEV-SNP:
+  - Instance Family: [m6a, c6a, r6a](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sev-snp.html#snp-requirements)
+  - Region: us-east-2, eu-west-1
+- TDX:
+  - Not supported.
+
+
+### Azure
+
+- SEV-SNP:
+  - Instance Family: [DCasV5](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcasv5-series?tabs=sizebasic)
+  - Region: East US, West US, Switzerland North, Italy North, North Europe, West Europe, Germany West Central, UAE North, Japan East, Central India, East Asia, Southeast Asia
+
+- TDX:
+  - Instance Family: [DCesv5/DCedsv5](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcedsv5-series?tabs=sizebasic), [DCesv6](https://learn.microsoft.com/en-us/azure/virtual-machines/sizes/general-purpose/dcesv6-series?tabs=sizebasic)
+  - Region:
+    - DCesv5/DCedsv5: East US 2, Central US, West Europe, North Europe
+    - DCesv6: West Europe, East US, West US, and West US 3
+
+### GCP
+
+- SEV-SNP:
+  - Instance Family: [n2d-standard](https://cloud.google.com/compute/docs/general-purpose-machines#n2d_machine_types)
+  - Region: asia-southeast1-a/b/c, europe-west3-a/b/c, europe-west4-a/b/c, us-central1-a/b/c
+- TDX:
+  - Instance Family: [c3-standard](https://cloud.google.com/compute/docs/general-purpose-machines#c3_machine_types)
+  - Region: asia-southeast1-a/b/c, europe-west4-a/b/c, us-central1-a/b/c
+
 
 ## Download the cvm disk image
 Please download a cvm disk image into the root of this repository. Please pick the disk according to the cloud provider you wish to deploy on:
@@ -55,15 +96,18 @@ Run the CLI to deploy the disk to the cloud provider.
 
 1. To deploy to Azure:
 ```bash
-./cvm-cli deploy-azure --additional_ports "80,443" --vm_name <name> --region "<region>" --resource_group <group> --vm_type "<type>"
+./cvm-cli deploy-azure --resource_group <group> --storage_account <storage_account> --gallery_name <gallery_name> --additional_ports "80,443" --vm_name <name> --region "<region>" --vm_type "<type>"
 ```
+The following **must** be provided:
+- storage_account: The name of the storage account to upload the cvm disk into.
+- gallery_name: The name of the shared image gallery to use.
+- resource_group: The name of the resource group to deploy the VM into. It must also contain the storage account and shared image gallery.
 
 The following parameters are optional, and default to:
 - vm_name: cvm_test
-- region: East US 2
-- resource_group: cvm_testRg
-- vm_type: Standard_DC2es_v5
+- vm_type: Standard_DC2es_v5 (Note: If the region used by your resource group does not support this VM type, creation of this VM will fail.)
 - additional_ports: “”
+
 
 2. To deploy to GCP:
 ```bash
