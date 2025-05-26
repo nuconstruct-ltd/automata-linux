@@ -96,7 +96,7 @@ Run the CLI to deploy the disk to the cloud provider.
 
 1. To deploy to Azure:
 ```bash
-./cvm-cli deploy-azure --resource_group <group> --storage_account <storage_account> --gallery_name <gallery_name> --additional_ports "80,443" --vm_name <name> --region "<region>" --vm_type "<type>"
+./cvm-cli deploy-azure --resource_group <group> --storage_account <storage_account> --gallery_name <gallery_name> --additional_ports "80,443" --vm_name <name> --vm_type "<type>"
 ```
 The following **must** be provided:
 - storage_account: The name of the storage account to upload the cvm disk into.
