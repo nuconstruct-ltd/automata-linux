@@ -3,8 +3,9 @@ REGION=$2
 VM_TYPE=$3
 BUCKET=$4
 ADDITIONAL_PORTS=$5
-DISK_FILE=disk.vmdk
+DISK_FILE=aws_disk.vmdk
 IMAGE_NAME="${VM_NAME}-image"
+export AWS_PAGER=""
 
 # Ensure all arguments are provided
 if [[ $# -lt 5 ]]; then
@@ -160,13 +161,25 @@ for P in "${PORT_ARRAY[@]}"; do
 done
 
 # Create the instance
-aws ec2 run-instances \
+INSTANCE_ID=$(aws ec2 run-instances \
   --region "$REGION" \
   --image-id "$IMAGE_ID" \
   --instance-type "$VM_TYPE" \
   --security-group-ids "$SECGRP_ID" \
   --cpu-options AmdSevSnp=enabled \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value='"$VM_NAME"'}]'
+  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value='"$VM_NAME"'}]' \
+  --query 'Instances[0].InstanceId' \
+  --output text)
+
+aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
+
+PUBLIC_IP=$(aws ec2 describe-instances \
+  --region "$REGION" \
+  --instance-ids "$INSTANCE_ID" \
+  --query 'Reservations[0].Instances[0].PublicIpAddress' \
+  --output text)
+
+echo "VM Public IP: $PUBLIC_IP"
 
 set +x
 set +e

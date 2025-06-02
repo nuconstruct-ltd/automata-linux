@@ -4,8 +4,7 @@ PROJECT_ID=$3
 VM_TYPE=$4
 BUCKET=$5
 ADDITIONAL_PORTS=$6
-DISK_FILE="disk.raw"
-COMPRESSED_FILE="raw_disk.tar.gz"
+COMPRESSED_FILE="gcp_disk.tar.gz"
 IMAGE_NAME="${VM_NAME}-image"
 
 # Ensure all arguments are provided
@@ -15,10 +14,6 @@ if [[ $# -lt 6 ]]; then
 fi
 
 set -e
-
-# First tar the raw disk.
-tar -czvf $COMPRESSED_FILE $DISK_FILE
-
 set -x
 
 # Copy the image to bucket and create image

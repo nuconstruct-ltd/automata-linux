@@ -1,5 +1,4 @@
-disk.raw
-disk.vhd
-disk.vmdk
-raw_disk.tar.gz
+azure_disk.vhd 
+aws_disk.vmdk
+gcp_disk.tar.gz
 token

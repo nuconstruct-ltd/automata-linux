@@ -5,7 +5,7 @@ ADDITIONAL_PORTS="$4"
 STORAGE_ACC="$5"
 GALLERY_NAME="$6"
 REGION=$(az group show --name "$RG" --query location -o tsv)
-VHD=disk.vhd
+VHD=azure_disk.vhd 
 IMAGE_DEF="${VM_NAME}-def"
 SKU_NAME="${VM_NAME}-sku"
 GALLERY_IMAGE_VERSION="1.0.0"
@@ -79,9 +79,9 @@ az sig image-definition create --resource-group "$RG" --location "$REGION" --gal
 storageAccountId=$(az storage account show --name "$STORAGE_ACC" --resource-group "$RG" | jq -r .id)
 
 # v2: create sig image version (with support for secure boot)
-PK_B64=$(base64 -w0 secure_boot/PK.crt)
-KEK_B64=$(base64 -w0 secure_boot/KEK.crt)
-DB_B64=$(base64 -w0 secure_boot/db.crt)
+PK_B64=$(openssl base64 -in secure_boot/PK.crt -A)
+KEK_B64=$(openssl base64 -in secure_boot/KEK.crt -A)
+DB_B64=$(openssl base64 -in secure_boot/db.crt -A)
 
 IMG_VER_BODY=$(jq -n \
   --arg region "$REGION" \
@@ -126,7 +126,7 @@ az rest --method PUT \
   --url "/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.Compute/galleries/$GALLERY_NAME/images/$IMAGE_DEF/versions/$GALLERY_IMAGE_VERSION?api-version=2024-03-03" \
   --body "$IMG_VER_BODY"
 
-echo "⏳ Waiting for image replication + gallery image version to finish provisioning..."
+echo "⏳ Image replication + gallery image version in progress... this might take a while (8+ mins). Time to grab a coffee and chill ☕🙂"
 
 while true; do
   state=$(az sig image-version show \
@@ -182,7 +182,9 @@ az vm create \
   --nsg "$VM_NAME" \
   --security-type ConfidentialVM \
   --os-disk-security-encryption-type VMGuestStateOnly \
-  --specialized
+  --specialized \
+  --admin-username dummyuser \
+  --admin-password DummyPassword123
 
 set +x
 set +e
