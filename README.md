@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-1. You also need the cli for the cloud provider you want to deploy on (either az cli, gcloud cli or aws cli)
+1. You need the cli for the cloud provider you want to deploy on (either az cli, gcloud cli or aws cli)
 - az cli:
   - Download: [Guide](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
   - Login: [Guide](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli)
