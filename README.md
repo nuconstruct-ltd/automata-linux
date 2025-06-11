@@ -259,7 +259,7 @@ To verify that the workload is running a CVM with the expected measurements, the
 2. Retrieve collaterals from the workload running on the attester CVM.
    - As an example, the workload on the attester CVM can query the cvm-agent locally as follows:
      ```bash
-     curl 127.0.0.1:7999/collaterals
+     curl 127.0.0.1:7999/collaterals/1234
      ```
 3. Verify the collaterals against the published golden measurements.
    - If the verifier runs within a TEE environment that is created from our cvm-image, the verifier can use the cvm-agent to verify the collaterals against the published golden measurements:
