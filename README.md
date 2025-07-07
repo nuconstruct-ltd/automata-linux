@@ -93,42 +93,36 @@ This section outlines the confidential computing capabilities offered by major c
 ## Download the CVM disk image
 Please download a CVM disk image into the root of this repository. Please pick the disk according to the cloud provider you wish to deploy on:
 
-### Production Image (Maintenance mode disabled in Security Policy)
+### Default Image (Maintenance mode disabled in Security Policy)
 ```
 # GCP Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/gcp_disk.tar.gz
+curl -O https://f004.backblazeb2.com/file/cvm-base-images/07072025/gcp_disk.tar.gz
 
 # AWS Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/aws_disk.vmdk
+curl -O https://f004.backblazeb2.com/file/cvm-base-images/07072025/aws_disk.vmdk
 
 # Azure Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/azure_disk.vhd
+curl -O https://f004.backblazeb2.com/file/cvm-base-images/07072025/azure_disk.vhd
 ```
-
-### Development/Test Image (Maintenance mode enabled in Security Policy)
-```
-# GCP Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/maintenance-enabled/gcp_disk.tar.gz
-
-# AWS Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/maintenance-enabled/aws_disk.vmdk
-
-# Azure Image
-curl -O https://f004.backblazeb2.com/file/cvm-base-images/04072025/maintenance-enabled/azure_disk.vhd
-```
-
 > [!Note]
 > Please ensure the the disk names are kept as is, as the scripts below assume that the disk names have not been changed.
 
-## Configure the CVM agent
-The CVM agent runs inside the CVM and is responsible for VM management, workload measurement, and related tasks. 
 
->[!Note]
-> In the current iteration of the base image, the security policy used by the cvm-agent cannot be changed. However, there may be further changes as this feature is still in active development.
+## Configure the `workload/` folder
 
-An example of the security policy format can be found in ./workload/config/cvm-agent/cvm_agent_policy.json.
+### 1. Configure your workload itself
+- In the folder, there are 3 things - a file called `docker-compose.yml` and 2 folders called `config/` and `secrets/`.
+  - `docker-compose.yml` : This is a standard docker compose file that can be used to specify your workload. However, do note that podman-compose will run this file instead of docker-compose. While this generally works fine, there are some caveats:
+    - Please see this [issue](https://github.com/containers/podman-compose/issues/575) regarding podman-compose and specific options in `depends_on`.
+    - Images that are hosted on docker's official registry must be prefixed with `docker.io/`.
+  - `config/` : Use this folder to store any files that will be mounted and used by the container. All the files in this folder will be measured by the init script before the container runs.
+  - `secrets/`: Use this folder to store any files that will be mounted and used by the container, but should not be measured. Examples include cert private keys, or database credentials.
+- Additionally, if you wish to load local images, simply put the `.tar` files for the container images into the `workload/` directory itself. This will be automatically detected and loaded.
 
-### Default Security Policy for Production Image
+### 2. Configure the cvm-agent and Security Policy
+The CVM agent runs inside the CVM and is responsible for VM management, workload measurement, and related tasks. The tasks that it is allowed to perform depends on a security policy, which can be configured by the user.
+
+The default security policy can be found in [workload/config/cvm_agent/cvm_agent_policy.json](workload/config/cvm_agent/cvm_agent_policy.json):
 ```json
 {
     "cvm_config": {
@@ -159,41 +153,20 @@ An example of the security policy format can be found in ./workload/config/cvm-a
     }
 }
 ```
+The default policy is conservative, prioritizes security and can be used as it is. However, if you wish to change any settings, a detailed description of each policy option can be found in [this document](docs/cvm-agent-policy.md).
 
-### Default Security Policy for Development/Test Image
-```json
-{
-    "cvm_config": {
-        "emulation_mode" :{
-            "enable": false,
-            "cloud_provider": "azure",
-            "tee_type": "snp" ,
-            "emulation_data_path": "./emulation_mode_data",
-            "enable_emulation_data_update": true
-        },
+## Updating the workload on the Disk Image
+>[!Note]
+> Before executing this step, please ensure that you have already done the following:
+> 1. You already have a disk image. Please follow [these instructions](#download-the-cvm-disk-image) to download a disk image if you have not.
+> 2. Your workload has been added into the `workload/` folder, with the correct configuration and docker-compose.yml. Only services can be updated after the disk has been deployed to the CSP in the subsequent steps. The network and volume settings in the docker-compose.yml cannot be updated.
+> 3. You have modified the security policy in `workload/config/cvm_agent/cvm_agent_policy.json` according to your needs. The policy cannot be changed once the disk has been deployed to the CSP.
 
-        "https_server" :{
-            "enable_workload_update_endpoint": true,
-            "enable_maintenance_endpoint": true,
-            "enable_tls": true,
-            "enable_workload_update_auth": true
-        },
+After you configure everyting in the `workload/` folder, please use the following cmd to update the workload in the image:
 
-        "container_api" : {
-            "container_engine": "podman",
-            "container_owner": "automata"
-        },
-
-        "maintenance_mode" : {
-            "signal" : "SIGUSR2",
-            "ssh_port_on_host": "2222"
-        }
-    }
-}
+```bash
+./cvm-cli update-workload <disk>
 ```
-
-For a detailed description of each policy option, please see [this document](docs/cvm-agent-policy.md).
-
 
 ## Deploying the disk and creating the CVM
 Run the CLI to deploy the disk to the cloud provider.
@@ -246,7 +219,7 @@ The following parameters are optional, and default to:
 
 AWS currently has a known issue where the [boot process may intermittently hang for an SEV-SNP VM](https://bugs.launchpad.net/cloud-images/+bug/2076217). If you're unable to curl the APIs provided in the next section, please reboot the VM.
 
-## Uploading workload to the CVM
+## Update workload to the CVM
 
 ### 1. Create asymmetric keypairs
 
@@ -289,7 +262,7 @@ curl -k https://<VM IP>:8000/api-token ; echo
 > [!IMPORTANT]
 > The API token can only be retrieved once. Do not lose it, or you will need to re-create the VM from scratch!
 
-### 5. Upload the workload
+### 5. Update the workload
 Run the following command to upload your `workload/` folder to your deployed CVM:
 ```bash
 ./cvm-cli update-workload <VM IP> <API TOKEN>
