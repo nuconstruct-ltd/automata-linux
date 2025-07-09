@@ -191,7 +191,7 @@ The default policy is conservative, prioritizes security and can be used as it i
 After you configure everyting in the `workload/` folder, please use the following cmd to update the workload in the image:
 
 ```bash
-./cvm-cli update-workload <disk>
+./cvm-cli update-disk <disk>
 ```
 
 ## Deploying the disk and creating the CVM
