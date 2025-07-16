@@ -136,6 +136,10 @@ cosign generate-key-pair
 
 For image signing and verification, please check out [this document](docs/cvm-agent-image-signature-policy.md).
 
+>[!Note]
+> A sample image verification policy can be found in [workload/config/cvm_agent/sample_image_verify_policy.json](workload/config/cvm_agent/sample_image_verify_policy.json)
+> To enable the image verification, user should also config the security policy of the cvm-agent. For the detail of the security policy, please check [Configure the cvm-agent and Security Policy](#4-configure-the-cvm-agent-and-security-policy) 
+
 ### 3. Modify the `workload/` folder:
 - In the folder, there are 3 things - a file called `docker-compose.yml` and 2 folders called `config/` and `secrets/`.
   - `docker-compose.yml` : This is a standard docker compose file that can be used to specify your workload. However, do note that podman-compose will run this file instead of docker-compose. While this generally works fine, there are some caveats:
@@ -150,7 +154,7 @@ For image signing and verification, please check out [this document](docs/cvm-ag
 > This is to ensure that the public keys will also be measured into the TPM PCR, and prevents against tampering.
 
 
-### 4. Configure the cvm-agent and Security Policy
+### 4. Configure the cvm agent and Security Policy
 The CVM agent runs inside the CVM and is responsible for VM management, workload measurement, and related tasks. The tasks that it is allowed to perform depends on a security policy, which can be configured by the user.
 
 The default security policy can be found in [workload/config/cvm_agent/cvm_agent_policy.json](workload/config/cvm_agent/cvm_agent_policy.json):
