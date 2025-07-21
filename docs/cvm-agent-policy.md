@@ -19,7 +19,27 @@ The following settings manage the use of emulated mode of the agent:
 
 ---
 
-## 2. HTTPS Server (`https_server`)
+## 2. Firewall (`firewall`)
+
+By default, all incoming traffic on all ports are blocked. This setting allows you to define ports that should be allowed through the firewall.
+
+| Field               | Value       | Explanation                                                  |
+|---------------------|-------------|--------------------------------------------------------------|
+| `allowed_ports`     | `list[ PortConfig , ... ]` | List of allowed ports |
+| `maintenance_mode_host_port`  | `"2222"`    | SSH port on the VM host for accessing a ssh server running in a container during maintenance periods. |
+
+
+### Port Config Struct
+
+| Field               | Value       | Explanation                                                  |
+|---------------------|-------------|--------------------------------------------------------------|
+| `name`     | `string` | Label for user to identify what the port will be used for |
+| `protocol` | `string` | `"tcp"` or `"udp"` |
+| `port`     | `string` | Port number to allow through the firewall |
+
+---
+
+## 3. HTTPS Server (`https_server`)
 
 Defines HTTP(S) server settings to manage workload updates and VM maintenance:
 
@@ -32,7 +52,7 @@ Defines HTTP(S) server settings to manage workload updates and VM maintenance:
 
 ---
 
-## 3. Container API (`container_api`)
+## 4. Container API (`container_api`)
 
 Configuration related to container management within the CVM:
 
@@ -43,17 +63,60 @@ Configuration related to container management within the CVM:
 
 ---
 
-## 4. Maintenance Mode (`maintenance_mode`)
+## 5. Maintenance Mode (`maintenance_mode`)
 
 Settings that govern VM maintenance activities:
 
 | Field               | Value       | Explanation                                                  |
 |---------------------|-------------|--------------------------------------------------------------|
 | `signal`            | `"SIGUSR2"` | Specifies the signal (`SIGUSR2`) used to notify the containers that the maintenance mode is enabled or disabled.  Containers thus need to implement the signal handler for receiving the notification from the agent|
-| `ssh_port_on_host`  | `"2222"`    | SSH port on the VM host for accessing a ssh server running in a container during maintenance periods. |
 
 Note that users should add their public key to the appropriate location (i.e., `~/.ssh/authorized_keys`) within the container and enable port mapping for the SSH server. Example can be found at **Q&A**.  Also, for the proper signal handling, the application process must have **PID 1** in the container (This is very common in containerized applications such as redis and nginx). Otherwise, application may not be able to receive the signal sent by the cvm_agent.
 
+---
+
+## 6. Workload Configuration (`workload_config`)
+
+### `workload` Rules
+Defines worload update rules during cvm runtime
+
+| Field                      | Value                            | Explanation |
+|----------------------------|----------------------------------|-------------|
+| `allow_remove`             | `false`                          | Services cannot be removed at runtime. |
+| `allow_update`             | `true`                           | Existing services can be updated. |
+| `allow_add_new_service`    | `true`                           | New services can be deployed. |
+| `update_white_list`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only these services are allowed to be updated at runtime if `allow_update` is enabled. |
+
+### `image_signature_verification`
+
+Controls the verification of container images before execution.
+
+| Field                        | Description |
+|-----------------------------|-------------|
+| `image_signature_verification` | Enables signature checking logic. If disabled, unsigned containers will run. |
+
+**`image_signature_verification` structure**:
+
+| Field                             | Value    | Description |
+|----------------------------------|----------|-------------|
+| `enable`                         | `false`  | If true, enforce signature verification. |
+| `auth_info.user_name`            | `""`     | Optional auth user for pulling signed images from private repo. |
+| `auth_info.password`             | `""`     | Optional password for above user. |
+| `signature_verification_policy_path` | `"/data/workload/config/cvm_agent/sample_image_verify_policy.json"` | Path to JSON policy file defining valid signing keys and rules. |
+
+You can pre-configure the policy even if enforcement is currently disabled.
+
+>[!Note]
+> Before executing this step, please ensure that you have already done the following:
+> If pulling from a public registry, ensure both `auth_info.user_name` and `auth_info.password` remain empty.
+> Populate `auth_info` only when accessing private registries. 
+> **Warning**: Credentials provided in this section are subject to measurement by `cvm-agent` and may be exposed in attestation. Use **minimal-privilege accounts** or **short-lived tokens** to mitigate risk.
+
+
+
+
+The `signature_verification_policy_path` points to a policy file that defines rules for which images are allowed to run.
+For more detail of the image verification policy, please check out [this document](./cvm-agent-image-signature-policy.md)
 
 ---
 

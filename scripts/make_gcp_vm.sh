@@ -5,19 +5,32 @@ VM_TYPE=$4
 BUCKET=$5
 ADDITIONAL_PORTS=$6
 COMPRESSED_FILE="gcp_disk.tar.gz"
+UPLOADED_COMPRESSED_FILE="${VM_NAME}.tar.gz"
 IMAGE_NAME="${VM_NAME}-image"
 
 # Ensure all arguments are provided
 if [[ $# -lt 6 ]]; then
-    echo "❌ Error: Arguments are missing!"
+    echo "❌ Error: Arguments are missing! (make_gcp_vm.sh)"
     exit 1
 fi
 
 set -e
 set -x
 
+# Create bucket if it does not exist
+if ! gsutil ls -b "gs://$BUCKET" >/dev/null 2>&1; then
+  echo "Bucket gs://$BUCKET does not exist, creating it..."
+  BUCKET_REGION=$(echo "$ZONE" | sed 's/-[a-z]$//')
+  if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION"; then
+    echo "Bucket '$BUCKET' created successfully."
+  else
+    echo "Failed to create bucket '$BUCKET'."
+    exit 1
+  fi
+fi
+
 # Copy the image to bucket and create image
-gsutil cp $COMPRESSED_FILE gs://$BUCKET/$COMPRESSED_FILE
+gsutil cp $COMPRESSED_FILE gs://$BUCKET/$UPLOADED_COMPRESSED_FILE
 
 LOCATION="asia"
 if [[ "$ZONE" == *eu* ]]; then
@@ -35,7 +48,7 @@ if gcloud compute images describe $IMAGE_NAME --project="$PROJECT_ID" --quiet > 
 fi
 
 gcloud compute images create $IMAGE_NAME \
-  --source-uri gs://$BUCKET/$COMPRESSED_FILE \
+  --source-uri gs://$BUCKET/$UPLOADED_COMPRESSED_FILE \
   --project="$PROJECT_ID" \
   --guest-os-features "TDX_CAPABLE,SEV_SNP_CAPABLE,GVNIC,UEFI_COMPATIBLE,VIRTIO_SCSI_MULTIQUEUE" \
   --storage-location="$LOCATION" \
@@ -90,6 +103,19 @@ gcloud compute instances create $VM_NAME \
   --project=$PROJECT_ID \
   --tags $RULE_NAME \
   --metadata serial-port-enable=1,serial-port-logging-enable=1
+
+PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
+  --zone="$ZONE" \
+  --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+
+echo "Public IP: $PUBLIC_IP"
+
+# Save artifacts for later use
+mkdir -p _artifacts
+echo "$PUBLIC_IP" > _artifacts/gcp_${VM_NAME}_ip
+echo "$BUCKET" > _artifacts/gcp_${VM_NAME}_bucket
+echo "$ZONE" > _artifacts/gcp_${VM_NAME}_region
+echo "$PROJECT_ID" > _artifacts/gcp_${VM_NAME}_project
 
 set +x
 set +e

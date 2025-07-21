@@ -7,7 +7,7 @@ set -Eeuo pipefail
 
 # Ensure all arguments are provided
 if [[ $# -lt 1 ]]; then
-    echo "❌ Error: Arguments are missing!"
+    echo "❌ Error: Arguments are missing! (update_disk_locally.sh)"
     exit 1
 fi
 
@@ -25,7 +25,7 @@ trap 'exit 1' INT HUP TERM
 
 populate() {
     local DISK="$1"
-    
+
     # Mount the disk onto a loop device
     sudo losetup -fP $DISK
     LOOP_DEV=$(losetup -j $DISK | awk -F: '{print $1}')
@@ -42,10 +42,11 @@ populate() {
 
         sudo cp -r $WORKLOAD_FOLDER /tmp/data/
         sudo chown -R 1000:1000 /tmp/data/$WORKLOAD_FOLDER
+
         sync
         sudo umount ${LOOP_DEV}p3
 
-        echo "✅ Done! Workload data has been reloaded into disk!"
+        echo "✅ Done! Workload data has been added to disk!"
     else
         echo "❌ Disk does not have the right partitioning scheme!"
     fi

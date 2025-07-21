@@ -4,23 +4,40 @@ VM_TYPE="$3"
 ADDITIONAL_PORTS="$4"
 STORAGE_ACC="$5"
 GALLERY_NAME="$6"
-REGION=$(az group show --name "$RG" --query location -o tsv)
-VHD=azure_disk.vhd 
+REGION="$7"
+VHD=azure_disk.vhd
 IMAGE_DEF="${VM_NAME}-def"
 SKU_NAME="${VM_NAME}-sku"
 GALLERY_IMAGE_VERSION="1.0.0"
 PUBLISHER="automata"
 STORAGE_CONTAINER="cvm-image-storage"
-blob_url="https://${STORAGE_ACC}.blob.core.windows.net/$STORAGE_CONTAINER/$VHD"
+VHD_BLOB_NAME="${VM_NAME}.vhd"
+blob_url="https://${STORAGE_ACC}.blob.core.windows.net/$STORAGE_CONTAINER/$VHD_BLOB_NAME"
 
 # Ensure all arguments are provided
-if [[ $# -lt 6 ]]; then
-    echo "❌ Error: Arguments are missing!"
+if [[ $# -lt 7 ]]; then
+    echo "❌ Error: Arguments are missing! (make_azure_vm.sh)"
     exit 1
 fi
 
 set -x
 set -e
+
+# Create resource group if it doesn't exist
+if ! az group show --name "$RG" &>/dev/null; then
+  echo "Creating resource group: $RG"
+  az group create --name "$RG" --location "$REGION"
+fi
+
+# Create storage account if it doesn't exist
+if ! az storage account show --name "$STORAGE_ACC" --resource-group "$RG" &>/dev/null; then
+  az storage account create --resource-group "$RG" --name "$STORAGE_ACC" --location "$REGION" --sku "Standard_LRS"
+fi
+
+# Create shared image gallery if it doesn't exist
+if ! az sig show --gallery-name "$GALLERY_NAME" --resource-group "$RG" &>/dev/null; then
+  az sig create --resource-group "$RG" --gallery-name "$GALLERY_NAME"
+fi
 
 # -- Cleanup existing SIG resources --------------------------------------------------------------
 echo "ℹ️  Checking for existing Azure Compute Gallery resources..."
@@ -65,7 +82,7 @@ az storage blob upload \
   --account-name "$STORAGE_ACC" \
   --account-key "$ACCOUNT_KEY" \
   --container-name "$STORAGE_CONTAINER" \
-  --name "$VHD" \
+  --name "$VHD_BLOB_NAME" \
   --file "$VHD" \
   --type page \
   --overwrite
@@ -173,7 +190,7 @@ if [[ -n "${ADDITIONAL_PORTS}" ]]; then
     done
 fi
 
-az vm create \
+vm_output=$(az vm create \
   --resource-group "$RG" \
   --name "$VM_NAME" \
   --size "$VM_TYPE" \
@@ -186,7 +203,17 @@ az vm create \
   --os-disk-security-encryption-type VMGuestStateOnly \
   --specialized \
   --admin-username dummyuser \
-  --admin-password DummyPassword123
+  --admin-password DummyPassword123)
+
+PUBLIC_IP=$(echo "$vm_output" | jq -r '.publicIpAddress')
+echo "Public IP of VM: $PUBLIC_IP"
+
+# Save artifacts for later use
+mkdir -p _artifacts
+echo "$PUBLIC_IP" > _artifacts/azure_${VM_NAME}_ip
+echo "$RG" > _artifacts/azure_${VM_NAME}_resource_group
+echo "$GALLERY_NAME" > _artifacts/azure_${VM_NAME}_gallery
+echo "$STORAGE_ACC" > _artifacts/azure_${VM_NAME}_storage_account
 
 set +x
 set +e

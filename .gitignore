@@ -1,6 +1,9 @@
-azure_disk.vhd 
+azure_disk.vhd
 aws_disk.vmdk
 gcp_disk.tar.gz
-token
+
+_artifacts/*
 *.pem
 *.json
+*.key
+*.pub
