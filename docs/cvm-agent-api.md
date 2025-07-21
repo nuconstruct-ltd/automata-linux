@@ -1,10 +1,9 @@
-# CVM Agent API
+# CVM Agent API Reference
 
 The server will broadcast on 2 ports:
 - HTTPS: 0.0.0.0:8000 (for queries from outside of the TEE environment) 
 - HTTP: 127.0.0.1:7999 (for internal workload use).
 
-## API Reference
 
 ### Platform Information
 - `/platform` [GET]
@@ -21,7 +20,10 @@ The server will broadcast on 2 ports:
     ```
 
 ### Attestation APIs
-- `/attestation` [POST]
+> [!CAUTION]
+> This API will still undergo lots of changes, it is not ready yet.
+
+- `/onchain-verify` [POST]
     - Port Availability: 7999
     - Handles on-chain attestation requests with support for ZK proofs
     - Request Body:
@@ -85,11 +87,10 @@ The server will broadcast on 2 ports:
     - Port Availability: 7999, 8000
     - The nonce is used as it is for the TPM quote.
     - report_data field in the attestation report should contain the following:
-      - On GCP/AWS: 0 * 32 || sha256sum(magic || nonce)
+      - On GCP/AWS: 0 * 64
       - On Azure: sha256sum(HclVarData) || 0*32
     - extra_data field in the TPM Quote should contain the following:
-      - On GCP/AWS: nonce
-      - On Azure: magic || nonce 
+      - On Azure/AWS/GCP: magic || nonce
     - magic = "External/collaterals" or "Internal/collaterals"
     - Returns a JSON structure containing the following:
     ```json
@@ -157,6 +158,25 @@ The server will broadcast on 2 ports:
     - Example: `curl -X POST -F "file=@output.zip" -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/update-workload"`
     - Returns a successful response after the new workload is successfully measured and running.
 
+- `/get-container-logs?name=ContainerA&name=ContainerB`: [GET]
+  - Port Availability: 8000
+  - Retrieve specified containers' logs. If no container names are provided, it will retrieve the logs from all containers.
+  - It requires authentication via a Bearer token.
+  - Headers: `Authorization: Bearer <token>` (Required. Used for authenticating the request.)
+  - Example: Retrieve all container logs `curl -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/get-container-logs"`
+  - Response:
+    ```json
+    [
+        {
+            // Container Name
+            "name": <string>,
+            // Raw container logs
+            "log": <string>
+        },
+        ...
+    ]
+    ```
+
 - `/golden-measurement` [GET]
     - Port Availability: 8000
     - Generates golden measurements for the current CVM
@@ -172,36 +192,29 @@ The server will broadcast on 2 ports:
         "error": <string, optional>
     }
     ```
-- `/maintenance-mode` [POST]Add commentMore actions
+
+- `/maintenance-mode` [POST]
     - Port Availability: 8000
     - Purpose: Toggle the CVM into or out of maintenance mode by enabling / disabling SSH access to the operator container.
     - Authentication: same as `/update-workload` endpoint
     - Example Requests:
     ```bash
         # Immediately disable SSH
-        curl -X POST http://<ip>:8000/maintenance-mode \
+        curl -H "Authorization: Bearer abcde12345" \
+            -X POST -k https://<ip>:8000/maintenance-mode \
             -H "Content-Type: application/json" \
             -d '{"action":"disable"}'
 
-        # Disable SSH after 30s
-        curl -X POST http://<ip>:8000/maintenance-mode \
-            -H "Content-Type: application/json" \
-            -d '{"action":"disable", ,"delay_seconds":30}'
-
-        # Immediately disable SSH
-        curl -X POST http://<ip>:8000/maintenance-mode \
-            -H "Content-Type: application/json" \
-            -d '{"action":"enable"}'
-
         # Enable SSH again after 30 s
-        curl -X POST http://<ip>:8000/maintenance-mode \
+        curl -H "Authorization: Bearer abcde12345" \
+            -X POST -k https://<ip>:8000/maintenance-mode \
             -H "Content-Type: application/json" \
             -d '{"action":"enable","delay_seconds":30}'
     ```
     - Success Response
     ```json
     {
-        "status": "maintenance mode triggered",      
+        "status": "maintenance mode triggered",
         "maintenance_action": "enable",
         "port": "2222",
         "delay_seconds": 0,
