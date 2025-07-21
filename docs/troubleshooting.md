@@ -47,7 +47,7 @@ A: The error is due to network issues. To fix it, delete the resource group on A
 
 
 ### AWS
-#### Failed to deploy cvm on Azure due to network error
+#### Failed to deploy cvm on AWS due to Invalid Access Key
 
 Q: Help! I got the following error when deploying the CVM on AWS:
 ```bash
@@ -92,7 +92,7 @@ aws_secret_access_key = bdea299cb2e013216137e874e99c640c6f002e033adffa227f61c29e
 ```
 
 ### Google cloud
-#### Failed to deploy cvm on Azure due to lack of permission
+#### Failed to deploy cvm on GCP due to lack of permission
 
 Q: Help! I got the following error when deploying the CVM on GCP:
 ```bash
@@ -110,4 +110,4 @@ Help Token: AeNz4PhxParNqfjHJryxj9rcabnYjU-y7ngd1D8WWI1Tziajg1xi7iTfLg_YxjtMp2eb
   domain: serviceusage.googleapis.com
   reason: AUTH_PERMISSION_DENIED
   ```
-  A: The error is due to lack of permission to service [compute.googleapis.com]. To fix it, enable the  [compute.googleapis.com] service and redeploy the cvm again.
+  A: The error is due to lack of permission to enable the service [compute.googleapis.com]. To fix it, either request enough permissions to enable the [compute.googleapis.com] service, or request someone who has more permissions to enable [compute.googleapis.com] and try to redeploy the cvm again.
