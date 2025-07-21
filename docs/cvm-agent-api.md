@@ -1,9 +1,8 @@
-# CVM Agent API Reference
+# CVM-Agent API Reference
 
 The server will broadcast on 2 ports:
 - HTTPS: 0.0.0.0:8000 (for queries from outside of the TEE environment) 
 - HTTP: 127.0.0.1:7999 (for internal workload use).
-
 
 ### Platform Information
 - `/platform` [GET]
@@ -134,11 +133,6 @@ The server will broadcast on 2 ports:
     ```
 
 ### Management APIs
-- `/api-token`: [GET]
-  - Port Availability: 8000
-  - Retrieve the API token that can be used for `/update-workload` API. **This token can only be retrieved once**.
-  - Returns a string of length 32.
-
 - `/update-workload`: [POST]
     - Port Availability: 8000
     - Used to update the current workload on the server by uploading a .zip file containing a `workload/` folder.
@@ -158,12 +152,12 @@ The server will broadcast on 2 ports:
     - Example: `curl -X POST -F "file=@output.zip" -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/update-workload"`
     - Returns a successful response after the new workload is successfully measured and running.
 
-- `/get-container-logs?name=ContainerA&name=ContainerB`: [GET]
+- `/container-logs?name=ContainerA&name=ContainerB`: [GET]
   - Port Availability: 8000
   - Retrieve specified containers' logs. If no container names are provided, it will retrieve the logs from all containers.
   - It requires authentication via a Bearer token.
   - Headers: `Authorization: Bearer <token>` (Required. Used for authenticating the request.)
-  - Example: Retrieve all container logs `curl -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/get-container-logs"`
+  - Example: Retrieve all container logs `curl -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/container-logs"`
   - Response:
     ```json
     [

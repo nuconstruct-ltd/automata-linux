@@ -45,10 +45,8 @@ Defines HTTP(S) server settings to manage workload updates and VM maintenance:
 
 | Field                              | Value     | Explanation                                                  |
 |------------------------------------|-----------|--------------------------------------------------------------|
-| `enable_workload_update_endpoint`  | `true`    | Enables the endpoint for workload updates via HTTP(S).       |
-| `enable_maintenance_endpoint`      | `true`    | Activates the maintenance endpoint for administrative tasks (i.e., ssh into the container). |
 | `enable_tls`                       | `false`   | TLS encryption is currently **disabled**, resulting in insecure HTTP communications (**not recommended for production**). |
-| `enable_workload_update_auth`      | `false`   | Authentication for management APIs (i.e., workload_update and maintenance mode) of the agent. It is now **disabled**. (**Not recommended for production environments.**) |
+| `enable_auth`      | `true`   | Authentication for management APIs (i.e., workload_update and maintenance mode) of the agent. It should be **enabled** by default. (**Not recommended to disable this for production environments.**) |
 
 ---
 
@@ -69,9 +67,56 @@ Settings that govern VM maintenance activities:
 
 | Field               | Value       | Explanation                                                  |
 |---------------------|-------------|--------------------------------------------------------------|
+| `allow`             | `false`     | Specifies whether user is allowed to enable maintenance mode for administrative tasks. (eg. ssh into the container) |
 | `signal`            | `"SIGUSR2"` | Specifies the signal (`SIGUSR2`) used to notify the containers that the maintenance mode is enabled or disabled.  Containers thus need to implement the signal handler for receiving the notification from the agent|
 
 Note that users should add their public key to the appropriate location (i.e., `~/.ssh/authorized_keys`) within the container and enable port mapping for the SSH server. Example can be found at **Q&A**.  Also, for the proper signal handling, the application process must have **PID 1** in the container (This is very common in containerized applications such as redis and nginx). Otherwise, application may not be able to receive the signal sent by the cvm_agent.
+
+---
+
+## 6. Workload Configuration (`workload_config`)
+
+| Field               | Value       | Explanation                                                  |
+|---------------------|-------------|--------------------------------------------------------------|
+| `workload`          | Struct      | Defines workload update rules during the cvm's runtime. |
+| `image_signature_verification` | Struct | Enables signature checking logic. If disabled, unsigned containers will run. |
+
+### `workload` Struct
+
+| Field                      | Value                            | Explanation |
+|----------------------------|----------------------------------|-------------|
+| `allow_remove`             | `false`                          | Services cannot be removed at runtime via HTTP(s). |
+| `allow_update`             | `true`                           | Existing services can be updated via HTTP(s). |
+| `allow_add_new_service`    | `true`                           | New services can be deployed via HTTP(s). |
+| `update_white_list`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only these services are allowed to be updated at runtime if `allow_update` is enabled. |
+
+> [!Warning]
+> If you have X services in your docker-compose.yml file, the `update_white_list` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
+
+### `image_signature_verification` Struct
+
+| Field                             | Value    | Description |
+|----------------------------------|----------|-------------|
+| `enable`                         | `false`  | If true, enforces signature verification logic. |
+| `auth_info.user_name`            | `""`     | Optional auth user for pulling signed images from private repo. |
+| `auth_info.password`             | `""`     | Optional password for above user. |
+| `signature_verification_policy_path` | `"/data/workload/config/cvm_agent/sample_image_verify_policy.json"` | Path to JSON policy file defining valid signing keys and rules. |
+
+You can pre-configure the policy even if enforcement is currently disabled.
+
+>[!Note]
+> Before executing this step, please ensure that you have already done the following:
+> If pulling from a public registry, ensure both `auth_info.user_name` and `auth_info.password` remain empty.
+> Populate `auth_info` only when accessing private registries. 
+> **Warning**: Credentials provided in this section are subject to measurement by `cvm-agent` and may be exposed in attestation. Use **minimal-privilege accounts** or **short-lived tokens** to mitigate risk.
+
+
+
+
+The `signature_verification_policy_path` points to a policy file that defines rules for which images are allowed to run.
+For more detail of the image verification policy, please check out [this document](./cvm-agent-image-signature-policy.md)
+
+
 
 
 ---
@@ -85,9 +130,8 @@ Note that users should add their public key to the appropriate location (i.e., `
 
 ## Security Recommendations for Production Environments
 
-- Enable `enable_tls` and `enable_workload_update_auth` for secure communications and authenticated updates in production deployments.
-- Disable `enable_maintenance_endpoint` unless it is required.
-- **TLS** and **Workload Authentication** should be enabled.
+- Enable `https_server.enable_tls` and `https_server.enable_auth` for secure communications and authenticated updates in production deployments.
+- Set `maintenance_mode.allow` to false unless it is required.
 
 
 
