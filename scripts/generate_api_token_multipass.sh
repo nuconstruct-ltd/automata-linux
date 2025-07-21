@@ -1,9 +1,17 @@
 #!/bin/bash
+DISK_FILE="$1"
+CSP="$2"
+CSP_VM_NAME="$3"
+
+# Ensure all arguments are provided
+if [[ $# -lt 3 ]]; then
+  echo "❌ Error: Arguments are missing! (generate_api_token_multipass.sh)"
+  exit 1
+fi
 
 set -euo pipefail
 
 VM_NAME="cvm-vm"
-DISK_FILE="$1"
 DISK_FILENAME=$(basename "$DISK_FILE")
 PROJECT_DIR=$(dirname "$DISK_FILE")
 VM_PROJECT_DIR="cvm-tmp"
@@ -43,21 +51,27 @@ VM_PROJECT_PATH="/tmp/$VM_PROJECT_DIR"
 multipass exec "$VM_NAME" -- bash -c "
   mkdir -p $VM_PROJECT_PATH
 "
-multipass transfer -r "scripts/" "workload/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
+multipass transfer -r "scripts/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
 
-# Step 7: Run update logic inside VM
+# Step 6: Add API token to VM.
 echo "🛠️ Running update logic inside VM..."
 multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
   cd $VM_PROJECT_PATH
-  chmod +x ./scripts/update_disk_locally.sh
-  echo '▶️ Running: ./scripts/update_disk_locally.sh $DISK_FILENAME'
-  ./scripts/update_disk_locally.sh $DISK_FILENAME
+  chmod +x ./scripts/generate_api_token_locally.sh
+  echo '▶️ Running: ./scripts/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME'
+  ./scripts/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME
 "
 
-# Step 8: Retrieve updated disk
+# Step 7: Retrieve updated disk
 echo "📥 Retrieving updated disk..."
 multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$DISK_FILENAME" "$UPDATED_DISK"
+
+# Step 8: Retrieve api_token
+echo "📥 Retrieving API token..."
+API_TOKEN_FILE="_artifacts/${CSP}_${CSP_VM_NAME}_token"
+mkdir -p "$(dirname "$API_TOKEN_FILE")"
+multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$API_TOKEN_FILE" "$API_TOKEN_FILE"
 
 # Step 9: Checksum after update
 echo "🔍 Calculating checksum after update..."
@@ -66,10 +80,13 @@ echo "After:  $AFTER_SUM"
 
 # Step 10: Compare
 if [[ "$BEFORE_SUM" == "$AFTER_SUM" ]]; then
-  echo "❌ No change — update failed!"
+  echo "❌ No change — Failed to add API token!"
 else
-  echo "✅ Disk successfully updated!"
+  echo "✅ API token successfully added to disk!"
 fi
 
 # Step 11: Cleanup
-# No cleanup here, we need to generate an API token later.
+echo "🧹 Stopping Multipass VM..."
+multipass stop "$VM_NAME"
+# multipass delete "$VM_NAME"
+# multipass purge

@@ -4,20 +4,35 @@ VM_TYPE=$3
 BUCKET=$4
 ADDITIONAL_PORTS=$5
 DISK_FILE=aws_disk.vmdk
+UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
 IMAGE_NAME="${VM_NAME}-image"
 export AWS_PAGER=""
 
 # Ensure all arguments are provided
 if [[ $# -lt 5 ]]; then
-    echo "❌ Error: Arguments are missing!"
+    echo "❌ Error: Arguments are missing! (make_aws_vm.sh)"
     exit 1
 fi
 
 set -x
 set -e
 
+# Create S3 bucket if it does not exist
+if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+  echo "Bucket '$BUCKET' does not exist. Creating..."
+  if aws s3api create-bucket \
+    --bucket "$BUCKET" \
+    --region "$REGION" \
+    --create-bucket-configuration LocationConstraint="$REGION"; then
+    echo "Bucket created successfully in $REGION"
+  else
+    echo "❌ Error: Failed to create bucket in $REGION"
+    exit 1
+  fi
+fi
+
 # Import disk into S3
-aws s3 cp $DISK_FILE s3://$BUCKET/vms/$DISK_FILE
+aws s3 cp $DISK_FILE s3://$BUCKET/vms/$UPLOADED_DISK_FILE
 
 # Create the container.json file
 cat <<EOF > container.json
@@ -26,7 +41,7 @@ cat <<EOF > container.json
   "Format": "vmdk",
   "UserBucket": {
     "S3Bucket": "$BUCKET",
-    "S3Key":   "vms/$DISK_FILE"
+    "S3Key":   "vms/$UPLOADED_DISK_FILE"
   }
 }
 EOF
@@ -180,6 +195,15 @@ PUBLIC_IP=$(aws ec2 describe-instances \
   --output text)
 
 echo "VM Public IP: $PUBLIC_IP"
+
+# Save artifacts for later use
+mkdir -p _artifacts
+echo "$PUBLIC_IP" > _artifacts/aws_${VM_NAME}_ip
+echo "$BUCKET" > _artifacts/aws_${VM_NAME}_bucket
+echo "$REGION" > _artifacts/aws_${VM_NAME}_region
+echo "$IMAGE_ID" > _artifacts/aws_${VM_NAME}_image
+echo "$SECGRP_ID" > _artifacts/aws_${VM_NAME}_secgrp
+echo "$INSTANCE_ID" > _artifacts/aws_${VM_NAME}_vmid
 
 set +x
 set +e
