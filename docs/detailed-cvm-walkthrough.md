@@ -59,7 +59,7 @@ For image signing and verification, please check out [this document](cvm-agent-i
 
 >[!Note]
 > A sample image verification policy can be found in [workload/config/cvm_agent/sample_image_verify_policy.json](../workload/config/cvm_agent/sample_image_verify_policy.json)
-> To enable the image verification, user should also config the security policy of the cvm-agent. For the detail of the security policy, please check [Configure the cvm-agent and Security Policy](#4-configure-the-cvm-agent-and-security-policy) 
+> To enable the image verification, you should also configure the security policy of the cvm-agent. To see details regarding the security policy, please check [Configure the cvm-agent and Security Policy](#4-configure-the-cvm-agent-and-security-policy).
 
 ### 3. Modify the `workload/` folder:
 - In the folder, there are 3 things - a file called `docker-compose.yml` and 2 folders called `config/` and `secrets/`.
