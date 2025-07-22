@@ -51,17 +51,20 @@ else
   )
   reset="\033[0m"
 
-  # Use jq to extract name and split log into lines
+  # Use jq to print logs with a custom delimiter (||| is safe)
   echo "$body" | jq -r '
     .[] | {name, lines: (.log | split("\n"))} |
     .lines[] as $line |
     select($line != "") |
-    "\(.name)\u0001\($line)"
-  ' | while IFS=$'\1' read -r name line; do
-    # Hash the name to get a stable color index
+    "\(.name)|||\($line)"
+  ' | while IFS= read -r line; do
+    name=$(echo "$line" | cut -d '|' -f1)
+    logline=$(echo "$line" | cut -d '|' -f4-)  # handles ||| correctly
+
     idx=$(( $(echo -n "$name" | cksum | cut -d ' ' -f1) % ${#colors[@]} ))
     color="${colors[$idx]}"
-    echo -e "${color}${name}${reset}: $line"
+
+    echo -e "${color}${name}${reset}: ${logline}${reset}"
   done
 fi
 
