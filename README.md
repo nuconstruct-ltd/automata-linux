@@ -1,4 +1,14 @@
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/automata-network/automata-brand-kit/main/PNG/ATA_White%20Text%20with%20Color%20Logo.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/automata-network/automata-brand-kit/main/PNG/ATA_Black%20Text%20with%20Color%20Logo.png">
+    <img src="https://raw.githubusercontent.com/automata-network/automata-brand-kit/main/PNG/ATA_White%20Text%20with%20Color%20Logo.png" width="50%">
+  </picture>
+</div>
+
 # cvm-base-image
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 
 ## 📑 Table of Contents <!-- omit in toc -->
 - [Prerequisites](#prerequisites)
@@ -51,7 +61,7 @@ Using the provided VM name, you can retrieve logs from the VM like this:
 ```bash
 # ./cvm-cli get-logs <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-./cvm-cli get-logs aws cvm-test
+./cvm-cli get-logs gcp cvm-test
 ```
 
 ### 3. Destroy the VM <!-- omit in toc -->

@@ -16,7 +16,7 @@ if ! command -v multipass &>/dev/null; then
 fi
 
 # Step 2: Launch VM if it doesn't exist or is stopped
-STATUS=$(multipass info "$VM_NAME" 2>/dev/null | grep '^State:' | awk '{print $2}')
+STATUS=$(multipass info "$VM_NAME" 2>/dev/null | grep '^State:' | awk '{print $2}' || true)
 
 if [[ "$STATUS" == "Stopped" ]]; then
   echo "🔌 Instance '$VM_NAME' exists but is stopped. Starting it..."

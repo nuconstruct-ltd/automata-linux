@@ -18,7 +18,7 @@ usage() {
     echo "  --resource_group <group>    The resource group for the deployment. Default: randomly generated"
     echo "  --storage_account <name>    The name of a custom storage account. Default: randomly generated"
     echo "  --gallery_name <name>       The name of a shared image gallery. Default: randomly generated"
-    echo "  --vm_name <name>            The name of the virtual machine. Default: cvm_test"
+    echo "  --vm_name <name>            The name of the virtual machine. Default: cvm-test"
     echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"Standard_DC2es_v5\""
     echo "  --region <region>           The region where the VM will be deployed. Default: \"East US 2\""
@@ -212,7 +212,7 @@ case "$COMMAND" in
         ;;
 
     deploy-azure)
-        # Defaults
+        # Default values
         VM_NAME="cvm-test"
         VM_TYPE="Standard_DC2es_v5"
         REGION="East US 2"
@@ -222,7 +222,6 @@ case "$COMMAND" in
         ADDITIONAL_PORTS=""
         ADD_WORKLOAD=false
 
-        # Parse CLI args
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
                 --additional_ports) ADDITIONAL_PORTS=$2; shift 2 ;;
@@ -290,7 +289,6 @@ case "$COMMAND" in
         fi
         # Generate API token for disk
         ./scripts/generate_api_token.sh "azure_disk.vhd" "azure" "$VM_NAME"
-        # Deploy the VM
         echo "Deploying azure_disk.vhd with the following parameters:"
         echo "🔹VM Name: $VM_NAME"
         echo "🔹Resource Group: $RESOURCE_GROUP"

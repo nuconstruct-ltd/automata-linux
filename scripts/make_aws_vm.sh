@@ -84,8 +84,7 @@ done
 
 rm container.json
 
-# Create UEFI Data block to use with the image.
-# first check whether the blob exists, otherwise create it.
+# Check whether the UEFI blob exists
 UEFI_BLOB="secure_boot/aws-uefi-blob.bin"
 if [ -f "$UEFI_BLOB" ]; then
   echo "$UEFI_BLOB exists. Continuing..."
