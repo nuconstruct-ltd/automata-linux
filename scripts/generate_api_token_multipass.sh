@@ -11,7 +11,7 @@ fi
 
 set -euo pipefail
 
-VM_NAME="cvm-vm"
+VM_NAME="ubuntu-vm"
 DISK_FILENAME=$(basename "$DISK_FILE")
 PROJECT_DIR=$(dirname "$DISK_FILE")
 VM_PROJECT_DIR="cvm-tmp"
