@@ -25,10 +25,8 @@
         },
 
         "https_server" :{
-            "enable_workload_update_endpoint": true,
-            "enable_maintenance_endpoint": false,
             "enable_tls": true,
-            "enable_workload_update_auth": true
+            "enable_auth": true
         },
 
         "container_api" : {
@@ -37,6 +35,7 @@
         },
 
         "maintenance_mode" : {
+            "allow" : false,
             "signal" : "SIGUSR2"
         }
     },
@@ -44,16 +43,12 @@
     "workload_config": {
         "workload": {
             "allow_remove": false,
-            "allow_update": true,
             "allow_add_new_service": true,
-            "update_white_list" : ["prometheus", "node-exporter", "metrics-proxy"]
+            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"]
         },
         "image_signature_verification": {
             "enable":false,
-            "auth_info": {
-                "user_name": "",
-                "password": ""
-            },
+            "auth_info_file_path": "/data/workload/secrets/auth_info.json",
             "signature_verification_policy_path":"/data/workload/config/cvm_agent/sample_image_verify_policy.json"
         }
     }
