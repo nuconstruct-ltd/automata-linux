@@ -86,12 +86,11 @@ Note that users should add their public key to the appropriate location (i.e., `
 | Field                      | Value                            | Explanation |
 |----------------------------|----------------------------------|-------------|
 | `allow_remove`             | `false`                          | Services cannot be removed at runtime via HTTP(s). |
-| `allow_update`             | `true`                           | Existing services can be updated via HTTP(s). |
 | `allow_add_new_service`    | `true`                           | New services can be deployed via HTTP(s). |
-| `update_white_list`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only these services are allowed to be updated at runtime if `allow_update` is enabled. |
+| `allow_update`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only the existing services defined in this list are allowed to be updated at runtime via HTTP(s). Setting the list to empty (ie. `[]`), disables workload update. |
 
 > [!Warning]
-> If you have X services in your docker-compose.yml file, the `update_white_list` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
+> If you have X services in your docker-compose.yml file, `allow_update` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
 
 ### `image_signature_verification` Struct
 

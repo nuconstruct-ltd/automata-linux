@@ -23,6 +23,10 @@
 
 - Ensure that you have enough permissions on your account on either GCP, AWS or Azure to create virtual machines, disks, networks, firewall rules, buckets/storage accounts and service roles.
 
+```bash
+git clone --recurse-submodules https://github.com/automata-network/cvm-image-builder
+```
+
 ## Quickstart
 
 ### 1. Deploying the CVM <!-- omit in toc -->
