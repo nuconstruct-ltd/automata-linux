@@ -14,6 +14,7 @@
 - [Prerequisites](#prerequisites)
 - [Quickstart](#quickstart)
 - [Deploying the CVM with your workload](#deploying-the-cvm-with-your-workload)
+- [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -164,6 +165,30 @@ Use this command to delete the VM once you no longer need it.
 # ./cvm-cli cleanup <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
 ./cvm-cli cleanup gcp cvm-test
+```
+## Live Demo
+Here is a short demo video showing how to deploy workload using our cvm-image on AZURE in action.
+
+[![Watch the demo](https://img.youtube.com/vi/KaLyJbeHUzk/0.jpg)](https://www.youtube.com/watch?v=KaLyJbeHUzk)
+
+Instructions to recreate the demo setup in your own environment are available here:
+```bash
+git clone https://github.com/automata-network/cvm-base-image.git
+
+cd cvm-base-image
+
+cat workload/docker-compose.yml
+
+cat workload/config/cvm_agent/cvm_agent_policy.json
+
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+
+./cvm-cli get-logs azure cvm-test
+
+./cvm-cli update-workload azure cvm-test
+
+./cvm-cli cleanup azure cvm-test
+
 ```
 
 ## Detailed Walkthrough
