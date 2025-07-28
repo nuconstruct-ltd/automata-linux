@@ -167,6 +167,26 @@ Here is a short demo video showing how to deploy workload using our cvm-image on
 
 [![Watch the demo](https://img.youtube.com/vi/KaLyJbeHUzk/0.jpg)](https://www.youtube.com/watch?v=KaLyJbeHUzk)
 
+Instructions to recreate the demo setup in your own environment are available here:
+```bash
+git clone https://github.com/automata-network/cvm-base-image.git
+
+cd cvm-base-image
+
+cat workload/docker-compose.yml
+
+cat workload/config/cvm_agent/cvm_agent_policy.json
+
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+
+./cvm-cli get-logs azure cvm-test
+
+./cvm-cli update-workload azure cvm-test
+
+./cvm-cli cleanup azure cvm-test
+
+```
+
 ## Detailed Walkthrough
 A detailed walkthrough of what can be customized and any other features available can be found in [this doc](docs/detailed-cvm-walkthrough.md).
 
