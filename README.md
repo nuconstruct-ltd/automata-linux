@@ -14,7 +14,7 @@
 - [Prerequisites](#prerequisites)
 - [Quickstart](#quickstart)
 - [Deploying the CVM with your workload](#deploying-the-cvm-with-your-workload)
-- [Live Demo](#deploying-the-cvm-with-your-workload)
+- [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -162,10 +162,10 @@ Use this command to delete the VM once you no longer need it.
 # <cloud-provider> = "aws" or "gcp" or "azure"
 ./cvm-cli cleanup gcp cvm-test
 ```
-## LIVE DEMO
+## Live Demo
 Here is a short demo video showing how to deploy workload using our cvm-image on AZURE in action.
 
-[![asciicast](https://www.youtube.com/watch?v=KaLyJbeHUzk)](https://www.youtube.com/watch?v=KaLyJbeHUzk)
+[![Watch the demo](https://img.youtube.com/vi/KaLyJbeHUzk/0.jpg)](https://www.youtube.com/watch?v=KaLyJbeHUzk)
 
 ## Detailed Walkthrough
 A detailed walkthrough of what can be customized and any other features available can be found in [this doc](docs/detailed-cvm-walkthrough.md).
