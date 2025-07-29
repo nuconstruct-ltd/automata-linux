@@ -41,11 +41,11 @@
     },
 
     "workload_config": {
-        "workload_measurement_black_list": ["prometheus"],
-        "workload": {
+        "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"]
+            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"], 
+            "skip_measurement": ["prometheus"]
         },
         "image_signature_verification": {
             "enable":false,
