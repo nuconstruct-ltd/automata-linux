@@ -80,6 +80,7 @@ Note that users should add their public key to the appropriate location (i.e., `
 
 | Field               | Value       | Explanation                                                  |
 |---------------------|-------------|--------------------------------------------------------------|
+| `workload_measurement_black_list`          | list["service_name", ... ]` | The services defined in this list are not measured by cvm-agent|
 | `workload`          | Struct      | Defines workload update rules during the cvm's runtime. |
 | `image_signature_verification` | Struct | Enables signature checking logic. If disabled, unsigned containers will run. |
 

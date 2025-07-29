@@ -41,6 +41,7 @@
     },
 
     "workload_config": {
+        "workload_measurement_black_list": ["prometheus"],
         "workload": {
             "allow_remove": false,
             "allow_add_new_service": true,
