@@ -90,7 +90,7 @@ Note that users should add their public key to the appropriate location (i.e., `
 | `allow_remove`             | `false`                          | Services cannot be removed at runtime via HTTP(s). |
 | `allow_add_new_service`    | `true`                           | New services can be deployed via HTTP(s). |
 | `allow_update`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only the existing services defined in this list are allowed to be updated at runtime via HTTP(s). Setting the list to empty (ie. `[]`), disables workload update. |
-| `skip_measurement`          | list["service_name", ... ]` | The services defined in this list are not measured by cvm-agent|
+| `skip_measurement`          | list["service_name", ... ]` | The services defined in this list will not be measured by the cvm-agent. (This includes its image digest and docker-compose config. Its image signature verification will also be skipped.) |
 
 > [!Warning]
 > If you have X services in your docker-compose.yml file, `allow_update` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
