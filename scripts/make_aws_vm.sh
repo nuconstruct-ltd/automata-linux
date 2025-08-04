@@ -3,13 +3,14 @@ REGION=$2
 VM_TYPE=$3
 BUCKET=$4
 ADDITIONAL_PORTS=$5
+EIP_AID=$6
 DISK_FILE=aws_disk.vmdk
 UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
 IMAGE_NAME="${VM_NAME}-image"
 export AWS_PAGER=""
 
 # Ensure all arguments are provided
-if [[ $# -lt 5 ]]; then
+if [[ $# -lt 6 ]]; then
     echo "❌ Error: Arguments are missing! (make_aws_vm.sh)"
     exit 1
 fi
@@ -186,6 +187,14 @@ INSTANCE_ID=$(aws ec2 run-instances \
   --output text)
 
 aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
+
+if [[ -n "$EIP_AID" ]]; then
+  echo "Attaching Elastic IP with allocation ID $EIP_AID to instance $INSTANCE_ID"
+  aws ec2 associate-address \
+    --region "$REGION" \
+    --instance-id "$INSTANCE_ID" \
+    --allocation-id "$EIP_AID"
+fi
 
 PUBLIC_IP=$(aws ec2 describe-instances \
   --region "$REGION" \

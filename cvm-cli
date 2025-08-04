@@ -32,6 +32,7 @@ usage() {
     echo "  --vm_name <name>            The name of the virtual machine. Default: cvm-test"
     echo "  --region <region>           The region where the VM will be deployed. Default: \"asia-southeast1-b\""
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"c3-standard-4\""
+    echo "  --ip <ip>                   Static ip to attach to the VM. Default: None"
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
     echo ""
@@ -41,6 +42,7 @@ usage() {
     echo "  --vm_name <name>            The name of the virtual machine. Default: cvm-test"
     echo "  --region <region>           The region where the VM will be deployed. Default: \"us-east-2\""
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"m6a.large\""
+    echo "  --eip <alloc_id>            The allocation ID of an Elastic IP to attach to the VM. Default: None"
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
     echo ""
@@ -77,6 +79,7 @@ case "$COMMAND" in
         REGION="us-east-2"
         VM_TYPE="m6a.large"
         ADDITIONAL_PORTS=""
+        EIP_AID=""
         ADD_WORKLOAD=false
 
         while [[ "$#" -gt 0 ]]; do
@@ -86,6 +89,7 @@ case "$COMMAND" in
                 --region) REGION=$2; shift 2 ;;
                 --vm_type) VM_TYPE=$2; shift 2 ;;
                 --bucket) BUCKET=$2; shift 2 ;;
+                --eip) EIP_AID=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
@@ -125,8 +129,9 @@ case "$COMMAND" in
         echo "🔹Region: $REGION"
         echo "🔹VM Type: $VM_TYPE"
         echo "🔹Bucket : $BUCKET"
+        echo "🔹EIP Allocation ID: $EIP_AID"
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
-        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$EIP_AID"
         ./scripts/get_golden_measurements.sh "aws" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -142,6 +147,7 @@ case "$COMMAND" in
         # To specify additional workload ports, pass them as a comma-separated string
         # eg. "80,443"
         ADDITIONAL_PORTS=""
+        IP=""
         ADD_WORKLOAD=false
 
         while [[ "$#" -gt 0 ]]; do
@@ -152,6 +158,7 @@ case "$COMMAND" in
                 --project_id) PROJECT_ID=$2; shift 2 ;;
                 --vm_type) VM_TYPE=$2; shift 2 ;;
                 --bucket) BUCKET=$2; shift 2 ;;
+                --ip) IP=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
@@ -205,7 +212,7 @@ case "$COMMAND" in
         echo "🔹VM Type: $VM_TYPE"
         echo "🔹Bucket : $BUCKET"
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
-        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$IP"
         ./scripts/get_golden_measurements.sh "gcp" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e

@@ -4,12 +4,13 @@ PROJECT_ID=$3
 VM_TYPE=$4
 BUCKET=$5
 ADDITIONAL_PORTS=$6
+IP=$7
 COMPRESSED_FILE="gcp_disk.tar.gz"
 UPLOADED_COMPRESSED_FILE="${VM_NAME}.tar.gz"
 IMAGE_NAME="${VM_NAME}-image"
 
 # Ensure all arguments are provided
-if [[ $# -lt 6 ]]; then
+if [[ $# -lt 7 ]]; then
     echo "❌ Error: Arguments are missing! (make_gcp_vm.sh)"
     exit 1
 fi
@@ -89,6 +90,11 @@ if [[ $VM_TYPE == *"n2d-"* ]]; then
   CC_TYPE="SEV_SNP"
 fi
 
+ADDITIONAL_ARGS=""
+if [[ -n "$IP" ]]; then
+  ADDITIONAL_ARGS="--address=$IP --network-tier=STANDARD"
+fi
+
 # create the vm
 gcloud compute instances create $VM_NAME \
   --machine-type=$VM_TYPE \
@@ -102,6 +108,7 @@ gcloud compute instances create $VM_NAME \
   --shielded-integrity-monitoring \
   --project=$PROJECT_ID \
   --tags $RULE_NAME \
+  $ADDITIONAL_ARGS \
   --metadata serial-port-enable=1,serial-port-logging-enable=1
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
