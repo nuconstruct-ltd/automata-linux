@@ -120,6 +120,8 @@ case "$COMMAND" in
         set -euo pipefail
         # Check vm options
         ./scripts/check_options.sh "aws" "$VM_TYPE" "$REGION"
+        # Ensure the disk image exists
+        ./scripts/get_disk_image.sh "aws"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
             ./scripts/update_disk.sh "aws_disk.vmdk"
@@ -190,6 +192,8 @@ case "$COMMAND" in
         set -euo pipefail
         # Check vm options
         ./scripts/check_options.sh "gcp" "$VM_TYPE" "$REGION"
+        # Ensure the disk image exists
+        ./scripts/get_disk_image.sh "gcp"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
             ./scripts/update_disk.sh "gcp_disk.tar.gz"
@@ -300,6 +304,8 @@ case "$COMMAND" in
 
         # Check vm options
         ./scripts/check_options.sh "azure" "$VM_TYPE" "$REGION"
+        # Ensure the disk image exists
+        ./scripts/get_disk_image.sh "azure"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
             ./scripts/update_disk.sh "azure_disk.vhd"
