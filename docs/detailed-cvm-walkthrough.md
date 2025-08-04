@@ -105,7 +105,21 @@ The other settings not mentioned can be left as its default values. If you wish 
 
 ### 5. (Optional) Prepare additional data disk
 
-By default, `cvm-cli` support creating following type of disk and attach it to the vm. User only need to specify disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`. If you want to have a custom disk, Feel free to use following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automaticlly detect the disk by its name and attach it to the vm.
+By default, `cvm-cli` support creating following type of disk and attach it to the vm. User only need to specify disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`.  For example:
+
+```bash
+# Option 1. Deploy to GCP
+./cvm-cli deploy-gcp  --attach-disk mydisk --disk-size 20
+
+# Option 2. Deploy to AWS
+./cvm-cli deploy-aws --attach-disk mydisk --disk-size 20
+
+# Option 3. Deploy to Azure
+./cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
+```
+
+
+If you want to have a custom disk, Feel free to use following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automaticlly detect the disk by its name and attach it to the vm.
 
 - AZURE
 ```bash
