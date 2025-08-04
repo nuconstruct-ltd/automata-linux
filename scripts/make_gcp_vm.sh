@@ -61,7 +61,7 @@ gcloud compute images create $IMAGE_NAME \
   --storage-location="$LOCATION" \
   --platform-key-file=secure_boot/PK.crt \
   --key-exchange-key-file=secure_boot/KEK.crt \
-  --signature-database-file=secure_boot/db.crt,deps/kernel.crt
+  --signature-database-file=secure_boot/db.crt,secure_boot/kernel.crt
 
 
 ALLOW_PORTS="tcp:8000"

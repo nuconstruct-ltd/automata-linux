@@ -117,9 +117,10 @@ By default, `cvm-cli` support creating following type of disk and attach it to t
 # Option 3. Deploy to Azure
 ./cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
 ```
+> [!NOTE]
+>  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
 
-
-If you want to have a custom disk, Feel free to use following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automaticlly detect the disk by its name and attach it to the vm.
+If you want to have a custom disk, feel free to use the following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
 
 - AZURE
 ```bash

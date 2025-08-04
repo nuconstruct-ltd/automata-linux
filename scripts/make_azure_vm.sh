@@ -103,7 +103,7 @@ storageAccountId=$(az storage account show --name "$STORAGE_ACC" --resource-grou
 PK_B64=$(openssl base64 -in secure_boot/PK.crt -A)
 KEK_B64=$(openssl base64 -in secure_boot/KEK.crt -A)
 DB_B64=$(openssl base64 -in secure_boot/db.crt -A)
-KERN_B64=$(openssl base64 -in deps/kernel.crt -A)
+KERN_B64=$(openssl base64 -in secure_boot/kernel.crt -A)
 
 IMG_VER_BODY=$(jq -n \
   --arg region "$REGION" \
