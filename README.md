@@ -107,17 +107,26 @@ The other settings not mentioned can be left as its default values. If you wish 
 
 ### 3. Deploy the CVM <!-- omit in toc -->
 
-In this example, we assume that you're deploying a workload that needs a p2p port on port 30000. If your workload does not need the additional port, feel free to omit `--additional_ports "30000"`. Note that the `--additional_ports` option is for the cloud provider firewall, not the nftables firewall used by the security policy we defined above.
+In this example, we assume that you're deploying a workload that needs a p2p port on port 30000 and an additional data disk with 20GB size. If your workload does not need the additional port or disk, feel free to omit `--additional_ports "30000"` and `--attach-disk mydisk --disk-size 20`. Note that the `--additional_ports` option is for the cloud provider firewall, not the nftables firewall used by the security policy we defined above.
+--attach-disk mydisk tells cvm-cli to attach (or create, if it doesn’t already exist) a persistent block-storage disk called mydisk to the CVM. This disk is separate from the VM’s boot volume, so anything you write to it survives reboots, re-deploys, or VM replacements.
+
+--disk-size 20 sets the capacity of that disk to 20 GiB at creation time. If a disk named mydisk already exists, the flag is ignored; otherwise the CLI provisions a 20 GiB disk before attaching it.
+
+In this example, we assume that you're deploying a workload that requires opening a peer‑to‑peer port on 30000 and attaching an additional 20 GB persistent data disk. If your workload does not need either of these resources, you can omit both `--additional_ports "30000"` and `--attach-disk mydisk --disk-size 20`.
+
+The --additional_ports option configures the cloud provider’s firewall to allow inbound traffic on port 30000; it does not modify the nftables firewall inside the CVM, which is managed by the security policy you defined earlier.
+
+The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it does not already exist) a persistent data disk named `mydisk` to the CVM. When used with `--disk-size 20`, the CLI creates a 20 GB disk if mydisk is not already present. This disk is independent of the VM’s boot volume, so data written to it is preserved across reboots, redeployments, and VM replacements.
 
 ```bash
 # Option 1. Deploy to GCP
-./cvm-cli deploy-gcp --add-workload --additional_ports "30000"
+./cvm-cli deploy-gcp --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-./cvm-cli deploy-aws --add-workload --additional_ports "30000"
+./cvm-cli deploy-aws --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 ```
 
 At the end of the deployment, you should be able to see the name of the deployed CVM in the shell, and the location where the golden measurement of this CVM is stored:
