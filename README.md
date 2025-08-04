@@ -118,6 +118,9 @@ The --additional_ports option configures the cloud provider’s firewall to allo
 
 The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it does not already exist) a persistent data disk named `mydisk` to the CVM. When used with `--disk-size 20`, the CLI creates a 20 GB disk if mydisk is not already present. This disk is independent of the VM’s boot volume, so data written to it is preserved across reboots, redeployments, and VM replacements.
 
+> [!NOTE]
+>  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
+
 ```bash
 # Option 1. Deploy to GCP
 ./cvm-cli deploy-gcp --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
