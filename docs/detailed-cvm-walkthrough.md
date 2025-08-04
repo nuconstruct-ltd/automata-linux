@@ -313,3 +313,7 @@ In case you wish to add your workload to a disk image to distribute to others fo
 # AWS: aws_disk.vmdk
 ./cvm-cli update-disk azure_disk.vhd
 ```
+
+## (Advanced) Applying critical kernel patches
+
+Our image supports kernel livepatching using kpatch. For more details, please check out the [kernel livepatching guide](livepatching.md).
