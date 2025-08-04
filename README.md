@@ -106,18 +106,24 @@ By default, the CVM will use the default security policy found in [workload/conf
 The other settings not mentioned can be left as its default values. If you wish to modify the other settings, a detailed description of each policy option can be found in [this document](docs/cvm-agent-policy.md).
 
 ### 3. Deploy the CVM <!-- omit in toc -->
+In this example, we assume that you're deploying a workload that requires opening a peer‑to‑peer port on 30000 and attaching an additional 20 GB persistent data disk. If your workload does not need either of these resources, you can omit both `--additional_ports "30000"` and `--attach-disk mydisk --disk-size 20`.
 
-In this example, we assume that you're deploying a workload that needs a p2p port on port 30000. If your workload does not need the additional port, feel free to omit `--additional_ports "30000"`. Note that the `--additional_ports` option is for the cloud provider firewall, not the nftables firewall used by the security policy we defined above.
+The --additional_ports option configures the cloud provider’s firewall to allow inbound traffic on port 30000; it does not modify the nftables firewall inside the CVM, which is managed by the security policy you defined earlier.
+
+The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it does not already exist) a persistent data disk named `mydisk` to the CVM. When used with `--disk-size 20`, the CLI creates a 20 GB disk if mydisk is not already present. This disk is independent of the VM’s boot volume, so data written to it is preserved across reboots, redeployments, and VM replacements.
+
+> [!NOTE]
+>  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
 
 ```bash
 # Option 1. Deploy to GCP
-./cvm-cli deploy-gcp --add-workload --additional_ports "30000"
+./cvm-cli deploy-gcp --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-./cvm-cli deploy-aws --add-workload --additional_ports "30000"
+./cvm-cli deploy-aws --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 ```
 
 At the end of the deployment, you should be able to see the name of the deployed CVM in the shell, and the location where the golden measurement of this CVM is stored:

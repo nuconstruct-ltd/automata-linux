@@ -23,7 +23,10 @@ usage() {
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"Standard_DC2es_v5\""
     echo "  --region <region>           The region where the VM will be deployed. Default: \"East US 2\""
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
-    echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "                              If flag is not passed, the script will not update the workload onto the existing disk."    
+    echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
+    echo "  --disk-size                 The data disk size. Default: 10 GB"
+
     echo ""
     echo "Optional arguments for 'deploy-gcp' command:"
     echo "  --project_id <id>           The project id for the deployment. Default: the default gcloud project"
@@ -34,6 +37,8 @@ usage() {
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"c3-standard-4\""
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
+    echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
     echo "Optional arguments for 'deploy-aws' command:"
     echo "  --bucket <name>             The name of an AWS bucket to store the vm image to. Default: randomly generated"
@@ -43,6 +48,8 @@ usage() {
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"m6a.large\""
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "  --attach-disk                The data disk name, if the disk with the provided name is not provided, it will be created by the script"
+    echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
     echo "Arguments for the 'get-disk' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
@@ -78,6 +85,8 @@ case "$COMMAND" in
         VM_TYPE="m6a.large"
         ADDITIONAL_PORTS=""
         ADD_WORKLOAD=false
+        ATTACH_DISK=""
+        DISK_SIZE=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -86,6 +95,8 @@ case "$COMMAND" in
                 --region) REGION=$2; shift 2 ;;
                 --vm_type) VM_TYPE=$2; shift 2 ;;
                 --bucket) BUCKET=$2; shift 2 ;;
+                --attach-disk) ATTACH_DISK=$2; shift 2 ;;     # NEW
+                --disk-size) DISK_SIZE=$2; shift 2 ;;         # NEW
                 --add-workload) ADD_WORKLOAD=true; shift ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
@@ -126,7 +137,9 @@ case "$COMMAND" in
         echo "🔹VM Type: $VM_TYPE"
         echo "🔹Bucket : $BUCKET"
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
-        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
+        echo "🔹Disk Size: ${DISK_SIZE:-default}"
+        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$ATTACH_DISK" "$DISK_SIZE"
         ./scripts/get_golden_measurements.sh "aws" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -143,6 +156,8 @@ case "$COMMAND" in
         # eg. "80,443"
         ADDITIONAL_PORTS=""
         ADD_WORKLOAD=false
+        ATTACH_DISK=""
+        DISK_SIZE=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -152,6 +167,8 @@ case "$COMMAND" in
                 --project_id) PROJECT_ID=$2; shift 2 ;;
                 --vm_type) VM_TYPE=$2; shift 2 ;;
                 --bucket) BUCKET=$2; shift 2 ;;
+                --attach-disk) ATTACH_DISK=$2; shift 2 ;;     # NEW
+                --disk-size) DISK_SIZE=$2; shift 2 ;;         # NEW
                 --add-workload) ADD_WORKLOAD=true; shift ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
@@ -205,13 +222,15 @@ case "$COMMAND" in
         echo "🔹VM Type: $VM_TYPE"
         echo "🔹Bucket : $BUCKET"
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
-        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS"
+        echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
+        echo "🔹Disk Size: ${DISK_SIZE:-default}"
+        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$ATTACH_DISK" "$DISK_SIZE"
         ./scripts/get_golden_measurements.sh "gcp" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
         ;;
 
-    deploy-azure)
+ deploy-azure)
         # Default values
         VM_NAME="cvm-test"
         VM_TYPE="Standard_DC2es_v5"
@@ -221,6 +240,8 @@ case "$COMMAND" in
         GALLERY_NAME=""
         ADDITIONAL_PORTS=""
         ADD_WORKLOAD=false
+        ATTACH_DISK=""
+        DISK_SIZE=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -232,6 +253,8 @@ case "$COMMAND" in
                 --storage_account) STORAGE_ACC=$2; shift 2 ;;
                 --gallery_name) GALLERY_NAME=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
+                --attach-disk) ATTACH_DISK=$2; shift 2 ;;     # ✅ NEW
+                --disk-size) DISK_SIZE=$2; shift 2 ;;         # ✅ NEW
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
@@ -297,7 +320,11 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         echo "🔹Storage Account: $STORAGE_ACC"
         echo "🔹Shared Image Gallery: $GALLERY_NAME"
-        ./scripts/make_azure_vm.sh "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS" "$STORAGE_ACC" "$GALLERY_NAME" "$REGION"
+        echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
+        echo "🔹Disk Size: ${DISK_SIZE:-default}"
+
+        ./scripts/make_azure_vm.sh "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"  \
+                        "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE"
         ./scripts/get_golden_measurements.sh "azure" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e

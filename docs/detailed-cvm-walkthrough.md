@@ -6,6 +6,7 @@
   - [2. Sign the docker images that will be used](#2-sign-the-docker-images-that-will-be-used)
   - [3. Modify the `workload/` folder:](#3-modify-the-workload-folder)
   - [4. Configure the cvm-agent and Security Policy](#4-configure-the-cvm-agent-and-security-policy)
+  - [5. (Optional) Prepare additional data disk](#5-optional-prepare-additional-data-disk)
 - [Deploying the workload onto the Cloud Provider](#deploying-the-workload-onto-the-cloud-provider)
   - [Deploying to Azure](#deploying-to-azure)
   - [Deploying to GCP](#deploying-to-gcp)
@@ -101,6 +102,70 @@ The default security policy can be found in [workload/config/cvm_agent/cvm_agent
 - `workload_config.workload.update_white_list`: This list specifies which services in your docker-compose.yml are allowed to be updated remotely via the cvm-agent API `/update-workload`. **You must list the names of your services in your docker-compose.yml if you wish to allow remote updates. Otherwise, set it to an empty list `[]` to disallow remote updates.**
 
 The other settings not mentioned can be left as its default values. If you wish to modify the other settings, a detailed description of each policy option can be found in [this document](cvm-agent-policy.md).
+
+### 5. (Optional) Prepare additional data disk
+
+By default, `cvm-cli` support creating following type of disk and attach it to the vm. User only need to specify disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`.  For example:
+
+```bash
+# Option 1. Deploy to GCP
+./cvm-cli deploy-gcp  --attach-disk mydisk --disk-size 20
+
+# Option 2. Deploy to AWS
+./cvm-cli deploy-aws --attach-disk mydisk --disk-size 20
+
+# Option 3. Deploy to Azure
+./cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
+```
+> [!NOTE]
+>  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
+
+If you want to have a custom disk, feel free to use the following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
+
+- AZURE
+```bash
+az group create --name "$RG" --location "East US 2"
+
+az disk create \
+  --resource-group "$RG" \
+  --name "$DATA_DISK" \
+  --size-gb "$SIZE" \
+  --sku Premium_LRS \
+  --encryption-type EncryptionAtRestWithPlatformKey
+
+./cvm-cli deploy-azure  --attach-disk $DATA_DISK
+```
+
+- GCP
+```bash
+gcloud compute disks create my-data-disk \
+  --size=20GB \
+  --type=pd-balanced \
+  --zone=asia-southeast1-b \
+  --project=YOUR_PROJECT_ID
+```
+
+- AWS
+```bash
+FIRST_AZ=$(aws ec2 describe-availability-zones \
+  --region us-east-2 \
+  --query "AvailabilityZones[0].ZoneName" \
+  --output text)
+
+echo "First AZ: $FIRST_AZ"
+
+aws ec2 create-volume \
+  --region us-east-2 \
+  --availability-zone $FIRST_AZ \
+  --size 20 \
+  --volume-type gp3 \
+  --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=my-data-disk}]'
+
+./cvm-cli deploy-aws  --attach-disk my-data-disk
+```
+> [!NOTE]
+>  Replace `us-east-1a` with the `availability-zone` you plan to use.  Make sure the disk is in the same `availability-zone` as the instance created by the script. Otherwise the disk cannot attach. By default, the script creates vm instance in the first availability-zone of the region. You can use above cmd to get it.
+
 
 ## Deploying the workload onto the Cloud Provider
 Run the CLI to deploy the disk to the cloud provider.
