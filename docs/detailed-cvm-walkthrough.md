@@ -109,12 +109,16 @@ By default, `cvm-cli` support creating following type of disk and attach it to t
 
 - AZURE
 ```bash
+az group create --name "$RG" --location "East US 2"
+
 az disk create \
   --resource-group "$RG" \
   --name "$DATA_DISK" \
   --size-gb "$SIZE" \
   --sku Premium_LRS \
   --encryption-type EncryptionAtRestWithPlatformKey
+
+./cvm-cli deploy-azure  --attach-disk $DATA_DISK
 ```
 
 - GCP
