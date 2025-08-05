@@ -4,13 +4,16 @@ VM_TYPE=$3
 BUCKET=$4
 ADDITIONAL_PORTS=$5
 EIP_AID=$6
+DATA_DISK="$7"       # Optional EBS volume name
+DISK_SIZE_GB="$8"    # Optional disk size (for new disk)
+
 DISK_FILE=aws_disk.vmdk
 UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
 IMAGE_NAME="${VM_NAME}-image"
 export AWS_PAGER=""
 
 # Ensure all arguments are provided
-if [[ $# -lt 6 ]]; then
+if [[ $# -lt 8 ]]; then
     echo "❌ Error: Arguments are missing! (make_aws_vm.sh)"
     exit 1
 fi
@@ -134,28 +137,33 @@ IMAGE_ID=$(aws ec2 register-image \
 
 echo "✔ Image ID = $IMAGE_ID"
 
-# Check if the security group already exists
+SECGRP_NAME="${VM_NAME}-secgrp"
 EXISTING_GROUP_ID=$(aws ec2 describe-security-groups \
   --region "$REGION" \
-  --filters Name=group-name,Values="${VM_NAME}-secgrp" \
+  --filters Name=group-name,Values="$SECGRP_NAME" \
   --query "SecurityGroups[0].GroupId" \
   --output text 2>/dev/null)
 
-# If it exists, delete it
-if [[ "$EXISTING_GROUP_ID" != "None" ]]; then
-  echo "Security group $SECGRP_NAME exists (GroupId: $EXISTING_GROUP_ID), deleting..."
-  aws ec2 delete-security-group \
-    --region "$REGION" \
-    --group-id "$EXISTING_GROUP_ID"
-  echo "Deleted existing security group."
+if [[ "$EXISTING_GROUP_ID" != "None" && -n "$EXISTING_GROUP_ID" ]]; then
+  echo "Security group $SECGRP_NAME exists (GroupId: $EXISTING_GROUP_ID), attempting to delete..."
+  if aws ec2 delete-security-group \
+        --region "$REGION" \
+        --group-id "$EXISTING_GROUP_ID"; then
+    echo "✔ Deleted existing security group."
+  else
+    echo "⚠️ Could not delete $SECGRP_NAME because it is in use. Will reuse it."
+    SECGRP_ID="$EXISTING_GROUP_ID"
+  fi
 fi
 
-# Create the security group
-SECGRP_ID=$(aws ec2 create-security-group \
-  --region "$REGION" \
-  --group-name "${VM_NAME}-secgrp" \
-  --description "Security group for SEV-SNP CVM" \
-  --query "GroupId" --output text)
+# Create the security group only if we didn’t reuse it
+if [[ -z "$SECGRP_ID" ]]; then
+  SECGRP_ID=$(aws ec2 create-security-group \
+    --region "$REGION" \
+    --group-name "$SECGRP_NAME" \
+    --description "Security group for SEV-SNP CVM" \
+    --query "GroupId" --output text)
+fi
 
 # Add inbound rules to the security group
 ALLOW_PORTS="8000"
@@ -175,17 +183,85 @@ for P in "${PORT_ARRAY[@]}"; do
        >/dev/null 2>&1 || true # skip “rule exists” errors
 done
 
-# Create the instance
+
+ROOT_MAPPING="DeviceName=/dev/xvda,Ebs={SnapshotId=$SNAPSHOT_ID,DeleteOnTermination=true}"
+BLOCK_MAPPINGS="--block-device-mappings $ROOT_MAPPING"
+
+EXIST_VOL_ID=""
+CREATE_NEW_DISK=false
+
+if [[ -n "$DATA_DISK" ]]; then
+  EXIST_VOL_ID=$(aws ec2 describe-volumes \
+    --region "$REGION" \
+    --filters Name=tag:Name,Values="$DATA_DISK" \
+    --query 'Volumes[0].VolumeId' \
+    --output text 2>/dev/null)
+
+  if [[ "$EXIST_VOL_ID" == "None" || -z "$EXIST_VOL_ID" ]]; then
+    SIZE="${DISK_SIZE_GB:-10}"
+    DATA_MAPPING="DeviceName=/dev/sdf,Ebs={VolumeSize=$SIZE,VolumeType=gp3,DeleteOnTermination=true}"
+    BLOCK_MAPPINGS="$BLOCK_MAPPINGS $DATA_MAPPING"
+    CREATE_NEW_DISK=true
+  fi
+fi
+
+FIRST_AZ=$(aws ec2 describe-availability-zones \
+  --region "$REGION" \
+  --query "AvailabilityZones[0].ZoneName" \
+  --output text)
+
+SUBNET_ID=$(aws ec2 describe-subnets \
+  --region "$REGION" \
+  --query "Subnets[?AvailabilityZone=='$FIRST_AZ'].[SubnetId]" \
+  --output text | head -n 1)
+
+if [[ -z "$SUBNET_ID" ]]; then
+  echo "❌ No subnet found in $FIRST_AZ. Please ensure at least one subnet exists."
+  exit 1
+fi
+
+# 1️⃣ Launch instance in stopped state
 INSTANCE_ID=$(aws ec2 run-instances \
   --region "$REGION" \
+  --subnet-id "$SUBNET_ID" \
   --image-id "$IMAGE_ID" \
   --instance-type "$VM_TYPE" \
   --security-group-ids "$SECGRP_ID" \
   --cpu-options AmdSevSnp=enabled \
-  --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value='"$VM_NAME"'}]' \
+  --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$VM_NAME}]" \
+  $BLOCK_MAPPINGS \
   --query 'Instances[0].InstanceId' \
   --output text)
 
+# 2️⃣ Wait for instance to exist (but do NOT start it yet)
+aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
+aws ec2 stop-instances --region "$REGION" --instance-ids "$INSTANCE_ID"
+aws ec2 wait instance-stopped --region "$REGION" --instance-ids "$INSTANCE_ID"
+
+# 3️⃣ Attach existing disk if needed
+if [[ -n "$DATA_DISK" && "$CREATE_NEW_DISK" == "false" ]]; then
+  echo "📦 Attaching existing disk $EXIST_VOL_ID to $INSTANCE_ID"
+  aws ec2 attach-volume \
+    --region "$REGION" \
+    --volume-id "$EXIST_VOL_ID" \
+    --instance-id "$INSTANCE_ID" \
+    --device /dev/sdf
+  VOL_ID="$EXIST_VOL_ID"
+else
+  VOL_ID=$(aws ec2 describe-instances \
+    --region "$REGION" \
+    --instance-ids "$INSTANCE_ID" \
+    --query "Reservations[0].Instances[0].BlockDeviceMappings[?DeviceName=='/dev/sdf'].Ebs.VolumeId" \
+    --output text)
+
+  [[ -n "$DATA_DISK" ]] && aws ec2 create-tags \
+    --region "$REGION" \
+    --resources "$VOL_ID" \
+    --tags Key=Name,Value="$DATA_DISK"
+fi
+
+# 4️⃣ Start the instance only after disk is attached
+aws ec2 start-instances --region "$REGION" --instance-ids "$INSTANCE_ID"
 aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
 
 if [[ -n "$EIP_AID" ]]; then
@@ -204,7 +280,6 @@ PUBLIC_IP=$(aws ec2 describe-instances \
 
 echo "VM Public IP: $PUBLIC_IP"
 
-# Save artifacts for later use
 mkdir -p _artifacts
 echo "$PUBLIC_IP" > _artifacts/aws_${VM_NAME}_ip
 echo "$BUCKET" > _artifacts/aws_${VM_NAME}_bucket
@@ -212,6 +287,8 @@ echo "$REGION" > _artifacts/aws_${VM_NAME}_region
 echo "$IMAGE_ID" > _artifacts/aws_${VM_NAME}_image
 echo "$SECGRP_ID" > _artifacts/aws_${VM_NAME}_secgrp
 echo "$INSTANCE_ID" > _artifacts/aws_${VM_NAME}_vmid
+[[ -n "$VOL_ID" ]] && echo "$VOL_ID" > _artifacts/aws_${VM_NAME}_data_volume
+
 
 set +x
 set +e
