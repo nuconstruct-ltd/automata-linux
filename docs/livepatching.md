@@ -127,5 +127,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
 5. Use our CLI tool to sign your livepatch and upload it to your CVM:
   ```bash
+  # ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+  # <cloud-provider> = "aws" or "gcp" or "azure"
   ./cvm-cli livepatch gcp my-cvm-name /path/to/livepatch.ko
   ```

@@ -127,6 +127,13 @@ if [[ -n "$DATA_DISK" ]]; then
           --zone="$ZONE" \
           --project="$PROJECT_ID"
 
+      # Delete the temporary snapshot
+      echo "🧹 Deleting temporary snapshot $SNAP_NAME..."
+      gcloud compute snapshots delete "$SNAP_NAME" \
+          --project="$PROJECT_ID" \
+          --zone="$ZONE" \
+          --quiet
+
       # Attach the new SSD disk
       DATA_DISK="$NEW_DISK"
     else

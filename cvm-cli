@@ -4,15 +4,17 @@ usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
     echo "Commands:"
-    echo "  deploy-azure        Deploy a VM onto Azure using azure_disk.vhd."
-    echo "  deploy-aws          Deploy a VM onto AWS using aws_disk.vmdk."
-    echo "  deploy-gcp          Deploy a VM onto GCP using gcp_disk.tar.gz."
-    echo "  update-workload     Update the workload on a deployed CVM."
-    echo "  get-disk            Get the disk image for a specific Cloud Provider."
-    echo "  update-disk         Update the workload on a specified disk file."
-    echo "  get-logs            Retrieve logs from a deployed CVM."
-    echo "  cleanup             Clean up resources for a specific Cloud Provider and VM Name."
-    echo "  sign-image          Sign and verify a container image using Cosign."
+    echo "  deploy-azure             Deploy a VM onto Azure using azure_disk.vhd."
+    echo "  deploy-aws               Deploy a VM onto AWS using aws_disk.vmdk."
+    echo "  deploy-gcp               Deploy a VM onto GCP using gcp_disk.tar.gz."
+    echo "  update-workload          Update the workload on a deployed CVM."
+    echo "  get-disk                 Get the disk image for a specific Cloud Provider."
+    echo "  update-disk              Update the workload on a specified disk file."
+    echo "  get-logs                 Retrieve logs from a deployed CVM."
+    echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
+    echo "  sign-image               Sign and verify a container image using Cosign."
+    echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
+    echo "  livepatch                Deploy a kernel livepatch to a deployed CVM."
     echo ""
     echo "Optional arguments for 'deploy-azure' command:"
     echo "  --resource_group <group>    The resource group for the deployment. Default: randomly generated"
@@ -68,6 +70,11 @@ usage() {
     echo "  <target-image>           Target image (e.g., docker.io/user/image:signed)"
     echo "  <cosign-private>         Cosign private key"
     echo "  <cosign-public>          Cosign public key"
+    echo ""
+    echo "Arguments for 'livepatch' command:"
+    echo "  <CSP>                The cloud provider (aws, gcp, azure)"
+    echo "  <VM_NAME>            The name of the virtual machine"
+    echo "  <PATH_TO_LIVEPATCH>  The path to the livepatch file (e.g., /path/to/livepatch.ko)"
     echo ""
     exit 1
 }
@@ -405,6 +412,25 @@ case "$COMMAND" in
                 ./scripts/cleanup_azure_vm.sh "$VM_NAME"
                 ;;
         esac
+        ;;
+
+    livepatch)
+        CSP=$1; shift 1
+        VM_NAME=$1; shift 1
+        LIVEPATCH_PATH=$1; shift 1
+        if [[ -z "$CSP" || -z "$VM_NAME" || -z "$LIVEPATCH_PATH" ]]; then
+            echo "❌ Please provide the CSP (aws, gcp or azure), VM name, and path to the livepatch file."
+            echo "❌ Usage: $0 livepatch <CSP> <VM_NAME> <PATH_TO_LIVEPATCH>"
+            exit 1
+        fi
+        set -euo pipefail
+            ./scripts/livepatch.sh "$CSP" "$VM_NAME" "$LIVEPATCH_PATH"
+        set +e
+        ;;
+
+    generate-livepatch-keys)
+        # Generate livepatch keys
+        ./scripts/generate_livepatch_keys.sh
         ;;
 
     sign-image)

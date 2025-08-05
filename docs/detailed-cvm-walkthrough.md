@@ -246,11 +246,11 @@ The following parameters are optional, and default to:
 - For off-chain:
   - Step 1: Sign the golden measurement. A reference helper script has been provided in this repo:
    ```bash
-   ./json_sig_tool.py sign _artifacts/golden-measurement.json private.pem -o signed-golden-measurement.json
+   ./tools/json_sig_tool.py sign _artifacts/golden-measurement.json private.pem -o signed-golden-measurement.json
    ```
   - Step 2: (Optional, Sanity check) Verify the signature
    ```bash
-   ./json_sig_tool.py verify signed-golden-measurement.json public.pem
+   ./tools/json_sig_tool.py verify signed-golden-measurement.json public.pem
    ```
 - For on-chain: TODO
 
