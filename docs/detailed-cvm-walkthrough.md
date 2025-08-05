@@ -125,7 +125,7 @@ The following parameters are optional, and default to:
 
 ### Deploying to GCP
 ```bash
-./cvm-cli deploy-gcp --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --project_id <project id> --bucket <bucket_name> --vm_type "<type>"
+./cvm-cli deploy-gcp --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --project_id <project id> --bucket <bucket_name> --vm_type "<type>" --ip "<ip>"
 ```
 
 
@@ -138,11 +138,12 @@ The following parameters are optional, and default to:
 - vm_type: c3-standard-4
 - additional_ports: “” (this option is for the cloud provider firewall, not the nftables firewall)
 - project_id: Uses your default gcloud project
-- bucket: Randomly generated. 
+- bucket: Randomly generated.
+- ip: "" (Use this option to attach a fixed static IP to your VM. Provide the IP address that you have reserved on GCP.)
 
 ### Deploying to AWS
 ```bash
-./cvm-cli deploy-aws --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --bucket <bucket_name> --vm_type "<type>"
+./cvm-cli deploy-aws --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --bucket <bucket_name> --vm_type "<type>" --eip "<allocation ID>"
 ```
 
 **If you need to upload your workload onto the disk, please run this command with the `--add-workload` parameter.**
@@ -154,6 +155,7 @@ The following parameters are optional, and default to:
 - vm_type: m6a.large
 - additional_ports: “” (this option is for the cloud provider firewall, not the nftables firewall)
 - bucket: Random name will be generated
+- eip: "" (Use this option to attach a fixed static IP to your VM. Provide the allocation ID of an Elastic IP)
 
 > [!Warning]
 > AWS currently has a known issue where the [boot process may intermittently hang for an SEV-SNP VM](https://bugs.launchpad.net/cloud-images/+bug/2076217). Please reboot the VM if you do not see a file called `_artifacts/golden-measurement.json` after the deployment script has completed. Once the VM has been rebooted, you can manually run `./scripts/get_golden_measurements.sh <csp> <vm-name>` to get the golden measurement.
@@ -314,6 +316,6 @@ In case you wish to add your workload to a disk image to distribute to others fo
 ./cvm-cli update-disk azure_disk.vhd
 ```
 
-## (Advanced) Applying critical kernel patches
+## (Advanced) Applying Critical Kernel Patches
 
 Our image supports kernel livepatching using kpatch. For more details, please check out the [kernel livepatching guide](livepatching.md).

@@ -42,11 +42,13 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
   git clone --branch v6.15.2 --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
   ```
 
+> [!Note]
+> You should make a copy of this linux kernel source in order to make your patches, as kpatch-build (in the steps below) requires the original un-modified source and the patch diffs.
 
-2. Please check out the detailed [Patch Author Guide](https://github.com/dynup/kpatch/blob/master/doc/patch-author-guide.md) for details on how to format your livepatch. In general:
+1. Please check out the detailed [Patch Author Guide](https://github.com/dynup/kpatch/blob/master/doc/patch-author-guide.md) for details on how to format your livepatch. In general:
   - You should only patch code, not data structures.
   - Please make your patches cumulative. For simplicity, our cvm-image only supports full-replacement patches (ie, patches built with `REPLACE=1`, which is the default setting used by kpatch-build), so only one patch can be active at a time. 
-  - To give a concrete example: Suppose this is your first patch, built and installed into the CVM:
+  - To give a concrete example: Suppose this is your first patch, `patch1.patch`, built into `patch1.ko` and installed into the CVM:
     ```bash
     diff --git a/fs/proc/meminfo.c b/fs/proc/meminfo.c
     index 83be312159c9..95279525777e 100644
@@ -63,7 +65,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
     ```
 
-    Later, you need to add another patch. The second patch should look like this:
+    Later, you need to add another patch. The second patch, `patch2.patch` should look like this:
     ```bash
     diff --git a/fs/proc/meminfo.c b/fs/proc/meminfo.c
     index 83be312159c9..95279525777e 100644
@@ -99,8 +101,13 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
     ```
 
+    As you can see in the above example, `patch2.patch` is a superset of `patch1.patch`. This is because when loading `patch2.ko` (generated from `patch2.patch`),
+    `patch1.ko` will be unloaded and only `patch2.ko` will be active.
+    
+    Whenever you need to generate a new patch, the new patch should be a superset of all the applied older patches.
 
-3. Clone and build kpatch:
+
+2. Clone and build kpatch:
   ```bash
   git clone https://github.com/dynup/kpatch
   cd kpatch && make all
@@ -112,8 +119,11 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
   ```bash
   kpatch-build -s path/to/linux-kernel-src -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
   ```
+  - `-s`: This is the patch to the original **unmodified** linux kernel source code
+  - `-c`: This is the path to the linux kernel config, you can use our [config](config).
+  - `-o`: The output folder where the built `livepatch-XXXX.ko` will be stored.
 
-  After the build is done, you should see a `livepatch-XXXX.ko` inside the `patch-output-folder/`.
+  After the build is done, you should see a `livepatch-XXXX.ko` inside the `patch-output-folder/`. kpatch-build will only output one module that contains all the patched functions from across different components in the kernel.
 
 5. Use our CLI tool to sign your livepatch and upload it to your CVM:
   ```bash
