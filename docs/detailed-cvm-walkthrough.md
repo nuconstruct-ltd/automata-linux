@@ -138,11 +138,15 @@ az disk create \
 
 - GCP
 ```bash
+gcloud projects list
+
 gcloud compute disks create my-data-disk \
   --size=20GB \
   --type=pd-balanced \
   --zone=asia-southeast1-b \
   --project=YOUR_PROJECT_ID
+
+ ./cvm-cli deploy-gcp  --attach-disk my-data-disk2
 ```
 
 - AWS
