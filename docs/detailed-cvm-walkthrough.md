@@ -377,13 +377,18 @@ In case you wish to add your workload to a disk image to distribute to others fo
 # <csp> : azure, gcp or aws
 ./cvm-cli get-disk azure
 
-# 2. Update the disk to add your workload contents onto it.
+# 2. (Optional) Generate kernel livepatch keys if you want to enable livepatching.
+./cvm-cli generate-livepatch-keys
+
+# 3. Update the disk to add your workload contents onto it.
 # These are the following disk file names for each CSP:
 # GCP: gcp_disk.tar.gz
 # Azure: azure_disk.vhd
 # AWS: aws_disk.vmdk
 ./cvm-cli update-disk azure_disk.vhd
 ```
+
+Now, the updated disk, `azure_dis.vhd` can be distributed to others. If you generated livepatch keys, please also distribute `secure_boot/livepatch.crt` to others to place in their `secure_boot/` folder.
 
 ## (Advanced) Applying Critical Kernel Patches
 

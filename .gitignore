@@ -2,6 +2,9 @@ azure_disk.vhd
 aws_disk.vmdk
 gcp_disk.tar.gz
 
+aws-uefi-blob.bin
+livepatch.crt
+
 _artifacts/*
 *.pem
 *.json

@@ -93,8 +93,8 @@ UEFI_BLOB="secure_boot/aws-uefi-blob.bin"
 if [ -f "$UEFI_BLOB" ]; then
   echo "$UEFI_BLOB exists. Continuing..."
 else
-  echo "$UEFI_BLOB does not exist! Panicking and quitting!"
-  exit 1
+  echo "$UEFI_BLOB does not exist! Creating now!"
+  ./scripts/create-aws-uefi-blob.sh
 fi
 
 # First delete any old AMI with the same name
