@@ -4,7 +4,7 @@ LIVEPATCH_KEY_NAME="$DIR/livepatch"
 
 set -e
 
-if [ -f "$LIVEPATCH_KEY_NAME.key" ] && [ -f "$LIVEPATCH_KEY_NAME.pub" ]; then
+if [ -f "$LIVEPATCH_KEY_NAME.key" ] && [ -f "$LIVEPATCH_KEY_NAME.crt" ]; then
   echo "Livepatch keys already exist. Skipping generation."
 else
   echo "Generating livepatch keys..."

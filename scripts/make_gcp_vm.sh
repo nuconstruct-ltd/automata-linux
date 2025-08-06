@@ -55,6 +55,11 @@ if gcloud compute images describe $IMAGE_NAME --project="$PROJECT_ID" --quiet > 
     gcloud compute images delete $IMAGE_NAME --project="$PROJECT_ID" --quiet
 fi
 
+# If livepatch keys exist, include them in the Signature DB.
+SIGFILES=secure_boot/db.crt,secure_boot/kernel.crt
+if [ -f "secure_boot/livepatch.crt" ]; then
+  SIGFILES="$SIGFILES,secure_boot/livepatch.crt"
+fi
 gcloud compute images create $IMAGE_NAME \
   --source-uri gs://$BUCKET/$UPLOADED_COMPRESSED_FILE \
   --project="$PROJECT_ID" \
@@ -62,7 +67,7 @@ gcloud compute images create $IMAGE_NAME \
   --storage-location="$LOCATION" \
   --platform-key-file=secure_boot/PK.crt \
   --key-exchange-key-file=secure_boot/KEK.crt \
-  --signature-database-file=secure_boot/db.crt,secure_boot/kernel.crt
+  --signature-database-file="$SIGFILES"
 
 
 ALLOW_PORTS="tcp:8000"
