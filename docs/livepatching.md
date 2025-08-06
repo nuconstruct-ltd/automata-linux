@@ -125,7 +125,13 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
   After the build is done, you should see a `livepatch-XXXX.ko` inside the `patch-output-folder/`. kpatch-build will only output one module that contains all the patched functions from across different components in the kernel.
 
-5. Use our CLI tool to sign your livepatch and upload it to your CVM:
+4. Sign the livepatch:
+
+  ```bash
+  ./cvm-cli sign-livepatch /path/to/livepatch.ko
+  ```
+
+5. Use our CLI tool to deploy the livepatch to your CVM:
   ```bash
   # ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
   # <cloud-provider> = "aws" or "gcp" or "azure"

@@ -13,17 +13,6 @@ fi
 # quit when any error occurs
 set -Eeuo pipefail
 
-# 1. Sign the livepatch
-LIVEPATCH_PRIV_KEY="secure_boot/livepatch.key"
-LIVEPATCH_PUB_KEY="secure_boot/livepatch.crt"
-if [[ ! -f "$LIVEPATCH_PRIV_KEY" || ! -f "$LIVEPATCH_PUB_KEY" ]]; then
-  echo "❌ Error: Livepatch keys not found! (livepatch.sh)"
-  echo "❌ This VM does not support livepatching. Please run `./cvm-cli generate-livepatch-keys` and re-deploy the CVM."
-  exit 1
-fi
-
-./deps/sign-file sha256 "$LIVEPATCH_PRIV_KEY" "$LIVEPATCH_PUB_KEY" "$LIVEPATCH_PATH"
-
 IP_FILE="_artifacts/${CSP}_${VM_NAME}_ip"
 API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
 
