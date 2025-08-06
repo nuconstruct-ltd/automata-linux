@@ -35,6 +35,18 @@ multipass transfer -r "scripts/" "secure_boot/" "tools/" "$VM_NAME:$VM_PROJECT_P
 echo "🛠️ Running inside VM..."
 multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
+  echo 'Installing dependencies...'
+  export DEBIAN_FRONTEND=noninteractive
+  export NEEDRESTART_MODE=a
+  export UCF_FORCE_CONFOLD=1
+  export DPKG_OPTIONS='--force-confold'
+  echo 'Waiting for APT locks to be released...'
+  while fuser /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; do
+    sleep 1
+  done
+  echo 'APT is ready.'
+  sudo apt update && sudo apt install -yq efitools python3 python3-pip
+  sudo pip3 install --no-input pefile google_crc32c
   cd $VM_PROJECT_PATH
   chmod +x ./scripts/create-aws-uefi-blob-locally.sh
   echo '▶️ Running: ./scripts/create-aws-uefi-blob-locally.sh'

@@ -3,22 +3,6 @@
 # quit when any error occurs
 set -Eeuo pipefail
 
-# install dependencies if they don't exist
-if ! command -v cert-to-efi-sig-list &> /dev/null; then
-    sudo apt update && sudo apt install -y efitools
-fi
-
-if ! command -v python3 &> /dev/null; then
-    sudo apt update && sudo apt install -y python3
-fi
-
-DIR="./tools/python-uefivars"
-
-if [ -d "$DIR" ] && [ -z "$(ls -A "$DIR")" ]; then
-  git submodule update --init --recursive
-fi
-
-
 # 1. Convert all the certs to PEM format, then create ESL files
 openssl x509 -in secure_boot/PK.crt -inform DER -out secure_boot/PK.pem -outform PEM
 openssl x509 -in secure_boot/KEK.crt -inform DER -out secure_boot/KEK.pem -outform PEM
