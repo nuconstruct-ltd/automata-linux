@@ -102,7 +102,7 @@ elif [ "$CSP" = "azure" ]; then
     echo "❌ Error: The selected VM type '$VM_TYPE' is not supported for Azure."
     echo "Please choose a VM type that supports SEV-SNP or TDX."
     echo "Supported types for SEV-SNP: Standard_DC*as_v5, Standard_DC*as_v6"
-    echo "Supported types for TDX: Standard_DC*es_v5, Standard_DC*es_v6"
+    echo "Supported types for TDX: Standard_DC*es_v6"
     exit 1
   fi
 else
