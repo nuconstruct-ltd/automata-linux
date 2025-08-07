@@ -26,6 +26,7 @@
   - [2. Update the `workload/` folder:](#2-update-the-workload-folder)
   - [3. Update the workload](#3-update-the-workload)
 - [Adding your workload to a base disk image to distribute to other users](#adding-your-workload-to-a-base-disk-image-to-distribute-to-other-users)
+- [(Advanced) Applying Critical Kernel Patches](#advanced-applying-critical-kernel-patches)
 
 
 
