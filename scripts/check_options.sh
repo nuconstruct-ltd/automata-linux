@@ -28,10 +28,6 @@ GCP_TDX_REGIONS=(
 
 AWS_SNP_REGIONS=("us-east-2" "eu-west-1")
 
-AZURE_TDX_V5_REGIONS=(
-  "East US 2" "Central US" "West Europe" "North Europe"
-)
-
 AZURE_TDX_V6_REGIONS=(
   "West Europe" "East US" "West US" "West US 3"
 )
@@ -90,13 +86,7 @@ elif [ "$CSP" = "gcp" ]; then
   fi
 
 elif [ "$CSP" = "azure" ]; then
-  if [[ $VM_TYPE =~ ^Standard_DC(2|4|8|16|32|64|96|128)es_v5$ ]]; then
-    if ! contains "$REGION" "${AZURE_TDX_V5_REGIONS[@]}"; then
-      echo "❌ Error: The selected region '$REGION' does not support TDX DCesv5 VMs."
-      echo "Please choose a region that supports TDX DCesv5 VMs: ${AZURE_TDX_V5_REGIONS[*]}"
-      exit 1
-    fi
-  elif [[ $VM_TYPE =~ ^Standard_DC(2|4|8|16|32|64|96|128)es_v6$ ]]; then
+  if [[ $VM_TYPE =~ ^Standard_DC(2|4|8|16|32|64|96|128)es_v6$ ]]; then
     if ! contains "$REGION" "${AZURE_TDX_V6_REGIONS[@]}"; then
       echo "❌ Error: The selected region '$REGION' does not support TDX DCesv6 VMs."
       echo "Please choose a region that supports TDX DCesv6 VMs: ${AZURE_TDX_V6_REGIONS[*]}"

@@ -251,8 +251,8 @@ case "$COMMAND" in
  deploy-azure)
         # Default values
         VM_NAME="cvm-test"
-        VM_TYPE="Standard_DC2es_v5"
-        REGION="East US 2"
+        VM_TYPE="Standard_DC2es_v6"
+        REGION="East US"
         RESOURCE_GROUP=""
         STORAGE_ACC=""
         GALLERY_NAME=""
