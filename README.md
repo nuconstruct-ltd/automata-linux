@@ -14,6 +14,7 @@
 - [Prerequisites](#prerequisites)
 - [Quickstart](#quickstart)
 - [Deploying the CVM with your workload](#deploying-the-cvm-with-your-workload)
+- [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
 - [Troubleshooting](#troubleshooting)
@@ -22,6 +23,10 @@
 ## Prerequisites
 
 - Ensure that you have enough permissions on your account on either GCP, AWS or Azure to create virtual machines, disks, networks, firewall rules, buckets/storage accounts and service roles.
+
+```bash
+git clone --recurse-submodules https://github.com/automata-network/cvm-image-builder
+```
 
 ## Quickstart
 
@@ -96,23 +101,29 @@ The CVM agent runs inside the CVM and is responsible for VM management, workload
 By default, the CVM will use the default security policy found in [workload/config/cvm_agent/cvm_agent_policy.json](workload/config/cvm_agent/cvm_agent_policy.json). There are 2 settings that you **must** configure:
 
 - `firewall.allowed_ports`: By default, all incoming traffic on all ports are blocked by nftables, except for CVM agent ports 7999 and 8000. If your workload requires incoming traffic on other ports (eg. you need a p2p port on 30000), please follow the given example and add the ports you require.
-- `workload_config.workload.update_white_list`: This list specifies which services in your docker-compose.yml are allowed to be updated remotely via the cvm-agent API `/update-workload`. **You must list the names of your services in your docker-compose.yml if you wish to allow remote updates. Otherwise, set it to an empty list `[]` to disallow remote updates.**
+- `workload_config.services.allow_update`: This list specifies which services in your docker-compose.yml are allowed to be updated remotely via the cvm-agent API `/update-workload`. **You must list the names of your services in your docker-compose.yml if you wish to allow remote updates. Otherwise, set it to an empty list `[]` to disallow remote updates.**
 
 The other settings not mentioned can be left as its default values. If you wish to modify the other settings, a detailed description of each policy option can be found in [this document](docs/cvm-agent-policy.md).
 
 ### 3. Deploy the CVM <!-- omit in toc -->
+In this example, we assume that you're deploying a workload that requires opening a peer‑to‑peer port on 30000 and attaching an additional 20 GB persistent data disk. If your workload does not need either of these resources, you can omit both `--additional_ports "30000"` and `--attach-disk mydisk --disk-size 20`.
 
-In this example, we assume that you're deploying a workload that needs a p2p port on port 30000. If your workload does not need the additional port, feel free to omit `--additional_ports "30000"`. Note that the `--additional_ports` option is for the cloud provider firewall, not the nftables firewall used by the security policy we defined above.
+The --additional_ports option configures the cloud provider’s firewall to allow inbound traffic on port 30000; it does not modify the nftables firewall inside the CVM, which is managed by the security policy you defined earlier.
+
+The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it does not already exist) a persistent data disk named `mydisk` to the CVM. When used with `--disk-size 20`, the CLI creates a 20 GB disk if mydisk is not already present. This disk is independent of the VM’s boot volume, so data written to it is preserved across reboots, redeployments, and VM replacements.
+
+> [!NOTE]
+>  After cvm is launched, the cvm will automatically detect the unmounted disk and setup the filesystem if the disk is not initialized and mount the disk at `/data/datadisk-1`.
 
 ```bash
 # Option 1. Deploy to GCP
-./cvm-cli deploy-gcp --add-workload --additional_ports "30000"
+./cvm-cli deploy-gcp --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-./cvm-cli deploy-aws --add-workload --additional_ports "30000"
+./cvm-cli deploy-aws --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 ```
 
 At the end of the deployment, you should be able to see the name of the deployed CVM in the shell, and the location where the golden measurement of this CVM is stored:
@@ -127,6 +138,7 @@ At the end of the deployment, you should be able to see the name of the deployed
 > - Customise other settings, like the vm name, or where the vm is deployed.
 > - Check on best practices regarding the golden measurement, or how to use it in remote attestation.
 > - If you only want to build a disk with your workload and distribute it to others.
+> - If you wish to enable kernel livepatching.
 
 ### 4. Managing the CVM <!-- omit in toc -->
 We've scripted some convenience commands that you can run to manage your CVM.
@@ -160,6 +172,40 @@ Use this command to delete the VM once you no longer need it.
 # ./cvm-cli cleanup <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
 ./cvm-cli cleanup gcp cvm-test
+```
+
+#### (Advanced) Kernel Livepatching <!-- omit in toc -->
+Use this command to deploy a livepatch onto the CVM. Please checkout our [kernel livepatch guide](./docs/livepatching.md) for more details.
+
+```bash
+# ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+# <cloud-provider> = "aws" or "gcp" or "azure"
+./cvm-cli livepatch gcp cvm-test /path/to/livepatch.ko
+```
+
+## Live Demo
+Here is a short demo video showing how to deploy workload using our cvm-image on AZURE in action.
+
+[![Watch the demo](https://img.youtube.com/vi/KaLyJbeHUzk/0.jpg)](https://www.youtube.com/watch?v=KaLyJbeHUzk)
+
+Instructions to recreate the demo setup in your own environment are available here:
+```bash
+git clone https://github.com/automata-network/cvm-base-image.git
+
+cd cvm-base-image
+
+cat workload/docker-compose.yml
+
+cat workload/config/cvm_agent/cvm_agent_policy.json
+
+./cvm-cli deploy-azure --add-workload --additional_ports "30000"
+
+./cvm-cli get-logs azure cvm-test
+
+./cvm-cli update-workload azure cvm-test
+
+./cvm-cli cleanup azure cvm-test
+
 ```
 
 ## Detailed Walkthrough

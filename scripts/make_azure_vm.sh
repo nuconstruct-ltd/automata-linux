@@ -5,6 +5,10 @@ ADDITIONAL_PORTS="$4"
 STORAGE_ACC="$5"
 GALLERY_NAME="$6"
 REGION="$7"
+DATA_DISK="$8"        # NEW: Optional disk name
+DISK_SIZE_GB="$9"     # NEW: Optional disk size (for new disk)
+
+
 VHD=azure_disk.vhd
 IMAGE_DEF="${VM_NAME}-def"
 SKU_NAME="${VM_NAME}-sku"
@@ -101,6 +105,12 @@ KEK_B64=$(openssl base64 -in secure_boot/KEK.crt -A)
 DB_B64=$(openssl base64 -in secure_boot/db.crt -A)
 KERN_B64=$(openssl base64 -in secure_boot/kernel.crt -A)
 
+# Add livepatch cert if it exists
+LIVEPATCH_B64=""
+if [ -f secure_boot/livepatch.crt ]; then
+  LIVEPATCH_B64=$(openssl base64 -in secure_boot/livepatch.crt -A)
+fi
+
 IMG_VER_BODY=$(jq -n \
   --arg region "$REGION" \
   --arg saId "$storageAccountId" \
@@ -108,7 +118,8 @@ IMG_VER_BODY=$(jq -n \
   --arg pk "$PK_B64" \
   --arg kek "$KEK_B64" \
   --arg db "$DB_B64" \
-  --arg kern "$KERN_B64" '
+  --arg kern "$KERN_B64" \
+  --arg livepatch "$LIVEPATCH_B64" '
 {
   location: $region,
   properties: {
@@ -130,7 +141,20 @@ IMG_VER_BODY=$(jq -n \
         additionalSignatures: {
           pk: { type: "x509", value: [$pk] },
           kek: [{ type: "x509", value: [$kek] }],
-          db: [{ type: "x509", value: [$db, $kern] }]
+          db: (
+            if $livepatch != "" then
+              [
+                { type: "x509", value: [$db] },
+                { type: "x509", value: [$kern] },
+                { type: "x509", value: [$livepatch] }
+              ]
+            else
+              [
+                { type: "x509", value: [$db] },
+                { type: "x509", value: [$kern] }
+              ]
+            end
+          )
         }
       }
     }
@@ -146,7 +170,6 @@ az rest --method PUT \
   --body "$IMG_VER_BODY"
 
 echo "⏳ Image replication + gallery image version in progress... this might take a while (8+ mins). Time to grab a coffee and chill ☕🙂"
-
 while true; do
   state=$(az sig image-version show \
     --resource-group "$RG" \
@@ -190,23 +213,49 @@ if [[ -n "${ADDITIONAL_PORTS}" ]]; then
     done
 fi
 
-vm_output=$(az vm create \
-  --resource-group "$RG" \
-  --name "$VM_NAME" \
-  --size "$VM_TYPE" \
-  --enable-vtpm true \
-  --enable-secure-boot true \
-  --image "$galleryImageId" \
-  --public-ip-sku Standard \
-  --nsg "$VM_NAME" \
-  --security-type ConfidentialVM \
-  --os-disk-security-encryption-type VMGuestStateOnly \
-  --specialized \
-  --admin-username dummyuser \
-  --admin-password DummyPassword123)
+VM_CREATE_ARGS=(
+  --resource-group "$RG"
+  --name "$VM_NAME"
+  --size "$VM_TYPE"
+  --enable-vtpm true
+  --enable-secure-boot true
+  --image "$galleryImageId"
+  --public-ip-sku Standard
+  --nsg "$VM_NAME"
+  --security-type ConfidentialVM
+  --os-disk-security-encryption-type VMGuestStateOnly
+  --specialized
+  --admin-username dummyuser
+  --admin-password DummyPassword123
+)
+
+# Add disk creation/attachment options
+if [[ -n "$DATA_DISK" ]]; then
+  # If the disk exists → attach it.
+  if az disk show --name "$DATA_DISK" --resource-group "$RG" &>/dev/null; then
+    echo "📦 Will attach existing disk: $DATA_DISK"
+    VM_CREATE_ARGS+=(--attach-data-disks "$DATA_DISK")
+  else
+    SIZE="${DISK_SIZE_GB:-10}"
+    echo "📦 Will create and attach new disk: $DATA_DISK (${SIZE}GB)"
+    # Create disk first (CVM-capable)
+    az disk create \
+      --resource-group "$RG" \
+      --name "$DATA_DISK" \
+      --size-gb "$SIZE" \
+      --sku Premium_LRS \
+      --encryption-type EncryptionAtRestWithPlatformKey
+    VM_CREATE_ARGS+=(--attach-data-disks "$DATA_DISK")
+  fi
+fi
+
+# Create VM with attached disk (if any)
+vm_output=$(az vm create "${VM_CREATE_ARGS[@]}")
 
 PUBLIC_IP=$(echo "$vm_output" | jq -r '.publicIpAddress')
 echo "Public IP of VM: $PUBLIC_IP"
+
+
 
 # Save artifacts for later use
 mkdir -p _artifacts

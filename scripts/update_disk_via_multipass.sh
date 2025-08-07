@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-VM_NAME="cvm-vm"
+VM_NAME="ubuntu-vm"
 DISK_FILE="$1"
 DISK_FILENAME=$(basename "$DISK_FILE")
 PROJECT_DIR=$(dirname "$DISK_FILE")

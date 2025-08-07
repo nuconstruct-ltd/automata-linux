@@ -5,7 +5,7 @@ VM_NAME=$2
 
 # Ensure all arguments are provided
 if [[ $# -lt 2 ]]; then
-  echo "❌ Error: Arguments are missing! (update_remote_workload.sh)"
+  echo "❌ Error: Arguments are missing! (get_cvm_logs.sh)"
   exit 1
 fi
 
@@ -16,11 +16,11 @@ API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
 set -Eeuo pipefail
 
 if [[ ! -f "$IP_FILE" ]]; then
-  echo "❌ Error: '$IP_FILE' does not exist. (update_remote_workload.sh)"
+  echo "❌ Error: '$IP_FILE' does not exist. (get_cvm_logs.sh)"
   exit 1
 fi
 if [[ ! -f "$API_TOKEN_FILE" ]]; then
-  echo "❌ Error: '$API_TOKEN_FILE' does not exist. (update_remote_workload.sh)"
+  echo "❌ Error: '$API_TOKEN_FILE' does not exist. (get_cvm_logs.sh)"
   exit 1
 fi
 

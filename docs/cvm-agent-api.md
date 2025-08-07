@@ -145,7 +145,7 @@ The server will broadcast on 2 ports:
               - all secrets go here
           docker-compose.yml
       ```
-    - It requires authentication via a Bearer token.
+    - Requires authentication via a Bearer token.
     - Headers: `Authorization: Bearer <token>` (Required. Used for authenticating the request.)
     - Content-Type: multipart/form-data
     - Body: file (required): A .zip file uploaded via form-data.
@@ -155,7 +155,7 @@ The server will broadcast on 2 ports:
 - `/container-logs?name=ContainerA&name=ContainerB`: [GET]
   - Port Availability: 8000
   - Retrieve specified containers' logs. If no container names are provided, it will retrieve the logs from all containers.
-  - It requires authentication via a Bearer token.
+  - Requires authentication via a Bearer token.
   - Headers: `Authorization: Bearer <token>` (Required. Used for authenticating the request.)
   - Example: Retrieve all container logs `curl -H "Authorization: Bearer abcde12345" -k "https://<ip>:8000/container-logs"`
   - Response:
@@ -217,4 +217,22 @@ The server will broadcast on 2 ports:
         },
         "timestamp": "2025-07-01T01:34:32Z"
     }
+    ```
+
+- `/livepatch` [POST]
+    - Port Availability: 8000
+    - Purpose: Upload a kernel livepatch, which will be loaded onto the CVM. Note that livepatch must be built with `REPLACE=1`.
+    - Requires authentication via a Bearer token.
+    - Headers: `Authorization: Bearer <token>` (Required. Used for authenticating the request.)
+    - Content-Type: multipart/form-data
+    - Body: file (required): A <livepatch>.ko file uploaded via form-data.
+    - Example Request:
+    ```bash
+    curl -H "Authorization: Bearer abcde12345" \
+        -X POST -F "file=@livepatch.ko" \
+        -k "https://<ip>:8000/livepatch"
+    ```
+    - Success Response
+    ```
+    Livepatch successfully applied and measured into PCR 16.
     ```

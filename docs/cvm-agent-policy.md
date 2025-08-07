@@ -56,9 +56,11 @@ Configuration related to container management within the CVM:
 
 | Field                | Value           | Explanation                                                      |
 |----------------------|-----------------|------------------------------------------------------------------|
-| `container_engine`   | `"podman"`      | Specifies **Podman** as the container runtime for managing containers. |
+| `container_engine`   | `"podman"`      | Specifies **podman** or **docker**  as the container runtime for managing containers. |
 | `container_owner`    | `"automata"`   | User context under which containers run, affecting permissions and security contexts.  By default, Podman runs all containers under **automata** namespace|
 
+>[!Note]  
+> **Podman Limitation**: When updating services using the **agent update api**, storage and network configurations **will not** be updated.
 ---
 
 ## 5. Maintenance Mode (`maintenance_mode`)
@@ -86,32 +88,42 @@ Note that users should add their public key to the appropriate location (i.e., `
 | Field                      | Value                            | Explanation |
 |----------------------------|----------------------------------|-------------|
 | `allow_remove`             | `false`                          | Services cannot be removed at runtime via HTTP(s). |
-| `allow_update`             | `true`                           | Existing services can be updated via HTTP(s). |
 | `allow_add_new_service`    | `true`                           | New services can be deployed via HTTP(s). |
-| `update_white_list`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only these services are allowed to be updated at runtime if `allow_update` is enabled. |
+| `allow_update`        | `["prometheus", "node-exporter", "metrics-proxy"]` | Only the existing services defined in this list are allowed to be updated at runtime via HTTP(s). Setting the list to empty (ie. `[]`), disables workload update. |
+| `skip_measurement`          | list["service_name", ... ]` | The services defined in this list will not be measured by the cvm-agent. (This includes its image digest and docker-compose config. Its image signature verification will also be skipped.) |
 
 > [!Warning]
-> If you have X services in your docker-compose.yml file, the `update_white_list` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
+> If you have X services in your docker-compose.yml file, `allow_update` should have at most X services listed. Do not list any services that you only intend to deploy in the future, as the agent will raise a "missing service" error.
 
 ### `image_signature_verification` Struct
 
 | Field                             | Value    | Description |
 |----------------------------------|----------|-------------|
 | `enable`                         | `false`  | If true, enforces signature verification logic. |
-| `auth_info.user_name`            | `""`     | Optional auth user for pulling signed images from private repo. |
-| `auth_info.password`             | `""`     | Optional password for above user. |
+| `auth_info_file_path`            | `""`  | Optional file path defining the `auth_info.user_name` and `auth_info.password` for accessing imgs in private registries  |
 | `signature_verification_policy_path` | `"/data/workload/config/cvm_agent/sample_image_verify_policy.json"` | Path to JSON policy file defining valid signing keys and rules. |
 
 You can pre-configure the policy even if enforcement is currently disabled.
 
->[!Note]
-> Before executing this step, please ensure that you have already done the following:
-> If pulling from a public registry, ensure both `auth_info.user_name` and `auth_info.password` remain empty.
-> Populate `auth_info` only when accessing private registries. 
-> **Warning**: Credentials provided in this section are subject to measurement by `cvm-agent` and may be exposed in attestation. Use **minimal-privilege accounts** or **short-lived tokens** to mitigate risk.
-
-
-
+>[!Note]    
+> - Populate `auth_info_file_path` **only** when pulling container images from private registries.  
+> - An example of the `auth_info` JSON file (`auth_info.json`) is shown below:
+>
+> ```json
+> {
+>   "user_name": "myuser",
+>   "password": "mypassword"
+> }
+> ```
+>
+> **`user_name`**: `"myuser"`  
+> Username used to authenticate with the private container registry.
+>
+> **`password`**: `"mypassword"`  
+> Password corresponding to the username above.
+>
+> - If pulling from a **public registry**, ensure `auth_info_file_path` is empty**: 
+> **Warning**: the file path provided in this section are subject to measurement by `cvm-agent`.
 
 The `signature_verification_policy_path` points to a policy file that defines rules for which images are allowed to run.
 For more detail of the image verification policy, please check out [this document](./cvm-agent-image-signature-policy.md)
