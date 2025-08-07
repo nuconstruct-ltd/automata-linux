@@ -105,7 +105,7 @@ The other settings not mentioned can be left as its default values. If you wish 
 
 ### 5. (Optional) Prepare additional data disk
 
-By default, `cvm-cli` support creating following type of disk and attach it to the vm. User only need to specify disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`.  For example:
+By default, `cvm-cli` supports the creation of an additional data disk and attaching it to the CVM. Users only need to specify the disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`. For example:
 
 ```bash
 # Option 1. Deploy to GCP
@@ -118,13 +118,13 @@ By default, `cvm-cli` support creating following type of disk and attach it to t
 ./cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
 ```
 > [!NOTE]
->  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
+>  After the cvm is launched, the cvm will detect the unmounted disk and setup the filesystem if the disk is uninitialized and mount the disk at `/data/datadisk-1`.
 
-If you want to have a custom disk, feel free to use the following cmd to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
+If you want to manually create a custom disk, feel free to use the following commands to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
 
 - AZURE
 ```bash
-az group create --name "$RG" --location "East US 2"
+az group create --name "$RG" --location "East US"
 
 az disk create \
   --resource-group "$RG" \
@@ -165,14 +165,19 @@ aws ec2 create-volume \
   --volume-type gp3 \
   --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=my-data-disk}]'
 
-./cvm-cli deploy-aws  --attach-disk my-data-disk
+./cvm-cli deploy-aws --attach-disk my-data-disk
 ```
 > [!NOTE]
 >  Replace `us-east-1a` with the `availability-zone` you plan to use.  Make sure the disk is in the same `availability-zone` as the instance created by the script. Otherwise the disk cannot attach. By default, the script creates vm instance in the first availability-zone of the region. You can use above cmd to get it.
 
 
 ## Deploying the workload onto the Cloud Provider
-Run the CLI to deploy the disk to the cloud provider.
+
+> [!Warning]
+> If you wish to enable kernel livepatching, please check the [kernel livepatch guide](livepatching.md) **before** deploying onto a CSP. Minimally, if you are:
+> 
+> - A developer distributing our base disk image with your custom workload: You should at least run `./cvm-cli generate-livepatch-keys` to create a set of asymmetric keys. These keys must be created before the disk is deployed onto a CVM on the cloud. When distributing the modified disk to operators, please also distribute `secure_boot/livepatch.crt`. You are responsible for creating the livepatches, signing them, and distributing them to operators.
+> - An operator: Make sure you have received a disk image and `secure_boot/livepatch.crt` from the developer.
 
 ### Deploying to Azure
 ```bash
@@ -190,6 +195,8 @@ The following parameters are optional, and default to:
 - resource_group: Depends on the vm_name
 - storage_account: Randomly generated
 - gallery_name: Randomly generated
+- attach-disk: ""
+- disk-size: ""
 
 
 ### Deploying to GCP
@@ -209,6 +216,8 @@ The following parameters are optional, and default to:
 - project_id: Uses your default gcloud project
 - bucket: Randomly generated.
 - ip: "" (Use this option to attach a fixed static IP to your VM. Provide the IP address that you have reserved on GCP.)
+- attach-disk: ""
+- disk-size: ""
 
 ### Deploying to AWS
 ```bash
@@ -225,6 +234,8 @@ The following parameters are optional, and default to:
 - additional_ports: “” (this option is for the cloud provider firewall, not the nftables firewall)
 - bucket: Random name will be generated
 - eip: "" (Use this option to attach a fixed static IP to your VM. Provide the allocation ID of an Elastic IP)
+- attach-disk: ""
+- disk-size: ""
 
 > [!Warning]
 > AWS currently has a known issue where the [boot process may intermittently hang for an SEV-SNP VM](https://bugs.launchpad.net/cloud-images/+bug/2076217). Please reboot the VM if you do not see a file called `_artifacts/golden-measurement.json` after the deployment script has completed. Once the VM has been rebooted, you can manually run `./scripts/get_golden_measurements.sh <csp> <vm-name>` to get the golden measurement.

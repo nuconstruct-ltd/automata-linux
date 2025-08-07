@@ -9,7 +9,15 @@ Our image supports kernel livepatching via the use of kpatch.
 
 - The current image uses linux kernel 6.15.2, and was compiled with gcc-12 on Ubuntu 22.04. Please build your patches against this kernel version.
 
-## Creating Keys to use with your Livepatch
+## High-Level Overview of Livepatching Process
+1. First, users will use our `cvm-cli` to create a set of asymmetric keys. These asymmetric keys will be placed in the [secure_boot/](../secure_boot/) folder as `secure_boot/livepatch.key` and `secure_boot/livepatch.crt`. This key will be used in Step 3. to sign a livepatch.
+2. When users deploy a CVM to a cloud provider using our cli (eg. `./cvm-cli deploy-gcp`), our scripts check whether `secure_boot/livepatch.crt` exists. If it does, it will be included as part of the Secure Boot Signature Database (DB) when the scripts create an image on the cloud provider.
+3. Users create a livepatch, and sign it using `./cvm-cli sign-livepatch patch.ko` (assuming the patch module is called patch.ko).
+4. Users deploy the livepatch using `./cvm-cli <csp> <vm-name>`. This script is a convenience function that uploads the livepatch into the CVM using the attestation agent API exposed on port 8000 of the VM. When the attestation agent receives the livepatch, it first calls `kpatch unload --all` to remove all older livepatches. Then it calls `kpatch load patch.ko`. The kernel checks whether patch.ko has been signed by a key that has been either built into the kernel, or exists in the Platform Trusted Keyring (Secure Boot Signature DB is part of this keyring). If the signature check passes, the patch will be loaded. Otherwise, it will be rejected, and the API will return an error.
+
+In the following sections, we cover more details on Step 1, Step 3, and Step 4.
+
+## Step 1. Creating Keys to use with your Livepatch
 
 > [!Note]
 > This step should be run before deploying your VM onto a cloud provider.
@@ -19,7 +27,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 ./cvm-cli generate-livepatch-keys
 ```
 
-## Creating a Livepatch
+## Step 3. Creating a Livepatch
 
 1. Get Linux kernel and required dependencies to build it:
 
@@ -115,11 +123,11 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
   ```
 
 
-4. Build the livepatch. Our linux kernel config can be found [here](config).
+3. Build the livepatch. Our linux kernel config can be found [here](config).
   ```bash
   kpatch-build -s path/to/linux-kernel-src -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
   ```
-  - `-s`: This is the patch to the original **unmodified** linux kernel source code
+  - `-s`: This is the path to the original **unmodified** linux kernel source code
   - `-c`: This is the path to the linux kernel config, you can use our [config](config).
   - `-o`: The output folder where the built `livepatch-XXXX.ko` will be stored.
 
@@ -131,9 +139,10 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
   ./cvm-cli sign-livepatch /path/to/livepatch.ko
   ```
 
-5. Use our CLI tool to deploy the livepatch to your CVM:
-  ```bash
-  # ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
-  # <cloud-provider> = "aws" or "gcp" or "azure"
-  ./cvm-cli livepatch gcp my-cvm-name /path/to/livepatch.ko
-  ```
+## Step 4: Deploy the Livepatch
+Use our CLI tool to deploy the livepatch to your CVM:
+```bash
+# ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+# <cloud-provider> = "aws" or "gcp" or "azure"
+./cvm-cli livepatch gcp my-cvm-name /path/to/livepatch.ko
+```
