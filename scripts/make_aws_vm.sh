@@ -3,8 +3,9 @@ REGION=$2
 VM_TYPE=$3
 BUCKET=$4
 ADDITIONAL_PORTS=$5
-DATA_DISK="$6"       # NEW: Optional EBS volume name
-DISK_SIZE_GB="$7"    # NEW: Optional disk size (for new disk)
+EIP_AID=$6
+DATA_DISK="$7"       # Optional EBS volume name
+DISK_SIZE_GB="$8"    # Optional disk size (for new disk)
 
 DISK_FILE=aws_disk.vmdk
 UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
@@ -12,7 +13,7 @@ IMAGE_NAME="${VM_NAME}-image"
 export AWS_PAGER=""
 
 # Ensure all arguments are provided
-if [[ $# -lt 5 ]]; then
+if [[ $# -lt 8 ]]; then
     echo "❌ Error: Arguments are missing! (make_aws_vm.sh)"
     exit 1
 fi
@@ -92,8 +93,8 @@ UEFI_BLOB="secure_boot/aws-uefi-blob.bin"
 if [ -f "$UEFI_BLOB" ]; then
   echo "$UEFI_BLOB exists. Continuing..."
 else
-  echo "$UEFI_BLOB does not exist! Panicking and quitting!"
-  exit 1
+  echo "$UEFI_BLOB does not exist! Creating now!"
+  ./scripts/create-aws-uefi-blob.sh
 fi
 
 # First delete any old AMI with the same name
@@ -262,6 +263,14 @@ fi
 # 4️⃣ Start the instance only after disk is attached
 aws ec2 start-instances --region "$REGION" --instance-ids "$INSTANCE_ID"
 aws ec2 wait instance-running --region "$REGION" --instance-ids "$INSTANCE_ID"
+
+if [[ -n "$EIP_AID" ]]; then
+  echo "Attaching Elastic IP with allocation ID $EIP_AID to instance $INSTANCE_ID"
+  aws ec2 associate-address \
+    --region "$REGION" \
+    --instance-id "$INSTANCE_ID" \
+    --allocation-id "$EIP_AID"
+fi
 
 PUBLIC_IP=$(aws ec2 describe-instances \
   --region "$REGION" \

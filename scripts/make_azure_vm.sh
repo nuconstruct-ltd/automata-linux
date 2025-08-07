@@ -105,6 +105,12 @@ KEK_B64=$(openssl base64 -in secure_boot/KEK.crt -A)
 DB_B64=$(openssl base64 -in secure_boot/db.crt -A)
 KERN_B64=$(openssl base64 -in secure_boot/kernel.crt -A)
 
+# Add livepatch cert if it exists
+LIVEPATCH_B64=""
+if [ -f secure_boot/livepatch.crt ]; then
+  LIVEPATCH_B64=$(openssl base64 -in secure_boot/livepatch.crt -A)
+fi
+
 IMG_VER_BODY=$(jq -n \
   --arg region "$REGION" \
   --arg saId "$storageAccountId" \
@@ -112,7 +118,8 @@ IMG_VER_BODY=$(jq -n \
   --arg pk "$PK_B64" \
   --arg kek "$KEK_B64" \
   --arg db "$DB_B64" \
-  --arg kern "$KERN_B64" '
+  --arg kern "$KERN_B64" \
+  --arg livepatch "$LIVEPATCH_B64" '
 {
   location: $region,
   properties: {
@@ -134,7 +141,20 @@ IMG_VER_BODY=$(jq -n \
         additionalSignatures: {
           pk: { type: "x509", value: [$pk] },
           kek: [{ type: "x509", value: [$kek] }],
-          db: [{ type: "x509", value: [$db, $kern] }]
+          db: (
+            if $livepatch != "" then
+              [
+                { type: "x509", value: [$db] },
+                { type: "x509", value: [$kern] },
+                { type: "x509", value: [$livepatch] }
+              ]
+            else
+              [
+                { type: "x509", value: [$db] },
+                { type: "x509", value: [$kern] }
+              ]
+            end
+          )
         }
       }
     }

@@ -4,8 +4,9 @@ PROJECT_ID=$3
 VM_TYPE=$4
 BUCKET=$5
 ADDITIONAL_PORTS=$6
-DATA_DISK="$7"          # NEW: Optional disk name
-DISK_SIZE_GB="$8"       # NEW: Optional disk size (for new disk)
+IP=$7
+DATA_DISK="$8"          # Optional disk name
+DISK_SIZE_GB="$9"       # Optional disk size (for new disk)
 
 
 
@@ -16,7 +17,7 @@ IMAGE_NAME="${VM_NAME}-image"
 
 
 # Ensure all arguments are provided
-if [[ $# -lt 6 ]]; then
+if [[ $# -lt 9 ]]; then
     echo "❌ Error: Arguments are missing! (make_gcp_vm.sh)"
     exit 1
 fi
@@ -54,6 +55,11 @@ if gcloud compute images describe $IMAGE_NAME --project="$PROJECT_ID" --quiet > 
     gcloud compute images delete $IMAGE_NAME --project="$PROJECT_ID" --quiet
 fi
 
+# If livepatch keys exist, include them in the Signature DB.
+SIGFILES=secure_boot/db.crt,secure_boot/kernel.crt
+if [ -f "secure_boot/livepatch.crt" ]; then
+  SIGFILES="$SIGFILES,secure_boot/livepatch.crt"
+fi
 gcloud compute images create $IMAGE_NAME \
   --source-uri gs://$BUCKET/$UPLOADED_COMPRESSED_FILE \
   --project="$PROJECT_ID" \
@@ -61,7 +67,7 @@ gcloud compute images create $IMAGE_NAME \
   --storage-location="$LOCATION" \
   --platform-key-file=secure_boot/PK.crt \
   --key-exchange-key-file=secure_boot/KEK.crt \
-  --signature-database-file=secure_boot/db.crt,secure_boot/kernel.crt
+  --signature-database-file="$SIGFILES"
 
 
 ALLOW_PORTS="tcp:8000"
@@ -96,48 +102,60 @@ if [[ $VM_TYPE == *"n2d-"* ]]; then
   CC_TYPE="SEV_SNP"
 fi
 
+ADDITIONAL_ARGS=""
+if [[ -n "$IP" ]]; then
+  ADDITIONAL_ARGS="--address=$IP --network-tier=STANDARD "
+fi
+
 # Check if disk exists and create or attach
 if [[ -n "$DATA_DISK" ]]; then
-    if gcloud compute disks describe "$DATA_DISK" --zone="$ZONE" --project="$PROJECT_ID" > /dev/null 2>&1; then
-        # Disk exists, check type
-        DISK_TYPE=$(gcloud compute disks describe "$DATA_DISK" --zone="$ZONE" --project="$PROJECT_ID" --format="value(type)")
-        
-        if [[ "$VM_TYPE" == c3-* && "$DISK_TYPE" == *"pd-standard"* ]]; then
-            echo "⚠️ Disk $DATA_DISK is pd-standard and incompatible with $VM_TYPE. Creating SSD copy..."
-            
-            SNAP_NAME="${DATA_DISK}-snap-$(date +%s)"
-            NEW_DISK="${DATA_DISK}-ssd"
-            
-            # Create snapshot
-            gcloud compute disks snapshot "$DATA_DISK" \
-                --snapshot-names="$SNAP_NAME" \
-                --zone="$ZONE" \
-                --project="$PROJECT_ID"
-            
-            # Create SSD disk from snapshot
-            gcloud compute disks create "$NEW_DISK" \
-                --source-snapshot="$SNAP_NAME" \
-                --type=pd-balanced \
-                --zone="$ZONE" \
-                --project="$PROJECT_ID"
-            
-            # Attach the new SSD disk
-            DATA_DISK="$NEW_DISK"
-        else
-            echo "Attaching existing disk $DATA_DISK to VM $VM_NAME"
-        fi
-    else
-        SIZE="${DISK_SIZE_GB:-10}"
-        echo "Creating and attaching new disk $DATA_DISK (${SIZE}GB)"
-        gcloud compute disks create "$DATA_DISK" \
-            --size="$SIZE" \
-            --type=pd-balanced \
-            --zone="$ZONE" \
-            --project="$PROJECT_ID"
-    fi
+  if gcloud compute disks describe "$DATA_DISK" --zone="$ZONE" --project="$PROJECT_ID" > /dev/null 2>&1; then
+    # Disk exists, check type
+    DISK_TYPE=$(gcloud compute disks describe "$DATA_DISK" --zone="$ZONE" --project="$PROJECT_ID" --format="value(type)")
 
-    # Final attach args (either original or converted disk)
-    DISK_ATTACH_ARGS="--disk=name=$DATA_DISK,auto-delete=no,boot=no"
+    if [[ "$VM_TYPE" == c3-* && "$DISK_TYPE" == *"pd-standard"* ]]; then
+      echo "⚠️ Disk $DATA_DISK is pd-standard and incompatible with $VM_TYPE. Creating SSD copy..."
+
+      SNAP_NAME="${DATA_DISK}-snap-$(date +%s)"
+      NEW_DISK="${DATA_DISK}-ssd"
+
+      # Create snapshot
+      gcloud compute disks snapshot "$DATA_DISK" \
+          --snapshot-names="$SNAP_NAME" \
+          --zone="$ZONE" \
+          --project="$PROJECT_ID"
+
+      # Create SSD disk from snapshot
+      gcloud compute disks create "$NEW_DISK" \
+          --source-snapshot="$SNAP_NAME" \
+          --type=pd-balanced \
+          --zone="$ZONE" \
+          --project="$PROJECT_ID"
+
+      # Delete the temporary snapshot
+      echo "🧹 Deleting temporary snapshot $SNAP_NAME..."
+      gcloud compute snapshots delete "$SNAP_NAME" \
+          --project="$PROJECT_ID" \
+          --zone="$ZONE" \
+          --quiet
+
+      # Attach the new SSD disk
+      DATA_DISK="$NEW_DISK"
+    else
+      echo "Attaching existing disk $DATA_DISK to VM $VM_NAME"
+    fi
+  else
+    SIZE="${DISK_SIZE_GB:-10}"
+    echo "Creating and attaching new disk $DATA_DISK (${SIZE}GB)"
+    gcloud compute disks create "$DATA_DISK" \
+        --size="$SIZE" \
+        --type=pd-balanced \
+        --zone="$ZONE" \
+        --project="$PROJECT_ID"
+  fi
+
+  # Final attach args (either original or converted disk)
+  ADDITIONAL_ARGS="--disk=name=$DATA_DISK,auto-delete=no,boot=no"
 fi
 # create the vm
 gcloud compute instances create $VM_NAME \
@@ -152,8 +170,8 @@ gcloud compute instances create $VM_NAME \
   --shielded-integrity-monitoring \
   --project=$PROJECT_ID \
   --tags $RULE_NAME \
-  --metadata serial-port-enable=1,serial-port-logging-enable=1 \
-  $DISK_ATTACH_ARGS  # Add disk attach options here
+  $ADDITIONAL_ARGS \
+  --metadata serial-port-enable=1,serial-port-logging-enable=1
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
   --zone="$ZONE" \

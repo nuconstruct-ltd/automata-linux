@@ -101,7 +101,7 @@ The CVM agent runs inside the CVM and is responsible for VM management, workload
 By default, the CVM will use the default security policy found in [workload/config/cvm_agent/cvm_agent_policy.json](workload/config/cvm_agent/cvm_agent_policy.json). There are 2 settings that you **must** configure:
 
 - `firewall.allowed_ports`: By default, all incoming traffic on all ports are blocked by nftables, except for CVM agent ports 7999 and 8000. If your workload requires incoming traffic on other ports (eg. you need a p2p port on 30000), please follow the given example and add the ports you require.
-- `workload_config.workload.update_white_list`: This list specifies which services in your docker-compose.yml are allowed to be updated remotely via the cvm-agent API `/update-workload`. **You must list the names of your services in your docker-compose.yml if you wish to allow remote updates. Otherwise, set it to an empty list `[]` to disallow remote updates.**
+- `workload_config.services.allow_update`: This list specifies which services in your docker-compose.yml are allowed to be updated remotely via the cvm-agent API `/update-workload`. **You must list the names of your services in your docker-compose.yml if you wish to allow remote updates. Otherwise, set it to an empty list `[]` to disallow remote updates.**
 
 The other settings not mentioned can be left as its default values. If you wish to modify the other settings, a detailed description of each policy option can be found in [this document](docs/cvm-agent-policy.md).
 
@@ -113,7 +113,7 @@ The --additional_ports option configures the cloud provider’s firewall to allo
 The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it does not already exist) a persistent data disk named `mydisk` to the CVM. When used with `--disk-size 20`, the CLI creates a 20 GB disk if mydisk is not already present. This disk is independent of the VM’s boot volume, so data written to it is preserved across reboots, redeployments, and VM replacements.
 
 > [!NOTE]
->  After cvm is launched, the cvm will detact the unmounted disk. Setup the FS if the disk is not initialized and mount the disk at `/data/datadisk-1`.
+>  After cvm is launched, the cvm will automatically detect the unmounted disk and setup the filesystem if the disk is not initialized and mount the disk at `/data/datadisk-1`.
 
 ```bash
 # Option 1. Deploy to GCP
@@ -138,6 +138,7 @@ At the end of the deployment, you should be able to see the name of the deployed
 > - Customise other settings, like the vm name, or where the vm is deployed.
 > - Check on best practices regarding the golden measurement, or how to use it in remote attestation.
 > - If you only want to build a disk with your workload and distribute it to others.
+> - If you wish to enable kernel livepatching.
 
 ### 4. Managing the CVM <!-- omit in toc -->
 We've scripted some convenience commands that you can run to manage your CVM.
@@ -172,6 +173,16 @@ Use this command to delete the VM once you no longer need it.
 # <cloud-provider> = "aws" or "gcp" or "azure"
 ./cvm-cli cleanup gcp cvm-test
 ```
+
+#### (Advanced) Kernel Livepatching <!-- omit in toc -->
+Use this command to deploy a livepatch onto the CVM. Please checkout our [kernel livepatch guide](./docs/livepatching.md) for more details.
+
+```bash
+# ./cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+# <cloud-provider> = "aws" or "gcp" or "azure"
+./cvm-cli livepatch gcp cvm-test /path/to/livepatch.ko
+```
+
 ## Live Demo
 Here is a short demo video showing how to deploy workload using our cvm-image on AZURE in action.
 
