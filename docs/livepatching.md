@@ -29,7 +29,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
 ## Step 3. Creating a Livepatch
 
-1. Get Linux kernel and required dependencies to build it:
+1. Get Linux kernel and required dependencies to build it. Then, build it at least once.
 
   ```bash
   # Enable deb-src in package list if not enabled yet.
@@ -48,6 +48,10 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
   # Clone Linux Kernel
   git clone --branch v6.15.2 --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+
+  # Compile the kernel at least once
+  cd linux
+  make -j"$(nproc --ignore=2)"
   ```
 
 > [!Note]
@@ -125,9 +129,10 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
 3. Build the livepatch. Our linux kernel config can be found [here](config).
   ```bash
-  kpatch-build -s path/to/linux-kernel-src -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
+  kpatch-build -s path/to/linux-kernel-src -v path/to/vmlinuz -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
   ```
   - `-s`: This is the path to the original **unmodified** linux kernel source code
+  - `-v`: This is the path to an **unstripped vmlinux**. Typically, you can find this at the root of the linux kernel source code after you have built the kernel at least once.
   - `-c`: This is the path to the linux kernel config, you can use our [config](config).
   - `-o`: The output folder where the built `livepatch-XXXX.ko` will be stored.
 
