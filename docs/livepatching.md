@@ -7,7 +7,7 @@ Our image supports kernel livepatching via the use of kpatch.
 > [!Warning]
 > Live-patching is meant to be a stop-gap, not a replacement for a full kernel upgrade. Use it only for urgent, critical fixes when you cannot stop running your CVM right away. Schedule a maintenance window when possible and migrate to a newer disk image that already includes the patched, upgraded kernel.
 
-- The current image uses linux kernel 6.15.2, and was compiled with gcc-12 on Ubuntu 22.04. Please build your patches against this kernel version.
+- The current image uses **linux kernel 6.15.2, and was compiled with gcc-12 on Ubuntu 22.04**. Please build your patches against this kernel version.
 
 ## High-Level Overview of Livepatching Process
 1. First, users will use our `cvm-cli` to create a set of asymmetric keys. These asymmetric keys will be placed in the [secure_boot/](../secure_boot/) folder as `secure_boot/livepatch.key` and `secure_boot/livepatch.crt`. This key will be used in Step 3. to sign a livepatch.
@@ -29,25 +29,21 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
 ## Step 3. Creating a Livepatch
 
-1. Get Linux kernel and required dependencies to build it. Then, build it at least once.
+1. Get Linux kernel and required dependencies to build it. Then, build it at least once. Our linux kernel config can be found [here](config).
 
   ```bash
-  # Enable deb-src in package list if not enabled yet.
-  sudo sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
-  sudo apt update
-
-  # Get Kernel deps
-  sudo apt build-dep linux
-  sudo apt install \
-    bc gawk flex bison openssl libssl-dev \
-    libelf-dev libncurses-dev dkms dwarves \
-    libudev-dev libpci-dev libiberty-dev autoconf llvm gcc-12
+  # Get Kernel Deps
+  sudo apt install -y build-essential dwarves python3 libncurses-dev \
+    flex bison libssl-dev bc libelf-dev zstd gnupg2 wget gcc-12
   
   # Set gcc-12 as the default gcc
   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 120
 
   # Clone Linux Kernel
   git clone --branch v6.15.2 --depth 1 https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
+
+  # Copy kernel config from this repo to the linux src
+  cp docs/config linux/.config
 
   # Compile the kernel at least once
   cd linux
@@ -57,9 +53,10 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 > [!Note]
 > You should make a copy of this linux kernel source in order to make your patches, as kpatch-build (in the steps below) requires the original un-modified source and the patch diffs.
 
-1. Please check out the detailed [Patch Author Guide](https://github.com/dynup/kpatch/blob/master/doc/patch-author-guide.md) for details on how to format your livepatch. In general:
+2. Please check out the detailed [Patch Author Guide](https://github.com/dynup/kpatch/blob/master/doc/patch-author-guide.md) for details on how to format your livepatch. In general:
   - You should only patch code, not data structures.
-  - Please make your patches cumulative. For simplicity, our cvm-image only supports full-replacement patches (ie, patches built with `REPLACE=1`, which is the default setting used by kpatch-build), so only one patch can be active at a time. 
+  - Please make your patches cumulative. For simplicity, our cvm-image only supports full-replacement patches (ie, patches built with `REPLACE=1`, which is the default setting used by kpatch-build), so only one patch can be active at a time.
+  - A copy of the patch below can be found in [this file](meminfo.patch), for easy copying and if you wish to use the example as a first test patch.
   - To give a concrete example: Suppose this is your first patch, `patch1.patch`, built into `patch1.ko` and installed into the CVM:
     ```bash
     diff --git a/fs/proc/meminfo.c b/fs/proc/meminfo.c
@@ -119,7 +116,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
     Whenever you need to generate a new patch, the new patch should be a superset of all the applied older patches.
 
 
-2. Clone and build kpatch:
+3. Clone and build kpatch:
   ```bash
   git clone https://github.com/dynup/kpatch
   cd kpatch && make all
@@ -127,7 +124,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
   ```
 
 
-3. Build the livepatch. Our linux kernel config can be found [here](config).
+4. Build the livepatch. Our linux kernel config can be found [here](config).
   ```bash
   kpatch-build -s path/to/linux-kernel-src -v path/to/vmlinuz -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
   ```
@@ -138,7 +135,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
   After the build is done, you should see a `livepatch-XXXX.ko` inside the `patch-output-folder/`. kpatch-build will only output one module that contains all the patched functions from across different components in the kernel.
 
-4. Sign the livepatch:
+5. Sign the livepatch:
 
   ```bash
   ./cvm-cli sign-livepatch /path/to/livepatch.ko
