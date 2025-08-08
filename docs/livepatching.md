@@ -126,7 +126,7 @@ Use our CLI to generate keys that will be used at a later step to sign and verif
 
 4. Build the livepatch. Our linux kernel config can be found [here](config).
   ```bash
-  kpatch-build -s path/to/linux-kernel-src -v path/to/vmlinuz -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
+  kpatch-build -s path/to/linux-kernel-src -v path/to/vmlinux -c path/to/linux-kernel-config -j10 -o patch-output-folder/ your-patch.patch
   ```
   - `-s`: This is the path to the original **unmodified** linux kernel source code
   - `-v`: This is the path to an **unstripped vmlinux**. Typically, you can find this at the root of the linux kernel source code after you have built the kernel at least once.
