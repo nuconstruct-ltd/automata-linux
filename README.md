@@ -163,7 +163,7 @@ In the scenario where you have updated the your app version and made a new conta
 When the script is finished, the golden measurements will be automatically regenerated for you.
 
 > [!Note]
-> If you are having troubles updating the workload, you might have forgotten to set the `workload_config.workload.update_white_list`. Please see the above section on [editing the security policy](#2-edit-the-security-policy).
+> If you are having troubles updating the workload, you might have forgotten to set the `workload_config.services.allow_update`. Please see the above section on [editing the security policy](#2-edit-the-security-policy).
 
 #### Deleting the VM: <!-- omit in toc -->
 Use this command to delete the VM once you no longer need it.
