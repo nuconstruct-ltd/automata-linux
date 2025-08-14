@@ -181,6 +181,14 @@ for P in "${PORT_ARRAY[@]}"; do
        --port "$P" \
        --cidr 0.0.0.0/0 \
        >/dev/null 2>&1 || true # skip “rule exists” errors
+  echo "⬅️  Adding ingress rule for UDP $P"
+  aws ec2 authorize-security-group-ingress \
+       --region "$REGION" \
+       --group-id "$SECGRP_ID" \
+       --protocol udp \
+       --port "$P" \
+       --cidr 0.0.0.0/0 \
+       >/dev/null 2>&1 || true # skip “rule exists” errors
 done
 
 

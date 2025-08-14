@@ -72,7 +72,9 @@ gcloud compute images create $IMAGE_NAME \
 
 ALLOW_PORTS="tcp:8000"
 if [[ -n "$ADDITIONAL_PORTS" ]]; then
-  ALLOW_PORTS="$(echo "$ADDITIONAL_PORTS" | sed 's/[^,]*/tcp:&/g'),$ALLOW_PORTS"
+  TCP_PORTS=$(echo "$ADDITIONAL_PORTS" | sed 's/[^,]*/tcp:&/g')
+  UDP_PORTS=$(echo "$ADDITIONAL_PORTS" | sed 's/[^,]*/udp:&/g')
+  ALLOW_PORTS="$ALLOW_PORTS,$TCP_PORTS,$UDP_PORTS"
 fi
 
 RULE_NAME="${VM_NAME}-ingress"
