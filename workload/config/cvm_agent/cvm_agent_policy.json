@@ -31,7 +31,7 @@
 
         "container_api" : {
             "container_engine": "podman",
-            "container_owner": "azureuser"
+            "container_owner": "automata"
         },
 
         "maintenance_mode" : {
