@@ -82,7 +82,7 @@ Defines whether additional data disks are attached to the CVM, and how they are 
 
 | Field              | Value / Example                     | Explanation |
 |--------------------|-------------------------------------|-------------|
-| `enable`           | `false`                             | Controls whether the CVM agent mounts and manages an extra data disk. If `false`, no disk operations will occur. |
+| `enable`           | `false`                             | Controls whether the CVM agent mounts and manages an extra data disk. If `false`, the CVM agent will not attempt to detect and mount any extra data disk. |
 | `disk_mount_point` | `"/data/data-disk"`                 | Filesystem path inside the CVM where the additional data disk will be mounted if enabled. |
 | `disk_encryption`  | Struct                              | Sub-configuration for encryption of the attached disk. |
 
