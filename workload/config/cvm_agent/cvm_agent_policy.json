@@ -44,7 +44,7 @@
             "disk_mount_point": "/data/data-disk",
             "disk_encryption": {
                 "enable": false,
-                "encryption_key_security": "standard"   
+                "encryption_key_security": "standard"
             }
         }
     },
