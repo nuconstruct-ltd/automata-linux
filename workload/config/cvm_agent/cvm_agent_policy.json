@@ -31,12 +31,21 @@
 
         "container_api" : {
             "container_engine": "podman",
-            "container_owner": "automata"
+            "container_owner": "azureuser"
         },
 
         "maintenance_mode" : {
             "allow" : false,
             "signal" : "SIGUSR2"
+        }, 
+
+        "disk_config": {
+            "enable": false,
+            "disk_mount_point": "/data/data-disk",
+            "disk_encryption": {
+                "enable": false,
+                "encryption_key_security": "standard"   
+            }
         }
     },
 
@@ -44,7 +53,7 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"], 
+            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"],
             "skip_measurement": ["prometheus"]
         },
         "image_signature_verification": {
