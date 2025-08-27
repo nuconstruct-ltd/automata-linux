@@ -50,24 +50,10 @@ The server will broadcast on 2 ports:
 ## Attestation APIs
 
 ### On-chain APIS
-- `/onchain/golden-measurement` [POST]
+- `/onchain/golden-measurement` [GET]
     - Port Availability: 8000
     - Generates onchain golden measurements for the current CVM. Returns a hash that can be uploaded to a user application contract.
-    - Example Request: `curl -X POST -k https://<vm-ip>:8000/onchain/golden-measurement -H "Content-Type: application/json" -d '{"report_type":1}'`
-    - **Note: In the current version, we only support Solidity verification for TDX and Risc0 zkProof for SEV-SNP.**
-    - Request Body:
-    ```json
-    {
-        "report_type": <integer>, // 1: Solidity verification, 2: SP1 zkProof, 3: Risc0 zkProof
-        "zk_config": {
-            // Optional ZK proof configuration, omit if using Solidity verification
-            "image_id": <string>,
-            "url": <string>,
-            "api_key": <string>,
-            "version": <string>
-        }
-    }
-    ```
+    - Example Request: `curl -k https://<vm-ip>:8000/onchain/golden-measurement`
     - Response:
     ```json
     {

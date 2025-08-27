@@ -246,8 +246,8 @@ The following parameters are optional, and default to:
 > [!IMPORTANT]
 > The golden measurements are required for the [verification phase](#verifying-the-image-and-workload), as they serve as the reference against which verifiers compare an attester's collaterals to confirm alignment with a known, expected state. The publisher of the workload should create and publish the golden measurement for verifiers to reference.
 
-- Off-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurement.json`.
-- On-chain: TODO
+- Off-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurements/offchain/<csp>-<vm-name>.json`.
+- On-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurements/onchain/<csp>-<vm-name>.json`.
 
 
 ### 1. Sign the golden measurements
@@ -264,7 +264,7 @@ The following parameters are optional, and default to:
    ```bash
    ./tools/json_sig_tool.py verify signed-golden-measurement.json public.pem
    ```
-- For on-chain: TODO
+- For on-chain: This is not required.
 
 ### 2. Publish the golden measurements
 Publish the golden measurements for verifiers to reference.
@@ -274,7 +274,10 @@ Publish the golden measurements for verifiers to reference.
   - If the verifier is hosted externally from a TEE environment, the golden measurement can be hosted there as well.
 
 
-- For on-chain: TODO.
+- For on-chain:
+  -  Please refer to to [this repo](https://github.com/automata-network/tee-workload-measurement) for the contracts. Automata maintains a TEE Registry contract, but you will have to deploy the application contract to a chain of your choice.
+  -  For the application contract, you can modify and deploy the sample application contract we have written [here](https://github.com/automata-network/tee-workload-measurement/blob/DEV-4300/contracts/src/mock/MockCVMExample.sol).
+  -  Now, you can base64-decode the golden-measurements and abi-encode and upload this measurement to your application contract.
 
 
 ## Verifying the image and workload
@@ -304,9 +307,35 @@ For a more concrete example of the verification workflow, please check out the [
 
 
 ### On-chain verification
-```
+For on-chain verification, in order to minimize minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is verification of the CVM on the on-chain user application contract.
+
+#### 1. Registration
+
 TODO.
+
+#### 2. Verification
+The verifier will request the attester to sign a specific message that will be checked by the application contract. We have a helper function on the CVM-agent called `/sign-message`. The following shows an example request to the CVM agent by the attester:
+
+```bash
+# Request to the cvm-agent
+curl -X POST http://127.0.0.1:7999/sign-message \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello world"}'
+
+# Response
+{ "cvm_identity_hash": <base64-encoded string>, "signature": <base64-encoded string> }
 ```
+
+> [!Note]
+> In general, we recommend the message to be `abi.encodePacked("CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
+
+
+Assuming that the verifier uses the default application contract as is, they will then need to:
+- base64-decode the fields for cvm_identity_hash and signature
+- abi encode it to get the calldata for: checkCVMSignature(bytes32 cvmIdentityHash, bytes calldata message, bytes calldata signature)
+- submit the transaction to the application contract to verify the message signed by the attester.
+
+TODO: Put a mermaid sequence diagram here of the workflow.
 
 For more details on the APIs available on the cvm-agent, please check out [this document](cvm-agent-api.md).
 
