@@ -33,7 +33,7 @@ The server will broadcast on 2 ports:
     ```json
     {
         "cvm_identity_hash": <base64-encoded string>, // keccak256 hash
-        "signature": <base64-encoded string> // p256 signature
+        "signature": <base64-encoded string> // raw p256 signature [ 32bytes(r) || 32bytes(s) ]
     }
     ```
 

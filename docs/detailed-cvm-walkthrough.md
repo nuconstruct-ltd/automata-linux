@@ -307,11 +307,46 @@ For a more concrete example of the verification workflow, please check out the [
 
 
 ### On-chain verification
-For on-chain verification, in order to minimize minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is verification of the CVM on the on-chain user application contract.
+For on-chain verification, in order to minimize minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is the verification of the CVM on the on-chain user application contract.
 
 #### 1. Registration
 
-TODO.
+When the workload in the CVM starts, it should first retrieve its collaterals for registering on-chain. The following shows an example of how to retrieve the registration collaterals:
+
+```bash
+# Request to the cvm-agent, requesting a report that can be verified by Solidity
+# report_type:
+# 1: Solidity verification
+# 2: SP1-zkProof verification
+# 3: Risc0-zkProof verification
+curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
+  -H "Content-Type: application/json" \
+  -d '{"report_type": 1}'
+
+# Response
+# Calldata = abi.encode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)
+{ "calldata": "<base64-encoded string>" }
+```
+
+The following example shows how to retrieve a report that uses zkProofs:
+```bash
+# report_type:
+# 1: Solidity verification
+# 2: SP1-zkProof verification
+# 3: Risc0-zkProof verification
+curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
+  -H "Content-Type: application/json" \
+  -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
+```
+
+In order to generate a zkProof, you will need an **api key** and **image_id**. For details on how to sign up for an API key + what ImageID to use for either Risc0 or SP1, please check out the following repositories:
+- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk)
+- [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk)
+
+Finally, base64-decode the calldata and submit a transaction to the on-chain registry contract with its data set to the base64-decoded calldata.
+
+> [!Note]
+> In the current version of the cvm-agent, only Solidity verification is supported for TDX and only Risc0 verification is supported for SEV-SNP. More methods will be supported in the future.
 
 #### 2. Verification
 The verifier will request the attester to sign a specific message that will be checked by the application contract. We have a helper function on the CVM-agent called `/sign-message`. The following shows an example request to the CVM agent by the attester:
@@ -327,7 +362,7 @@ curl -X POST http://127.0.0.1:7999/sign-message \
 ```
 
 > [!Note]
-> In general, we recommend the message to be `abi.encodePacked("CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
+> In general, we recommend the message format to be `abi.encodePacked("CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
 
 
 Assuming that the verifier uses the default application contract as is, they will then need to:
@@ -335,7 +370,8 @@ Assuming that the verifier uses the default application contract as is, they wil
 - abi encode it to get the calldata for: checkCVMSignature(bytes32 cvmIdentityHash, bytes calldata message, bytes calldata signature)
 - submit the transaction to the application contract to verify the message signed by the attester.
 
-TODO: Put a mermaid sequence diagram here of the workflow.
+#### 3. More details for on-chain attestation workflows 
+Please check out [this doc](./onchain-workflows.md) for more details and diagrams on the full on-chain attestation workflows. 
 
 For more details on the APIs available on the cvm-agent, please check out [this document](cvm-agent-api.md).
 
