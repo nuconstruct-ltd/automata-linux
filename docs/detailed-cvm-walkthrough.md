@@ -307,7 +307,7 @@ For a more concrete example of the verification workflow, please check out the [
 
 
 ### On-chain verification
-For on-chain verification, in order to minimize minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is the verification of the CVM on the on-chain user application contract.
+For on-chain verification, in order to minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is the verification of the CVM on the on-chain user application contract.
 
 #### 1. Registration
 
