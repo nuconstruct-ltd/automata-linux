@@ -264,7 +264,7 @@ The following parameters are optional, and default to:
    ```bash
    ./tools/json_sig_tool.py verify signed-golden-measurement.json public.pem
    ```
-- For on-chain: This is not required.
+- For on-chain: Assuming you use the default application contract which will be covered in the next sub-section, this is not required, because by default, only the owner can upload golden measurements to the contract. Otherwise, please remember to whitelist wallets which will be allowed to upload golden measurements. 
 
 ### 2. Publish the golden measurements
 Publish the golden measurements for verifiers to reference.
@@ -339,17 +339,21 @@ curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
 ```
 
-In order to generate a zkProof, you will need an **api key** and **image_id**. For details on how to sign up for an API key + what ImageID to use for either Risc0 or SP1, please check out the following repositories:
+In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**. For details on how to sign up for an API key + what ImageID to use for either Risc0 or SP1, please check out the following repositories:
 - [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk)
 - [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk)
 
-Finally, base64-decode the calldata and submit a transaction to the on-chain registry contract with its data set to the base64-decoded calldata.
+For the `version`, these are the current versions we use:
+- Risc0: `"2.2.0"`
+- SP1: TBD.
+
+Finally, the workload should base64-decode the calldata and submit a transaction to the on-chain registry contract with its data set to the base64-decoded calldata.
 
 > [!Note]
 > In the current version of the cvm-agent, only Solidity verification is supported for TDX and only Risc0 verification is supported for SEV-SNP. More methods will be supported in the future.
 
 #### 2. Verification
-The verifier will request the attester to sign a specific message that will be checked by the application contract. We have a helper function on the CVM-agent called `/sign-message`. The following shows an example request to the CVM agent by the attester:
+The verifier will request the attester to sign a specific message that will be checked by the application contract. The verifier and the attester in this case can both be the same workload running in two different CVMs, depending on how the system is designed. There is a helper function on the CVM-agent called `/sign-message`, which can be used to achieve this message signing process. The following shows an example request to the CVM agent by the attester:
 
 ```bash
 # Request to the cvm-agent
@@ -362,13 +366,15 @@ curl -X POST http://127.0.0.1:7999/sign-message \
 ```
 
 > [!Note]
-> In general, we recommend the message format to be `abi.encodePacked("CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
+> In general, we recommend the message format to be the contract ABI encoding of `"CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
 
 
 Assuming that the verifier uses the default application contract as is, they will then need to:
 - base64-decode the fields for cvm_identity_hash and signature
 - abi encode it to get the calldata for: checkCVMSignature(bytes32 cvmIdentityHash, bytes calldata message, bytes calldata signature)
 - submit the transaction to the application contract to verify the message signed by the attester.
+
+For an overall view of the whole interaction process, please checkout [this diagram](./onchain-workflows.md#cvm-verification).
 
 #### 3. More details for on-chain attestation workflows 
 Please check out [this doc](./onchain-workflows.md) for more details and diagrams on the full on-chain attestation workflows. 
