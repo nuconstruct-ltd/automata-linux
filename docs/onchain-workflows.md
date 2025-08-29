@@ -94,4 +94,4 @@ sequenceDiagram
 
 ```
 
-In the above diagram, for Step 3, `calldata = reattestCvmWithTpm(cvmIdentityHash, calldata signature, workloadCollaterals)`.
+In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, calldata signature, workloadCollaterals)`.
