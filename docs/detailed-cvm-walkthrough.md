@@ -275,8 +275,8 @@ Publish the golden measurements for verifiers to reference.
 
 
 - For on-chain:
-  -  Please refer to to [this repo](https://github.com/automata-network/tee-workload-measurement) for the contracts. Automata maintains a TEE Registry contract, but you will have to deploy the application contract to a chain of your choice.
-  -  For the application contract, you can modify and deploy the sample application contract we have written [here](https://github.com/automata-network/tee-workload-measurement/blob/DEV-4300/contracts/src/mock/MockCVMExample.sol).
+  -  Please refer to to [this repo](https://github.com/automata-network/tee-workload-measurement) for the contracts. Automata maintains a TEE Registry contract which you can use, but you will have to deploy the application contract to a chain of your choice.
+  -  For the application contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/tee-workload-measurement/blob/main/contracts/src/mock/MockCVMExample.sol).
   -  Now, you can base64-decode the golden-measurements and abi-encode and upload this measurement to your application contract.
 
 

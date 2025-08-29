@@ -36,7 +36,9 @@ In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, te
 
 ## CVM Verification
 
-In this workflow, we can assume that the Verifier and Attester are both workloads running in the CVM. (ie, they are performing mutual verification)
+For the following example workflow that we will showcase, we make the following assumptions:
+- That the Verifier and Attester are both workloads running in the CVM (ie, they are performing mutual verification). Note that this does not have to be the case, and depends on your workload architecture.
+- The workload uses the [sample application contract](https://github.com/automata-network/tee-workload-measurement/blob/main/contracts/src/mock/MockCVMExample.sol) without any modifications to the function `checkCVMSignature`.
 
 ```mermaid
 sequenceDiagram
