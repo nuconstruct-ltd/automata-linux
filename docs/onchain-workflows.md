@@ -29,7 +29,7 @@ sequenceDiagram
     CVM->>AA: POST /onchain/registration-collaterals
     AA-->>CVM: base64(calldata)
     note over CVM: base64-decode calldata
-    CVM->>RC: submit(calldata)
+    CVM->>RC: submitTX(calldata)
 ```
 
 In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)`.
@@ -50,7 +50,7 @@ sequenceDiagram
     AA-->>AT: {base64(cvmIdentityHash), base64(signature)}
     AT-->>V: {base64(cvmIdentityHash), base64(signature)}
     note over V: base64-decode <br/> calldata = abiEncode("checkCVMSignature", cvmIdentityHash, message, signature)
-    V->>AC: submit(calldata)
+    V->>AC: submitTX(calldata)
 ```
 
 ## Rotating CVM Identity
@@ -68,7 +68,7 @@ sequenceDiagram
         CVM->>AA: GET /current-cvm-identity-hash
         AA-->>CVM: base64(cvmIdentityHash)
         note over CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
-        CVM->>RC: submit(calldata)
+        CVM->>RC: submitTX(calldata)
         RC-->>CVM: abiEncode(nonce)
         note over CVM: nonce = abiDecode(abiEncode(nonce))
     end
@@ -82,7 +82,7 @@ sequenceDiagram
     rect rgb(255,226,226)
         Note over CVM,RC: 3. Register new identity on-chain
         note over CVM: base64-decode calldata
-        CVM->>RC: submit(calldata)
+        CVM->>RC: submitTX(calldata)
         RC-->>CVM: Success
     end
 
