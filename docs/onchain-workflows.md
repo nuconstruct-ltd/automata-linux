@@ -18,7 +18,7 @@ sequenceDiagram
 
 ## CVM Registration
 
-The registration process involves verifying all TEE collaterals and registering a VM-unique public key to represent the VM on the Registry contract. This registered public key will also thus be known as the "VM Identity". Once successful registration has happened, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again.
+The registration process involves verifying all TEE collaterals and registering a VM-unique public key to represent the VM on the Registry contract. This registered public key will also thus be known as the "VM Identity". Once successful registration has happened, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again. To reattest, simply perform the registration steps again.
 
 ```mermaid
 sequenceDiagram
@@ -36,7 +36,7 @@ In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, te
 
 ## CVM Verification
 
-In this workflow, we can assume that the Verifier and Attester are both workloads running in the CVM agent. (ie, they are performing mutual verification)
+In this workflow, we can assume that the Verifier and Attester are both workloads running in the CVM. (ie, they are performing mutual verification)
 
 ```mermaid
 sequenceDiagram
