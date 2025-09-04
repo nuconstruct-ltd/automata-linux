@@ -95,11 +95,11 @@ The server will broadcast on 2 ports:
     - **Note**: The key is not immediately rotated on the CVM. CVM-Agent will continue to sign messages using the old key until users explicitly specify that they would like to sign a message using the new key (using `/sign-message` API). Afterwhich, the old key will be purged, and only the new key can be used.
     - **Note**: Nonce should be queried from the Registry Contract by the workload. 
     - Content-Type: application/json
-    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": 31337, "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
     - Request Body:
     ```json
     {
-        "nonce": "0", "chain_id": 31337, "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
+        "nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
     }
     ```
     - Response:
