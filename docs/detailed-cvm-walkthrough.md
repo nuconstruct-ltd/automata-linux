@@ -383,7 +383,7 @@ curl -X POST http://127.0.0.1:7999/sign-message \
 ```
 
 > [!Note]
-> In general, we recommend the message format to be the contract ABI encoding of `"CVM_WORKLOAD_USER_MESSAGE" || uint16(Chain ID) || application_contract_address || userMessage`.
+> In general, we recommend the message format to be the contract ABI encoding of `"CVM_WORKLOAD_USER_MESSAGE" || uint256(Chain ID) || application_contract_address || userMessage`.
 
 
 Assuming that the verifier uses the default application contract as is, they will then need to:
