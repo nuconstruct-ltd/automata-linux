@@ -341,8 +341,8 @@ curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
 
 > [!Note]
 > These are the attestation types supported for each CVM type:
-> TDX: Solidity, Risc0 Bonsai, Succinct SP1
-> SEV-SNP: Risc0 Bonsai, Succinct SP1
+> - TDX: Solidity, Risc0 Bonsai, Succinct SP1
+> - SEV-SNP: Risc0 Bonsai, Succinct SP1
 
 In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**.
 
