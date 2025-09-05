@@ -65,7 +65,8 @@ The server will broadcast on 2 ports:
     - Port Availability: 7999
     - Retrieve collaterals required for cvm registration on-chain.
     - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals -H "Content-Type: application/json" -d '{"report_type":1}'`
-    - **Note: In the current version, we only support Solidity verification for TDX and Risc0 zkProof for SEV-SNP.**
+    - **Note: For TDX, all 3 verification types are supported (Solidity/SP1 zkProof/Bonsai zkProof).**
+    - **Note: For SEV-SNP, only SP1 zkProof and Bonsai zkProof are supported.**
     - Request Body:
     ```json
     {
@@ -93,13 +94,13 @@ The server will broadcast on 2 ports:
     - Port Availability: 7999
     - Generate a new p256 keypair for the CVM.
     - **Note**: The key is not immediately rotated on the CVM. CVM-Agent will continue to sign messages using the old key until users explicitly specify that they would like to sign a message using the new key (using `/sign-message` API). Afterwhich, the old key will be purged, and only the new key can be used.
-    - **Note**: Nonce should be queried from the Registry Contract by the workload. 
+    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload. 
     - Content-Type: application/json
-    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": 31337, "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
     - Request Body:
     ```json
     {
-        "nonce": "0", "chain_id": 31337, "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
+        "nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
     }
     ```
     - Response:
