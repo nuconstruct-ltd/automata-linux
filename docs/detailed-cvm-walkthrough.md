@@ -275,8 +275,8 @@ Publish the golden measurements for verifiers to reference.
 
 
 - For on-chain:
-  -  Please refer to to [this repo](https://github.com/automata-network/tee-workload-measurement) for the contracts. Automata maintains a TEE Registry contract which you can use, but you will have to deploy the application contract to a chain of your choice.
-  -  For the application contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/tee-workload-measurement/blob/main/contracts/src/mock/MockCVMExample.sol).
+  -  Please refer to to [this repo](https://github.com/automata-network/cvm-onchain-verifier) for the contract information. Automata maintains a CVM Registry contract which you can use, but you will have to deploy the application contract to a chain where the CVM Registry contract exists.
+  -  For the application contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol).
   -  Now, you can base64-decode the golden-measurements and abi-encode and upload this measurement to your application contract.
 
 
@@ -307,7 +307,7 @@ For a more concrete example of the verification workflow, please check out the [
 
 
 ### On-chain verification
-For on-chain verification, in order to minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain registry contract, and the second is the verification of the CVM on the on-chain user application contract.
+For on-chain verification, in order to minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain CVM Registry contract, and the second is the verification of the CVM on the on-chain user application contract.
 
 #### 1. Registration
 
@@ -317,8 +317,8 @@ When the workload in the CVM starts, it should first retrieve its collaterals fo
 # Request to the cvm-agent, requesting a report that can be verified by Solidity
 # report_type:
 # 1: Solidity verification
-# 2: SP1-zkProof verification
-# 3: Risc0-zkProof verification
+# 2: Succinct SP1 zkProof verification
+# 3: Risc0 Bonsai zkProof verification
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
   -d '{"report_type": 1}'
@@ -332,25 +332,42 @@ The following example shows how to retrieve a report that uses zkProofs:
 ```bash
 # report_type:
 # 1: Solidity verification
-# 2: SP1-zkProof verification
-# 3: Risc0-zkProof verification
+# 2: Succinct SP1 zkProof verification
+# 3: Risc0 Bonsai zkProof verification
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
   -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
 ```
 
-In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**. For details on how to sign up for an API key + what ImageID to use for either Risc0 or SP1, please check out the following repositories:
-- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk)
-- [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk)
+> [!Note]
+> These are the attestation types supported for each CVM type:
+> TDX: Solidity, Risc0 Bonsai, Succinct SP1
+> SEV-SNP: Risc0 Bonsai, Succinct SP1
+
+In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**.
+
+These are the current image_ids:
+
+| TEE Type | Prover Type | Image ID |
+| --- | --- | --- |
+| TDX | Bonsai | 9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07 |
+| TDX | SP1    | 4114543f15a8197e675a4e046aef08ac64beb9692250e7a33561aa772aea9f26 |
+| SEV-SNP | Bonsai | a474e8f24e5acd06b33371a719cbda092a0a5794fb4339b6cb5c6baffe4fc96c |
+| SEV-SNP | SP1 | 06a7a6d8400f78202f234fdc300dadcf4dc6a68007f0f4a80e0e1e600ab01aa1 |
+
+
+For Succinct SP1, the api key corresponds to the private key.
+
 
 For the `version`, these are the current versions we use:
 - Risc0: `"2.2.0"`
-- SP1: TBD.
+- SP1: `"v5.0.0"`
 
-Finally, the workload should base64-decode the calldata and submit a transaction to the on-chain registry contract with its data set to the base64-decoded calldata.
+Finally, the workload should base64-decode the calldata and submit a transaction to the on-chain CVM Registry contract with its data set to the base64-decoded calldata.
 
-> [!Note]
-> In the current version of the cvm-agent, only Solidity verification is supported for TDX and only Risc0 verification is supported for SEV-SNP. More methods will be supported in the future.
+In case you prefer to construct your own input to submit on chain, please get the offchain collaterals from GET `/offchain/collaterals/` and check out our TEE attestation repositories, which contains the CLI to get zkproofs from both Bonsai and SP1:
+- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk/tree/v2)
+- [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk/tree/DEV-4178)
 
 #### 2. Verification
 The verifier will request the attester to sign a specific message that will be checked by the application contract. The verifier and the attester in this case can both be the same workload running in two different CVMs, depending on how the system is designed. There is a helper function on the CVM-agent called `/sign-message`, which can be used to achieve this message signing process. The following shows an example request to the CVM agent by the attester:
