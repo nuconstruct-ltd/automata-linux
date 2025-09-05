@@ -72,11 +72,43 @@ Settings that govern VM maintenance activities:
 | `allow`             | `false`     | Specifies whether user is allowed to enable maintenance mode for administrative tasks. (eg. ssh into the container) |
 | `signal`            | `"SIGUSR2"` | Specifies the signal (`SIGUSR2`) used to notify the containers that the maintenance mode is enabled or disabled.  Containers thus need to implement the signal handler for receiving the notification from the agent|
 
-Note that users should add their public key to the appropriate location (i.e., `~/.ssh/authorized_keys`) within the container and enable port mapping for the SSH server. Example can be found at **Q&A**.  Also, for the proper signal handling, the application process must have **PID 1** in the container (This is very common in containerized applications such as redis and nginx). Otherwise, application may not be able to receive the signal sent by the cvm_agent.
-
+>[!Note]  
+> Note that users should add their public key to the appropriate location (i.e., `~/.ssh/authorized_keys`) within the container and enable port mapping for the SSH server. Example can be found at **Q&A**.  Also, for the proper signal handling, the application process must have **PID 1** in the container (This is very common in containerized applications such as redis and nginx). Otherwise, application may not be able to receive the signal sent by the cvm_agent.
 ---
 
-## 6. Workload Configuration (`workload_config`)
+## 6. Disk Configuration (`disk_config`)
+
+Defines whether additional data disks are attached to the CVM, and how they are managed. This configuration controls mounting, encryption, and disk lifecycle.  
+
+| Field              | Value / Example                     | Explanation |
+|--------------------|-------------------------------------|-------------|
+| `enable`           | `false`                             | Controls whether the CVM agent mounts and manages an extra data disk. If `false`, the CVM agent will not attempt to detect and mount any extra data disk. |
+| `disk_mount_point` | `"/data/data-disk"`                 | Filesystem path inside the CVM where the additional data disk will be mounted if enabled. |
+| `disk_encryption`  | Struct                              | Sub-configuration for encryption of the attached disk. |
+
+### `disk_encryption` Struct
+
+| Field                     | Value / Example     | Explanation |
+|---------------------------|---------------------|-------------|
+| `enable`                  | `false`             | If `true`, the CVM agent will enforce encryption on the mounted disk and gate key release on system integrity checks. |
+| `encryption_key_security` | `"standard"`\|`"strong"` | Selects the binding policy for key release. |
+
+> ⚠️ **Warning**: Attaching a non-encrypted disk (i.e., non LUKS protected disk) to the cvm that has disk encryption **enabled** will cause **disk data loss**.  
+> The agent will treat such a disk as uninitialized and automatically set up an encrypted filesystem on it, erasing existing data.
+
+#### Key Binding Policy
+
+- **`"standard"`**  
+  - Binds the key to the essential boot environment (kernel, OS identity, initrd, root filesystem).  
+  - **Behavior**: More flexible — VM settings like CPU count or memory size can change across reboots without blocking disk unlock.  
+
+- **`"strong"`**  
+  - Binds the key to the complete boot environment (including additional firmware and hardware-dependent details).  
+  - **Behavior**: Stricter — changing VM hardware configuration (e.g., CPU or memory size) across reboots will prevent the disk from being unlocked.  
+
+> **Summary:** `"standard"` → flexible, allows hardware changes. `"strong"` → strict, disallows hardware changes across reboots.
+
+## 7. Workload Configuration (`workload_config`)
 
 | Field               | Value       | Explanation                                                  |
 |---------------------|-------------|--------------------------------------------------------------|

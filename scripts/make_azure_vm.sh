@@ -208,7 +208,7 @@ if [[ -n "${ADDITIONAL_PORTS}" ]]; then
     for port in "${PORTS[@]}"; do
         az network nsg rule create --nsg-name "${VM_NAME}" --resource-group "${RG}" \
             --name "Workload_${port}" --priority ${priority} \
-            --destination-port-ranges "$port" --access Allow --protocol Tcp
+            --destination-port-ranges "$port" --access Allow --protocol "*"
         ((priority+=1))
     done
 fi

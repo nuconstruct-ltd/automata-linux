@@ -246,8 +246,8 @@ The following parameters are optional, and default to:
 > [!IMPORTANT]
 > The golden measurements are required for the [verification phase](#verifying-the-image-and-workload), as they serve as the reference against which verifiers compare an attester's collaterals to confirm alignment with a known, expected state. The publisher of the workload should create and publish the golden measurement for verifiers to reference.
 
-- Off-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurement.json`.
-- On-chain: TODO
+- Off-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurements/offchain/<csp>-<vm-name>.json`.
+- On-chain: After you have deployed the CVM on the cloud provider in the previous step, you should now have a file `_artifacts/golden-measurements/onchain/<csp>-<vm-name>.json`.
 
 
 ### 1. Sign the golden measurements
@@ -264,7 +264,7 @@ The following parameters are optional, and default to:
    ```bash
    ./tools/json_sig_tool.py verify signed-golden-measurement.json public.pem
    ```
-- For on-chain: TODO
+- For on-chain: Assuming you use the default application contract which will be covered in the next sub-section, this is not required, because by default, only the owner can upload golden measurements to the contract. Otherwise, please remember to whitelist wallets which will be allowed to upload golden measurements. 
 
 ### 2. Publish the golden measurements
 Publish the golden measurements for verifiers to reference.
@@ -274,7 +274,10 @@ Publish the golden measurements for verifiers to reference.
   - If the verifier is hosted externally from a TEE environment, the golden measurement can be hosted there as well.
 
 
-- For on-chain: TODO.
+- For on-chain:
+  -  Please refer to to [this repo](https://github.com/automata-network/cvm-onchain-verifier) for the contract information. Automata maintains a CVM Registry contract which you can use, but you will have to deploy the application contract to a chain where the CVM Registry contract exists.
+  -  For the application contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol).
+  -  Now, you can base64-decode the golden-measurements and abi-encode and upload this measurement to your application contract.
 
 
 ## Verifying the image and workload
@@ -304,9 +307,94 @@ For a more concrete example of the verification workflow, please check out the [
 
 
 ### On-chain verification
+For on-chain verification, in order to minimize gas costs, there are two steps involved. The first is the registration of the CVM to an on-chain CVM Registry contract, and the second is the verification of the CVM on the on-chain user application contract.
+
+#### 1. Registration
+
+When the workload in the CVM starts, it should first retrieve its collaterals for registering on-chain. The following shows an example of how to retrieve the registration collaterals:
+
+```bash
+# Request to the cvm-agent, requesting a report that can be verified by Solidity
+# report_type:
+# 1: Solidity verification: Raw TEE report is verified by onchain contract
+# 2: Succinct SP1 zkProof verification: Groth-16 proof is verified by onchain contract
+# 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
+curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
+  -H "Content-Type: application/json" \
+  -d '{"report_type": 1}'
+
+# Response
+# Calldata = abi.encode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)
+{ "calldata": "<base64-encoded string>" }
 ```
-TODO.
+
+The following example shows how to retrieve a report that uses zkProofs:
+```bash
+# report_type:
+# 1: Solidity verification: Raw TEE report is verified by onchain contract
+# 2: Succinct SP1 zkProof verification: Groth-16 proof is verified by onchain contract
+# 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
+curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
+  -H "Content-Type: application/json" \
+  -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
 ```
+
+> [!Note]
+> These are the attestation types supported for each CVM type:
+> - TDX: Solidity, Risc0 Bonsai, Succinct SP1
+> - SEV-SNP: Risc0 Bonsai, Succinct SP1
+
+In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**.
+
+These are the current image_ids:
+
+| TEE Type | Prover Type | Image ID |
+| --- | --- | --- |
+| TDX | Bonsai | 9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07 |
+| TDX | SP1    | 4114543f15a8197e675a4e046aef08ac64beb9692250e7a33561aa772aea9f26 |
+| SEV-SNP | Bonsai | a474e8f24e5acd06b33371a719cbda092a0a5794fb4339b6cb5c6baffe4fc96c |
+| SEV-SNP | SP1 | 06a7a6d8400f78202f234fdc300dadcf4dc6a68007f0f4a80e0e1e600ab01aa1 |
+
+
+For Succinct SP1, the api key corresponds to the private key.
+
+
+For the `version`, these are the current versions we use:
+- Risc0: `"2.2.0"`
+- SP1: `"v5.0.0"`
+
+Finally, the workload should base64-decode the calldata and submit a transaction to the on-chain CVM Registry contract with its data set to the base64-decoded calldata.
+
+In case you prefer to construct your own input to submit on chain, please get the offchain collaterals from GET `/offchain/collaterals/` and check out our TEE attestation repositories, which contains the CLI to get zkproofs from both Bonsai and SP1:
+- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk/tree/v2)
+- [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk/tree/DEV-4178)
+
+#### 2. Verification
+The verifier will request the attester to sign a specific message that will be checked by the application contract. The verifier and the attester in this case can both be the same workload running in two different CVMs, depending on how the system is designed. There is a helper function on the CVM-agent called `/sign-message`, which can be used to achieve this message signing process. The following shows an example request to the CVM agent by the attester:
+
+```bash
+# Request to the cvm-agent
+curl -X POST http://127.0.0.1:7999/sign-message \
+  -H "Content-Type: application/json" \
+  -d '{"message":"hello world"}'
+
+# Response
+{ "cvm_identity_hash": <base64-encoded string>, "signature": <base64-encoded string> }
+```
+
+> [!Note]
+> In general, we recommend the message format to be the contract ABI encoding of `"CVM_WORKLOAD_USER_MESSAGE" || uint256(Chain ID) || application_contract_address || userMessage`.
+
+
+Assuming that the verifier uses the default application contract as is, they will then need to:
+- base64-decode the fields for cvm_identity_hash and signature
+- abi encode it to get the calldata for: checkCVMSignature(bytes32 cvmIdentityHash, bytes calldata message, bytes calldata signature)
+- submit the transaction to the application contract to verify the message signed by the attester.
+
+For an overall view of the whole interaction process, please checkout [this diagram](./onchain-workflows.md#cvm-verification).
+
+#### 3. More details for on-chain attestation workflows 
+Please check out [this doc](./onchain-workflows.md) for more details and diagrams on the full on-chain attestation workflows. 
 
 For more details on the APIs available on the cvm-agent, please check out [this document](cvm-agent-api.md).
 

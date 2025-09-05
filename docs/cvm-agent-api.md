@@ -4,7 +4,7 @@ The server will broadcast on 2 ports:
 - HTTPS: 0.0.0.0:8000 (for queries from outside of the TEE environment) 
 - HTTP: 127.0.0.1:7999 (for internal workload use).
 
-### Platform Information
+## Generic APIs
 - `/platform` [GET]
     - Port Availability: 7999
     - Returns information about the platform's TEE and cloud type
@@ -18,49 +18,105 @@ The server will broadcast on 2 ports:
     }
     ```
 
-### Attestation APIs
-> [!CAUTION]
-> This API will still undergo lots of changes, it is not ready yet.
-
-- `/onchain-verify` [POST]
+- `/sign-message` [POST]
     - Port Availability: 7999
-    - Handles on-chain attestation requests with support for ZK proofs
+    - Sign a message using a p256 key (that lives in the CVM's vTPM) that uniquely identifies the CVM.
+    - **NOTE**: Set "purge-old-keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain, if you're using the signed message with an on-chain contract.
     - Request Body:
     ```json
     {
-        "extra_data": <32 bytes hex string>,
-        "report_type": <integer>,
+        "message": <string>,
+        "purge-old-keys": true/false
+    }
+    ```
+    - Response:
+    ```json
+    {
+        "cvm_identity_hash": <base64-encoded string>, // keccak256 hash
+        "signature": <base64-encoded string> // raw p256 signature [ 32bytes(r) || 32bytes(s) ]
+    }
+    ```
+
+- `/current-cvm-identity-hash` [GET]
+    - Port Availability: 7999
+    - Get the current CVM's identity as a keccak256 hash.
+    - Response:
+    ```json
+    {
+        "cvm_identity_hash": <base64-encoded string> // keccak256 hash
+    }
+    ```
+
+## Attestation APIs
+
+### On-chain APIS
+- `/onchain/golden-measurement` [GET]
+    - Port Availability: 8000
+    - Generates onchain golden measurements for the current CVM. Returns a hash that can be uploaded to a user application contract.
+    - Example Request: `curl -k https://<vm-ip>:8000/onchain/golden-measurement`
+    - Response:
+    ```json
+    {
+        "golden_measurement": <base64-encoded string>
+    }
+    ```
+
+- `/onchain/registration-collaterals` [POST]
+    - Port Availability: 7999
+    - Retrieve collaterals required for cvm registration on-chain.
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals -H "Content-Type: application/json" -d '{"report_type":1}'`
+    - **Note: For TDX, all 3 verification types are supported (Solidity/SP1 zkProof/Bonsai zkProof).**
+    - **Note: For SEV-SNP, only SP1 zkProof and Bonsai zkProof are supported.**
+    - Request Body:
+    ```json
+    {
+        "report_type": <integer>, // 1: Solidity verification, 2: SP1 zkProof, 3: Risc0 zkProof
         "zk_config": {
-            // Optional ZK proof configuration
+            // Optional ZK proof configuration, omit if using Solidity verification
+            "image_id": <string>,
+            "url": <string>,
+            "api_key": <string>,
+            "version": <string>
         }
     }
     ```
     - Response:
     ```json
     {
-        "report": <base64 encoded bytes>,
-        "ak_pub": <base64 encoded bytes>,
-        "zk_output": {
-            // Optional ZK proof output
-        },
-        "vek_certs": [<base64 encoded bytes>],
-        "tpm_quote": <base64 encoded bytes>,
-        "tpm_signature": <base64 encoded bytes>,
-        "tpm_pcrs": [
-            {
-                // PCR measurements
-            }
-        ],
-        "tpm_certs": [<base64 encoded bytes>],
-        "report_id": <base64 encoded bytes>,
-        "golden_measurement": {
-            // Golden measurement data
-        }
+        // abi-encoded data for:
+        // attestCvm(CloudType cloudType, TEEType teeType, TeeReportType teeReportType, bytes calldata teeAttestationReport, WorkloadCollaterals calldata wc)
+        // can be placed directly into tx.data after base64-decoding
+        "calldata": <base64 encoded string>
     }
     ```
 
-### Verification APIs
-- `/offchain-verify` [POST]
+- `/onchain/new-cvm-identity` [POST]
+    - Port Availability: 7999
+    - Generate a new p256 keypair for the CVM.
+    - **Note**: The key is not immediately rotated on the CVM. CVM-Agent will continue to sign messages using the old key until users explicitly specify that they would like to sign a message using the new key (using `/sign-message` API). Afterwhich, the old key will be purged, and only the new key can be used.
+    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload. 
+    - Content-Type: application/json
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
+    - Request Body:
+    ```json
+    {
+        "nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
+    }
+    ```
+    - Response:
+    ```json
+    {
+        // abi-encoded data for:
+        // reattestCvmWithTpm(bytes32 cvmIdentityHash, bytes calldata signature, WorkloadCollaterals calldata wc)
+        // can be placed directly into tx.data after base64-decoding
+        "calldata": <base64 encoded bytes>
+    }
+    ```
+
+
+### Off-Chain APIs
+
+- `/offchain/verify` [POST]
     - Port Availability: 7999
     - Verifies CVM collaterals against golden measurements
     - Request Body:
@@ -81,8 +137,7 @@ The server will broadcast on 2 ports:
     }
     ```
 
-### Collaterals APIs
-- `/collaterals/{nonce}`: [GET]
+- `/offchain/collaterals/{nonce}`: [GET]
     - Port Availability: 7999, 8000
     - The nonce is used as it is for the TPM quote.
     - report_data field in the attestation report should contain the following:
@@ -91,7 +146,7 @@ The server will broadcast on 2 ports:
     - extra_data field in the TPM Quote should contain the following:
       - On Azure/AWS/GCP: magic || nonce
     - magic = "External/collaterals" or "Internal/collaterals"
-    - Returns a JSON structure containing the following:
+    - Response:
     ```json
     {
         // Only sev_snp or tdx will be returned, not both at the same time.
@@ -132,7 +187,23 @@ The server will broadcast on 2 ports:
     }
     ```
 
-### Management APIs
+- `/offchain/golden-measurement` [GET]
+    - Port Availability: 8000
+    - Generates offchain golden measurements for the current CVM
+    - **Important Note**: Generated golden measurements are specific to:
+        - The CVM type (SEV-SNP, TDX)
+        - The cloud provider (Azure, GCP, AWS)
+        - The VM size/configuration
+    - Image/Workload creators must generate separate golden measurements for each unique combination of VM type, size, and cloud provider
+    - Response:
+    ```json
+    {
+        "golden_measurement": <json object>,
+        "error": <string, optional>
+    }
+    ```
+
+## Management APIs
 - `/update-workload`: [POST]
     - Port Availability: 8000
     - Used to update the current workload on the server by uploading a .zip file containing a `workload/` folder.
@@ -169,22 +240,6 @@ The server will broadcast on 2 ports:
         },
         ...
     ]
-    ```
-
-- `/golden-measurement` [GET]
-    - Port Availability: 8000
-    - Generates golden measurements for the current CVM
-    - **Important Note**: Generated golden measurements are specific to:
-        - The CVM type (SEV-SNP, TDX)
-        - The cloud provider (Azure, GCP, AWS)
-        - The VM size/configuration
-    - Image creators must generate separate golden measurements for each unique combination of VM type, size, and cloud provider
-    - Response:
-    ```json
-    {
-        "golden_measurement": <json object>,
-        "error": <string, optional>
-    }
     ```
 
 - `/maintenance-mode` [POST]
