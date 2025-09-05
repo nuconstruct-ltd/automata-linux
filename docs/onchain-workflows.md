@@ -18,7 +18,12 @@ sequenceDiagram
 
 ## CVM Registration
 
-The registration process involves verifying all TEE collaterals and registering a VM-unique public key to represent the VM on the Registry contract. This registered public key will also thus be known as the "VM Identity". Once successful registration has happened, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again. To reattest, simply perform the registration steps again.
+### Verification of TEE Collaterals
+The registration process involves verifying all TEE collaterals on the CVM Registry Contract. We support two types of TEE attestation report verification - direct verification of signatures and certs on-chain (which we will call "Solidity verification"), or via a Groth-16 zkProof using either of the remote prover networks, Succinct SP1 or Risc0 Bonsai.
+
+Below, we show the workflow of using direct Solidity Verification vs using zkProofs:
+
+#### Solidity Verification
 
 ```mermaid
 sequenceDiagram
@@ -26,13 +31,39 @@ sequenceDiagram
     participant AA as Attestation Agent
     participant RC as Registry Contract
 
-    CVM->>AA: POST /onchain/registration-collaterals
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1)
     AA-->>CVM: base64(calldata)
     note over CVM: base64-decode calldata
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)`.
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+
+#### Groth-16 zkProof Verification
+- When report_type = 2, Succinct SP1 zkProver network is used.
+- When report_type = 3, Risc0 Bonsai zkProver network is used.
+
+```mermaid
+sequenceDiagram
+    participant CVM as CVM Workload
+    participant AA as Attestation Agent
+    participant PP as Remote ZkProver
+    participant RC as Registry Contract
+
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 2/3, image_id=XXX, api_key=XXX, version=XXX)
+    AA->>PP: (TEE report, certs)
+    PP-->>AA: Groth-16 zkProof
+    AA-->>CVM: base64(calldata)
+    note over CVM: base64-decode calldata
+    CVM->>RC: submitTX(calldata)
+```
+
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+
+### Registration of CVM Identity
+Once all TEE collaterals are verified, a VM-unique public key, which is sent together with the calldata, will be registered on the CVM Registry contract. This key will represent the CVM onchain. This registered public key will also thus be known as the "CVM Identity". After successful registration, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. 
+
+Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again. To reattest, simply perform the registration steps again.
 
 ## CVM Verification
 

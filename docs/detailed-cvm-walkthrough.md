@@ -316,9 +316,9 @@ When the workload in the CVM starts, it should first retrieve its collaterals fo
 ```bash
 # Request to the cvm-agent, requesting a report that can be verified by Solidity
 # report_type:
-# 1: Solidity verification
-# 2: Succinct SP1 zkProof verification
-# 3: Risc0 Bonsai zkProof verification
+# 1: Solidity verification: Raw TEE report is verified by onchain contract
+# 2: Succinct SP1 zkProof verification: Groth-16 proof is verified by onchain contract
+# 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
   -d '{"report_type": 1}'
@@ -331,9 +331,9 @@ curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
 The following example shows how to retrieve a report that uses zkProofs:
 ```bash
 # report_type:
-# 1: Solidity verification
-# 2: Succinct SP1 zkProof verification
-# 3: Risc0 Bonsai zkProof verification
+# 1: Solidity verification: Raw TEE report is verified by onchain contract
+# 2: Succinct SP1 zkProof verification: Groth-16 proof is verified by onchain contract
+# 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
   -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
