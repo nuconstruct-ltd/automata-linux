@@ -3,6 +3,8 @@
 This document will host several diagrams that explain different parts of the on-chain attestation workflow at a high level.
 
 ## Uploading Golden Measurements
+For the following example given below, we make the following assumptions:
+- The workload uses the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol) without any modifications to the function `addGoldenMeasurement`.
 
 ```mermaid
 sequenceDiagram
@@ -103,7 +105,7 @@ sequenceDiagram
         CVM->>CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
         CVM->>RC: submitTX(calldata)
         RC-->>CVM: abiEncode(nonce)
-        note over CVM: nonce = abiDecode(abiEncode(nonce))
+        CVM->>CVM: nonce = abiDecode(abiEncode(nonce))
     end
 
     rect rgb(229,255,204)
