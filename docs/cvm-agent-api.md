@@ -100,8 +100,8 @@ The server will broadcast on 2 ports:
     - Request Body:
     ```json
     {
-        "nonce": "<string>",
-        "chain_id": "<string>",
+        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
         "contract_address": "<string prefixed with 0x>"
     }
     ```
@@ -125,8 +125,8 @@ The server will broadcast on 2 ports:
     - Request Body:
     ```json
     {
-        "nonce": "<string>",
-        "chain_id": "<string>",
+        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
         "contract_address": "<string prefixed with 0x>",
         "tee_ttl": uint64,
         "tpm_ttl": uint64,
