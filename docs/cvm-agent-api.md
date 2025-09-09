@@ -49,7 +49,7 @@ The server will broadcast on 2 ports:
 
 ## Attestation APIs
 
-### On-chain APIS
+### On-chain APIs
 - `/onchain/golden-measurement` [GET]
     - Port Availability: 8000
     - Generates onchain golden measurements for the current CVM. Returns a hash that can be uploaded to a user application contract.
@@ -67,10 +67,12 @@ The server will broadcast on 2 ports:
     - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals -H "Content-Type: application/json" -d '{"report_type":1}'`
     - **Note: For TDX, all 3 verification types are supported (Solidity/SP1 zkProof/Bonsai zkProof).**
     - **Note: For SEV-SNP, only SP1 zkProof and Bonsai zkProof are supported.**
+    - **Note: Please specify the `chain_id` of the chain you're requesting collaterals for a SEV-SNP machine, and you want to optimize gas costs. This is because gas will be used to add any additional untrusted certs to the onchain contract. By specifying the correct chain you are using, the cvm-agent will check how many certs in the VEK cert list are trusted and thus do not need to be added again.**
     - Request Body:
     ```json
     {
         "report_type": <integer>, // 1: Solidity verification, 2: SP1 zkProof, 3: Risc0 zkProof
+        "chain_id": <string>, // Optional: Only needed for gas optimizations on SEV-SNP.
         "zk_config": {
             // Optional ZK proof configuration, omit if using Solidity verification
             "image_id": <string>,
