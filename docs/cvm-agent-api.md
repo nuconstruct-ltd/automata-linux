@@ -21,12 +21,12 @@ The server will broadcast on 2 ports:
 - `/sign-message` [POST]
     - Port Availability: 7999
     - Sign a message using a p256 key (that lives in the CVM's vTPM) that uniquely identifies the CVM.
-    - **NOTE**: Set "purge-old-keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain, if you're using the signed message with an on-chain contract.
+    - **NOTE**: Set "purge_old_keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain, if you're using the signed message with an on-chain contract.
     - Request Body:
     ```json
     {
         "message": <string>,
-        "purge-old-keys": true/false
+        "purge_old_keys": true/false
     }
     ```
     - Response:
@@ -100,7 +100,9 @@ The server will broadcast on 2 ports:
     - Request Body:
     ```json
     {
-        "nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
+        "nonce": "<string>",
+        "chain_id": "<string>",
+        "contract_address": "<string prefixed with 0x>"
     }
     ```
     - Response:
@@ -113,6 +115,33 @@ The server will broadcast on 2 ports:
     }
     ```
 
+- `/onchain/update-ttl` [POST]
+    - Port Availability: 7999
+    - Update the TTL of the TEE and/or TPM collaterals.
+    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload.
+    - **NOTE**: Set "purge_old_keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain.
+    - Content-Type: application/json
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/update-ttl -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC", "tee_ttl": 806400, "tpm_ttl": 806400 }'`
+    - Request Body:
+    ```json
+    {
+        "nonce": "<string>",
+        "chain_id": "<string>",
+        "contract_address": "<string prefixed with 0x>",
+        "tee_ttl": uint64,
+        "tpm_ttl": uint64,
+        "purge_old_keys": true/false
+    }
+    ```
+    - Response:
+    ```json
+    {
+        // abi-encoded data for:
+        // setCollateralTTL(bytes32 cvmIdentityHash, uint64 teeTTL, uint64 tpmTTL, bytes signature)
+        // can be placed directly into tx.data after base64-decoding
+        "calldata": <base64 encoded bytes>
+    }
+    ```
 
 ### Off-Chain APIs
 
