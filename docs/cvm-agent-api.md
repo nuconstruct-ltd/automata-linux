@@ -21,12 +21,12 @@ The server will broadcast on 2 ports:
 - `/sign-message` [POST]
     - Port Availability: 7999
     - Sign a message using a p256 key (that lives in the CVM's vTPM) that uniquely identifies the CVM.
-    - **NOTE**: Set "purge-old-keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain, if you're using the signed message with an on-chain contract.
+    - **NOTE**: Set "purge_old_keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain, if you're using the signed message with an on-chain contract.
     - Request Body:
     ```json
     {
         "message": <string>,
-        "purge-old-keys": true/false
+        "purge_old_keys": true/false
     }
     ```
     - Response:
@@ -49,7 +49,7 @@ The server will broadcast on 2 ports:
 
 ## Attestation APIs
 
-### On-chain APIS
+### On-chain APIs
 - `/onchain/golden-measurement` [GET]
     - Port Availability: 8000
     - Generates onchain golden measurements for the current CVM. Returns a hash that can be uploaded to a user application contract.
@@ -67,10 +67,12 @@ The server will broadcast on 2 ports:
     - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals -H "Content-Type: application/json" -d '{"report_type":1}'`
     - **Note: For TDX, all 3 verification types are supported (Solidity/SP1 zkProof/Bonsai zkProof).**
     - **Note: For SEV-SNP, only SP1 zkProof and Bonsai zkProof are supported.**
+    - **Note: Please specify the `chain_id` of the chain you're requesting collaterals for a SEV-SNP machine, and you want to optimize gas costs. This is because gas will be used to add any additional untrusted certs to the onchain contract. By specifying the correct chain you are using, the cvm-agent will check how many certs in the VEK cert list are trusted and thus do not need to be added again.**
     - Request Body:
     ```json
     {
         "report_type": <integer>, // 1: Solidity verification, 2: SP1 zkProof, 3: Risc0 zkProof
+        "chain_id": <string>, // Optional: Only needed for gas optimizations on SEV-SNP.
         "zk_config": {
             // Optional ZK proof configuration, omit if using Solidity verification
             "image_id": <string>,
@@ -100,7 +102,9 @@ The server will broadcast on 2 ports:
     - Request Body:
     ```json
     {
-        "nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"
+        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "contract_address": "<string prefixed with 0x>"
     }
     ```
     - Response:
@@ -113,6 +117,33 @@ The server will broadcast on 2 ports:
     }
     ```
 
+- `/onchain/update-ttl` [POST]
+    - Port Availability: 7999
+    - Update the TTL of the TEE and/or TPM collaterals.
+    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload.
+    - **NOTE**: Set "purge_old_keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain.
+    - Content-Type: application/json
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/update-ttl -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC", "tee_ttl": 806400, "tpm_ttl": 806400 }'`
+    - Request Body:
+    ```json
+    {
+        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
+        "contract_address": "<string prefixed with 0x>",
+        "tee_ttl": uint64,
+        "tpm_ttl": uint64,
+        "purge_old_keys": true/false
+    }
+    ```
+    - Response:
+    ```json
+    {
+        // abi-encoded data for:
+        // setCollateralTTL(bytes32 cvmIdentityHash, uint64 teeTTL, uint64 tpmTTL, bytes signature)
+        // can be placed directly into tx.data after base64-decoding
+        "calldata": <base64 encoded bytes>
+    }
+    ```
 
 ### Off-Chain APIs
 

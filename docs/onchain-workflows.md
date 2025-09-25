@@ -3,6 +3,8 @@
 This document will host several diagrams that explain different parts of the on-chain attestation workflow at a high level.
 
 ## Uploading Golden Measurements
+For the following example given below, we make the following assumptions:
+- The workload uses the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol) without any modifications to the function `addGoldenMeasurement`.
 
 ```mermaid
 sequenceDiagram
@@ -12,7 +14,7 @@ sequenceDiagram
 
     WO->>AA: GET /onchain/golden-measurement
     AA-->>WO: base64(measurement)
-    note over WO: base64-decode measurement <br/> calldata = abiEncode("addGoldenMeasurement", measurement)
+    WO->>WO: base64-decode measurement <br/> calldata = abiEncode("addGoldenMeasurement", measurement)
     WO->>AC: submitTX(calldata)
 ```
 
@@ -33,7 +35,7 @@ sequenceDiagram
 
     CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1)
     AA-->>CVM: base64(calldata)
-    note over CVM: base64-decode calldata
+    CVM->>CVM: base64-decode calldata
     CVM->>RC: submitTX(calldata)
 ```
 
@@ -54,7 +56,7 @@ sequenceDiagram
     AA->>PP: (TEE report, certs)
     PP-->>AA: Groth-16 zkProof
     AA-->>CVM: base64(calldata)
-    note over CVM: base64-decode calldata
+    CVM->>CVM: base64-decode calldata
     CVM->>RC: submitTX(calldata)
 ```
 
@@ -82,7 +84,7 @@ sequenceDiagram
     AT->>AA: POST /sign-message <br/> (message)
     AA-->>AT: {base64(cvmIdentityHash), base64(signature)}
     AT-->>V: {base64(cvmIdentityHash), base64(signature)}
-    note over V: base64-decode <br/> calldata = abiEncode("checkCVMSignature", cvmIdentityHash, message, signature)
+    V->>V: base64-decode <br/> calldata = abiEncode("checkCVMSignature", cvmIdentityHash, message, signature)
     V->>AC: submitTX(calldata)
 ```
 
@@ -100,10 +102,10 @@ sequenceDiagram
         Note over CVM,RC: 1. Get nonce
         CVM->>AA: GET /current-cvm-identity-hash
         AA-->>CVM: base64(cvmIdentityHash)
-        note over CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
+        CVM->>CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
         CVM->>RC: submitTX(calldata)
         RC-->>CVM: abiEncode(nonce)
-        note over CVM: nonce = abiDecode(abiEncode(nonce))
+        CVM->>CVM: nonce = abiDecode(abiEncode(nonce))
     end
 
     rect rgb(229,255,204)
@@ -114,7 +116,7 @@ sequenceDiagram
 
     rect rgb(255,226,226)
         Note over CVM,RC: 3. Register new identity on-chain
-        note over CVM: base64-decode calldata
+        CVM->>CVM: base64-decode calldata
         CVM->>RC: submitTX(calldata)
         RC-->>CVM: Success
     end
@@ -127,4 +129,36 @@ sequenceDiagram
 
 ```
 
-In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, calldata signature, workloadCollaterals)`.
+In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, workloadCollaterals)`.
+
+## Updating TTL of CVM Measurements
+By default, the TTL of TEE reports is 30days and the TTL of TPM Quotes is set to 60 days on the CVM Registry Contract. If you wish to make the TTL longer or shorter, they can be changed by following this workflow:
+
+```mermaid
+sequenceDiagram
+    participant CVM as CVM Workload
+    participant AA as Attestation Agent
+    participant RC as Registry Contract
+
+
+    rect rgb(255,226,226)
+        Note over CVM,RC: 1. Get nonce
+        CVM->>AA: GET /current-cvm-identity-hash
+        AA-->>CVM: base64(cvmIdentityHash)
+        CVM->>CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
+        CVM->>RC: submitTX(calldata)
+        RC-->>CVM: abiEncode(nonce)
+        CVM->>CVM: nonce = abiDecode(abiEncode(nonce))
+    end
+
+    rect rgb(229,255,204)
+        Note over CVM,RC: 2. Update TTL
+        CVM->>AA: POST /onchain/update-ttl <br/>(nonce, chainID, contract_addr, tee_ttl, tpm_ttl)
+        AA-->>CVM: base64(calldata)
+        CVM->>CVM: base64-decode calldata
+        CVM->>RC: submitTX(calldata)
+    end
+
+```
+
+In the above diagram, for Step 2, `calldata = abiEncode("setCollateralTTL", cvmIdentityHash, teeTTL, tpmTTL, signature)`.
