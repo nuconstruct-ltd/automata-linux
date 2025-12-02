@@ -3,7 +3,7 @@
 CSP="$1"
 
 # DDMMYYYY format for the disk image date
-DATE=26112025
+DATE=02122025
 
 # quit when any error occurs
 set -Eeuo pipefail
