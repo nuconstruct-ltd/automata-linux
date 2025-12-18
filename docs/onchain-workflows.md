@@ -39,7 +39,7 @@ sequenceDiagram
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, cvmIdentity, workloadCollaterals)`.
 
 #### Groth-16 zkProof Verification
 - When report_type = 2, Succinct SP1 zkProver network is used.
@@ -60,7 +60,7 @@ sequenceDiagram
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, cvmIdentity, workloadCollaterals)`.
 
 ### Registration of CVM Identity
 Once all TEE collaterals are verified, a VM-unique public key, which is sent together with the calldata, will be registered on the CVM Registry contract. This key will represent the CVM onchain. This registered public key will also thus be known as the "CVM Identity". After successful registration, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. 
@@ -129,7 +129,7 @@ sequenceDiagram
 
 ```
 
-In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, workloadCollaterals)`.
+In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, updateCvmIdentity, workloadCollaterals)`.
 
 ## Updating TTL of CVM Measurements
 By default, the TTL of TEE reports is 30days and the TTL of TPM Quotes is set to 60 days on the CVM Registry Contract. If you wish to make the TTL longer or shorter, they can be changed by following this workflow:

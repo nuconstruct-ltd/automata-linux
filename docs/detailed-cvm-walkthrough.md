@@ -341,8 +341,9 @@ curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
 
 > [!Note]
 > These are the attestation types supported for each CVM type:
-> - TDX: Solidity, Risc0 Bonsai, Succinct SP1
-> - SEV-SNP: Risc0 Bonsai, Succinct SP1
+> - TDX: Solidity, Succinct SP1
+> - SEV-SNP: Succinct SP1
+> - We are in the process of migrating Risc0 Bonsai to Boundless.
 
 In order to generate a zkProof, you will need to provide the fields **api key**, **image_id** and **version**.
 
@@ -350,10 +351,10 @@ These are the current image_ids:
 
 | TEE Type | Prover Type | Image ID |
 | --- | --- | --- |
-| TDX | Bonsai | 9346d1f042c615145229b75d1f504ea4fd3cd800e5817069035147bfa695ee07 |
+| TDX | Boundless | TBD |
 | TDX | SP1    | 4114543f15a8197e675a4e046aef08ac64beb9692250e7a33561aa772aea9f26 |
-| SEV-SNP | Bonsai | a474e8f24e5acd06b33371a719cbda092a0a5794fb4339b6cb5c6baffe4fc96c |
-| SEV-SNP | SP1 | 06a7a6d8400f78202f234fdc300dadcf4dc6a68007f0f4a80e0e1e600ab01aa1 |
+| SEV-SNP | Boundless | TBD |
+| SEV-SNP | SP1 | 691a1692002fb4a0604a0e4d1281dcb26310dd744681899e2d9cc6fe01c928d8 |
 
 
 For Succinct SP1, the api key corresponds to the private key.
