@@ -28,6 +28,37 @@
 git clone --recurse-submodules https://github.com/automata-network/cvm-base-image
 ```
 
+### Downloading Disk Images <!-- omit in toc -->
+
+The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/cvm-base-image/releases). By default, the latest release is used.
+
+**For Private Repositories:**
+If the repository is private, you need to set a GitHub token:
+
+```bash
+export GITHUB_TOKEN=your_github_token_here
+```
+
+**To use a specific release version:**
+
+```bash
+export RELEASE_TAG=v1.0.0  # or any specific tag like manual-20251218-211704-3f4bc00
+```
+
+**Example with both environment variables:**
+
+```bash
+# For private repos with a specific version
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx
+export RELEASE_TAG=v1.0.0
+./cvm-cli deploy-gcp
+```
+
+> [!Note]
+> If these environment variables are not set:
+> - `RELEASE_TAG` defaults to `latest`
+> - `GITHUB_TOKEN` is only required for private repositories
+
 ## Quickstart
 
 ### 1. Deploying the CVM <!-- omit in toc -->
@@ -45,10 +76,11 @@ To quickly deploy the CVM with the **default** workload, you can run the followi
 ```
 
 > [!Note]
-> The script will automatically download a default disk to use. <br/>
-> If another developer has given you a custom disk, you can use it instead of the default disk. To do so, simply:
-> - Place the custom disk file in the root of this folder.
-> - Make sure the file is named exactly as follows, depending on which cloud provider you plan to deploy on:
+> The script will automatically download the latest disk image from [GitHub Releases](https://github.com/automata-network/cvm-base-image/releases). <br/>
+> If you want to use a specific release version, set the `RELEASE_TAG` environment variable (see [Prerequisites](#prerequisites)). <br/>
+> If another developer has given you a custom disk, you can use it instead by:
+> - Placing the custom disk file in the root of this folder.
+> - Making sure the file is named exactly as follows, depending on which cloud provider you plan to deploy on:
 >   - GCP: gcp_disk.tar.gz
 >   - AWS: aws_disk.vmdk
 >   - Azure: azure_disk.vhd
