@@ -33,13 +33,13 @@ sequenceDiagram
     participant AA as Attestation Agent
     participant RC as Registry Contract
 
-    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1)
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1, chain_id: 11155111)
     AA-->>CVM: base64(calldata)
     CVM->>CVM: base64-decode calldata
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, cvmIdentity, workloadCollaterals)`.
 
 #### Groth-16 zkProof Verification
 - When report_type = 2, Succinct SP1 zkProver network is used.
@@ -52,7 +52,7 @@ sequenceDiagram
     participant PP as Remote ZkProver
     participant RC as Registry Contract
 
-    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 2/3, image_id=XXX, api_key=XXX, version=XXX)
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 2/3, chain_id: 11155111, image_id=XXX, api_key=XXX, version=XXX)
     AA->>PP: (TEE report, certs)
     PP-->>AA: Groth-16 zkProof
     AA-->>CVM: base64(calldata)
@@ -60,7 +60,7 @@ sequenceDiagram
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, workloadCollaterals)`. Within the workloadCollaterals, the CVM Identity will be embedded and also hashed and signed as part of the TPM Quote Extra Data.
+In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, cvmIdentity, workloadCollaterals)`.
 
 ### Registration of CVM Identity
 Once all TEE collaterals are verified, a VM-unique public key, which is sent together with the calldata, will be registered on the CVM Registry contract. This key will represent the CVM onchain. This registered public key will also thus be known as the "CVM Identity". After successful registration, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. 
@@ -129,7 +129,7 @@ sequenceDiagram
 
 ```
 
-In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, workloadCollaterals)`.
+In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, updateCvmIdentity, workloadCollaterals)`.
 
 ## Updating TTL of CVM Measurements
 By default, the TTL of TEE reports is 30days and the TTL of TPM Quotes is set to 60 days on the CVM Registry Contract. If you wish to make the TTL longer or shorter, they can be changed by following this workflow:
