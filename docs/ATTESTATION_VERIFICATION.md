@@ -2,6 +2,30 @@
 
 This guide explains how to verify the cryptographic build provenance attestations for CVM disk images.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Why Verify Attestations?](#why-verify-attestations)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Recommended: Verification Using cvm-cli](#recommended-verification-using-cvm-cli)
+  - [Alternative: GitHub CLI (Public Repos Only)](#alternative-github-cli-public-repos-only---not-supported-yet)
+- [Verification for All Cloud Providers](#verification-for-all-cloud-providers)
+  - [AWS VMDK](#aws-vmdk)
+  - [Azure VHD](#azure-vhd)
+  - [GCP tar.gz](#gcp-targz)
+- [How Verification Works for Large Disk Images](#how-verification-works-for-large-disk-images)
+- [Understanding Certificate Verification](#understanding-certificate-verification)
+- [What's Included in Attestations](#whats-included-in-attestations)
+- [Inspecting Attestation Contents](#inspecting-attestation-contents)
+- [Integration with Deployment Pipelines](#integration-with-deployment-pipelines)
+- [Troubleshooting](#troubleshooting)
+- [Verifying Binary Checksums](#verifying-binary-checksums)
+- [Security Considerations](#security-considerations)
+- [Linking Build Attestation to Runtime Attestation](#linking-build-attestation-to-runtime-attestation)
+- [Additional Resources](#additional-resources)
+- [Getting Help](#getting-help)
+
 ## Overview
 
 All CVM disk images released from the [cvm-image-builder](https://github.com/automata-network/cvm-image-builder) CI/CD pipeline include **SLSA Build Level 2** provenance attestations. These attestations cryptographically prove:
@@ -277,108 +301,26 @@ cat aws_disk.vmdk.bundle | jq -r '.cert' | base64 -d | openssl x509 -text -noout
 
 Look for the "Subject Alternative Name" extension which contains the workflow identity.
 
-## Troubleshooting
-
-### Error: "Hash mismatch"
-
-**Cause:** The disk image file has been modified after attestation was created.
-
-**Solution:** Re-download the disk image from the official release. This is a **security-critical error** - do not deploy the image.
-
-```bash
-# Re-download the disk image
-./cvm-cli get-disk aws
-./cvm-cli get-attestations
-./cvm-cli verify-attestation aws_disk.vmdk
-```
-
-### Error: "Certificate verification failed"
-
-**Cause:** The certificate identity doesn't match the expected pattern.
-
-**Solution:** Check what identity the certificate actually contains:
-```bash
-cat aws_disk.vmdk.bundle | jq -r '.cert' | base64 -d | \
-  openssl x509 -text -noout | grep -A 5 "Subject Alternative Name"
-```
-
-Expected format:
-```
-URI:https://github.com/automata-network/cvm-image-builder/.github/workflows/build-and-release.yml@refs/tags/v1.0.0
-```
-
-### Error: "No Rekor transparency log entry"
-
-**Cause:** The attestation bundle is incomplete or corrupted.
-
-**Solution:** Re-download the attestations:
-```bash
-rm attestations.zip
-./cvm-cli get-attestations
-```
-
-### Error: "Attestation bundle not found"
-
-**Cause:** The `.bundle` file doesn't exist or has a different name.
-
-**Solution:** Ensure you've downloaded attestations and the bundle file exists:
-```bash
-./cvm-cli get-attestations
-ls -lh *.bundle
-```
-
-### Verification takes a long time
-
-**Cause:** Calculating SHA256 hash of a ~200MB disk image takes time.
-
-**Solution:** This is normal. Hash verification typically takes 5-15 seconds depending on disk speed.
-
-## Verifying Binary Checksums
-
-The attestation includes SHA256 checksums of the binaries packaged into the disk image. The `verify-attestation` command automatically displays these checksums.
-
-### View Binary Checksums
-
-```bash
-# Checksums are displayed automatically during verification
-./cvm-cli verify-attestation aws_disk.vmdk
-
-# Or extract them manually
-cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
-  jq -r '.payload' | base64 -d | \
-  jq '.predicate.buildDefinition.internalParameters.binary_checksums'
-```
-
-Example output:
-```json
-{
-  "cvm_agent_binary_sha256": "abc123...",
-  "cvm_libcvm_so_sha256": "def456...",
-  "kernel_img_sha256": "ghi789...",
-  "kernel_crt_sha256": "jkl012...",
-  "note": "These checksums can be cross-referenced with official builds from cvm-components-builder releases"
-}
-```
-
-### Cross-reference with Official Builds
-
-Download the official binaries from [cvm-components-builder releases](https://github.com/automata-network/cvm-components-builder/releases) and compare checksums to verify the binaries in the disk image match the official builds.
 
 ## Security Considerations
 
 ### What Attestations Protect Against
 
-✅ **Binary substitution attacks** - Prevents swapping disk images with malicious versions
-✅ **Supply chain attacks** - Verifies the build came from the official source
-✅ **Tampering** - Detects any modifications to disk images after build
-✅ **Provenance tracking** - Links images to specific source code commits
+| Attack Type | Protection |
+|------------|------------|
+| ✅ **Binary substitution attacks** | Prevents swapping disk images with malicious versions |
+| ✅ **Supply chain attacks** | Verifies the build came from the official source |
+| ✅ **Tampering** | Detects any modifications to disk images after build |
+| ✅ **Provenance tracking** | Links images to specific source code commits |
 
 ### What Attestations Don't Protect Against
 
-❌ **Compromised source code** - Attestations verify "what was built," not "what should be built"
-❌ **Malicious workflow changes** - Review workflow changes in pull requests
-❌ **Compromised dependencies** - Verify submodule SHAs and binary sources
-❌ **Runtime attacks** - Use runtime attestation (TPM PCRs/RTMRs) for deployed VMs
+| Limitation | Mitigation |
+|-----------|------------|
+| ❌ **Compromised source code** | Attestations verify "what was built," not "what should be built" - review source code changes |
+| ❌ **Malicious workflow changes** | Review workflow changes in pull requests before merging |
+| ❌ **Compromised dependencies** | Verify submodule SHAs and binary sources against known good values |
+| ❌ **Runtime attacks** | Use runtime attestation (TPM PCRs/RTMRs) for deployed VMs |
 
 ### Best Practices
 
@@ -435,15 +377,3 @@ echo "Build attestation dm-verity hash: $DM_VERITY_HASH"
 - [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds)
 - [Cosign Documentation](https://docs.sigstore.dev/cosign/overview/)
 - [CVM Architecture Documentation](https://github.com/automata-network/cvm-image-builder/blob/main/docs/architecture.md)
-
-## Getting Help
-
-If you encounter issues verifying attestations:
-
-1. Check the [Troubleshooting](#troubleshooting) section above
-2. Search [existing issues](https://github.com/automata-network/cvm-base-image/issues)
-3. Open a new issue with:
-   - The exact error message
-   - The verification command you ran
-   - The release version you're verifying
-   - Output of `cosign version` and `jq --version`
