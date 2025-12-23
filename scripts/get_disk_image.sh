@@ -40,6 +40,17 @@ download_from_github() {
     RELEASE_INFO=$(curl -sL "$API_URL")
   fi
 
+  # Check if release fetch failed (API returns error message)
+  if echo "$RELEASE_INFO" | grep -q '"message"'; then
+    ERROR_MSG=$(echo "$RELEASE_INFO" | grep -o '"message": "[^"]*"' | cut -d'"' -f4)
+    echo "⚠️  Warning: Failed to fetch release information from GitHub: $ERROR_MSG"
+    if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+      echo "   Hint: For private repos, set GITHUB_TOKEN environment variable"
+    fi
+    echo "   API URL: $API_URL"
+    exit 1
+  fi
+
   # For private repos, we need to use the API asset URL, not browser_download_url
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     # Extract the asset URL from the API response
