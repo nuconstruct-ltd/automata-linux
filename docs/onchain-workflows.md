@@ -33,7 +33,7 @@ sequenceDiagram
     participant AA as Attestation Agent
     participant RC as Registry Contract
 
-    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1)
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 1, chain_id: 11155111)
     AA-->>CVM: base64(calldata)
     CVM->>CVM: base64-decode calldata
     CVM->>RC: submitTX(calldata)
@@ -52,7 +52,7 @@ sequenceDiagram
     participant PP as Remote ZkProver
     participant RC as Registry Contract
 
-    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 2/3, image_id=XXX, api_key=XXX, version=XXX)
+    CVM->>AA: POST /onchain/registration-collaterals <br/> (report_type: 2/3, chain_id: 11155111, image_id=XXX, api_key=XXX, version=XXX)
     AA->>PP: (TEE report, certs)
     PP-->>AA: Groth-16 zkProof
     AA-->>CVM: base64(calldata)
