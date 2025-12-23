@@ -6,6 +6,9 @@ CSP="$1"
 REPO="automata-network/cvm-base-image"
 RELEASE_TAG="${RELEASE_TAG:-latest}"  # Use RELEASE_TAG env var or default to "latest"
 
+# Track whether we downloaded a new disk image
+DOWNLOADED_IMAGE=false
+
 # quit when any error occurs
 set -Eeuo pipefail
 
@@ -97,6 +100,29 @@ download_from_github() {
   echo "✅ Downloaded ${filename}"
 }
 
+# Download and extract secure boot certificates from GitHub Release
+download_secure_boot_certs() {
+  local zip_file="secure-boot-certs.zip"
+  local target_dir="secure_boot"
+
+  echo "⌛ Downloading secure boot certificates..."
+
+  # Download the zip file
+  download_from_github "$zip_file"
+
+  # Create target directory if it doesn't exist
+  mkdir -p "$target_dir"
+
+  # Extract certificates (overwrite existing)
+  echo "⌛ Extracting secure boot certificates to ${target_dir}/..."
+  unzip -o "$zip_file" -d "$target_dir"
+
+  # Clean up zip file
+  rm -f "$zip_file"
+
+  echo "✅ Secure boot certificates extracted to ${target_dir}/"
+}
+
 # ---------- per-CSP logic ----------------------------------------------------
 
 if [ "$CSP" = "aws" ]; then
@@ -104,6 +130,7 @@ if [ "$CSP" = "aws" ]; then
 
   if [[ ! -f "$FILE" ]]; then
     download_from_github "$FILE"
+    DOWNLOADED_IMAGE=true
   else
     echo "✅ '$FILE' already exists."
   fi
@@ -116,6 +143,7 @@ elif [ "$CSP" = "azure" ]; then
     # Download compressed file
     if [[ ! -f "$COMPRESSED_FILE" ]]; then
       download_from_github "$COMPRESSED_FILE"
+      DOWNLOADED_IMAGE=true
     else
       echo "✅ '$COMPRESSED_FILE' already exists."
     fi
@@ -133,6 +161,7 @@ elif [ "$CSP" = "gcp" ]; then
 
   if [[ ! -f "$FILE" ]]; then
     download_from_github "$FILE"
+    DOWNLOADED_IMAGE=true
   else
     echo "✅ '$FILE' already exists."
   fi
@@ -140,6 +169,11 @@ elif [ "$CSP" = "gcp" ]; then
 else
   echo "❌ Error: Unsupported CSP '$CSP'. Supported CSPs are: aws, azure, gcp."
   exit 1
+fi
+
+# Download and extract secure boot certificates only if we downloaded a new disk image
+if [[ "$DOWNLOADED_IMAGE" == "true" ]]; then
+  download_secure_boot_certs
 fi
 
 set +e
