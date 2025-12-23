@@ -67,20 +67,18 @@ All disk images built through the CI pipeline include **SLSA Build Level 2** pro
 **Quick Verification:**
 
 ```bash
-# Install cosign (if not already installed)
-# See: https://docs.sigstore.dev/cosign/installation/
-
-# Download attestations from release
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/attestations.zip
-unzip attestations.zip
+# Download disk image and attestations
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
 
 # Verify AWS VMDK attestation
-cosign verify-blob-attestation \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --signature aws_disk.vmdk.att \
-  aws_disk.vmdk
+./cvm-cli verify-attestation aws_disk.vmdk
 ```
+
+> [!Note]
+> - For private repositories, set `GITHUB_TOKEN` environment variable before running commands
+> - To use a specific release, set `RELEASE_TAG` (e.g., `export RELEASE_TAG=v1.0.0`)
+> - You must download the disk image first before verifying its attestation
 
 **What's Attested:**
 - Source commit SHA and repository
@@ -297,19 +295,13 @@ Each disk image includes a signed attestation containing:
 ### Verifying Attestations
 
 ```bash
-# Install cosign
-# See: https://docs.sigstore.dev/cosign/installation/
+# Download disk image and attestations from latest release
+# For private repos: export GITHUB_TOKEN=your_token
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
 
-# Download attestations from any release
-wget https://github.com/automata-network/cvm-base-image/releases/download/latest/attestations.zip
-unzip attestations.zip
-
-# Verify any disk image (example: AWS VMDK)
-cosign verify-blob-attestation \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --signature aws_disk.vmdk.att \
-  aws_disk.vmdk
+# Verify the disk image attestation
+./cvm-cli verify-attestation aws_disk.vmdk
 ```
 
 ### Why Verify Attestations?

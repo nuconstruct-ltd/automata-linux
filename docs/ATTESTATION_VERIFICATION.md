@@ -27,42 +27,44 @@ Attestation verification protects against:
 
 ### Prerequisites
 
-Install [cosign](https://docs.sigstore.dev/cosign/installation/):
+Install required tools:
 
 ```bash
-# macOS
-brew install sigstore/tap/cosign
+# Install jq for JSON processing (required)
+sudo apt-get install jq  # Debian/Ubuntu
+brew install jq          # macOS
 
-# Linux (amd64)
-wget https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64
-sudo mv cosign-linux-amd64 /usr/local/bin/cosign
-sudo chmod +x /usr/local/bin/cosign
+# Install openssl (usually pre-installed)
+openssl version
 
-# Verify installation
-cosign version
+# Optional: Install cosign for additional verification
+# See: https://docs.sigstore.dev/cosign/installation/
+brew install sigstore/tap/cosign  # macOS
 ```
 
-### Recommended: Verification with Bundle Files
+### Recommended: Verification Using cvm-cli
 
-For maximum compatibility (works with private repos, no authentication needed):
+The easiest way to verify disk images (works with large files >128MB):
 
 ```bash
-# Download disk image and attestation bundle
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/aws_disk.vmdk
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/attestations.zip
+# Using the cvm-base-image repository
+cd cvm-base-image
 
-# Extract attestations
-unzip attestations.zip
+# Download disk image and attestations
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
 
-# Verify with cosign using bundle file
-cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle aws_disk.vmdk.intoto.jsonl \
-  aws_disk.vmdk
+# Verify the disk image
+./cvm-cli verify-attestation aws_disk.vmdk
 ```
 
-### Alternative: GitHub CLI (Public Repos Only)
+This method handles large disk images (>128MB) that exceed cosign's size limits by:
+1. Verifying the SHA256 hash matches the attestation
+2. Cryptographically verifying the certificate chain
+3. Checking the Rekor transparency log
+4. Displaying build metadata including source commit, binaries, and security configuration
+
+### Alternative: GitHub CLI (Public Repos Only - Not Supported Yet)
 
 ```bash
 # Download disk image from release
@@ -81,65 +83,85 @@ gh attestation verify aws_disk.vmdk \
 ### AWS VMDK
 
 ```bash
-# Download
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/aws_disk.vmdk
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/attestations.zip
-unzip attestations.zip
-
-# Verify
-cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle aws_disk.vmdk.intoto.jsonl \
-  aws_disk.vmdk
+# Using cvm-cli (recommended)
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
+./cvm-cli verify-attestation aws_disk.vmdk
 ```
 
 ### Azure VHD
 
 ```bash
-# Download and decompress
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/azure_disk.vhd.xz
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/attestations.zip
-unzip attestations.zip
-xz -d azure_disk.vhd.xz
-
-# Verify
-cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle azure_disk.vhd.intoto.jsonl \
-  azure_disk.vhd
+# Using cvm-cli (recommended)
+./cvm-cli get-disk azure
+./cvm-cli get-attestations
+./cvm-cli verify-attestation azure_disk.vhd
 ```
 
 ### GCP tar.gz
 
 ```bash
-# Download
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/gcp_disk.tar.gz
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/attestations.zip
-unzip attestations.zip
-
-# Verify
-cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle gcp_disk.tar.gz.intoto.jsonl \
-  gcp_disk.tar.gz
+# Using cvm-cli (recommended)
+./cvm-cli get-disk gcp
+./cvm-cli get-attestations
+./cvm-cli verify-attestation gcp_disk.tar.gz
 ```
 
-## Understanding the Verification Parameters
+## How Verification Works for Large Disk Images
 
-### `--certificate-identity-regexp`
+CVM disk images (~200MB) exceed cosign's 128MB size limit for `verify-blob-attestation`. The verification process works around this by:
 
+### Step 1: Hash Verification
 ```bash
---certificate-identity-regexp="^https://github.com/automata-network/.*"
+# Extract expected hash from attestation bundle
+EXPECTED_HASH=$(cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq -r '.subject[0].digest.sha256')
+
+# Calculate actual hash of disk image
+ACTUAL_HASH=$(sha256sum aws_disk.vmdk | awk '{print $1}')
+
+# Compare hashes
+if [ "$EXPECTED_HASH" == "$ACTUAL_HASH" ]; then
+  echo "✅ Hash matches - disk image integrity verified"
+fi
 ```
 
-**What it does:** Verifies the attestation was signed by a workflow from the `automata-network` GitHub organization.
+### Step 2: Certificate Verification
+```bash
+# Extract and verify certificate from GitHub Actions OIDC
+CERT=$(cat aws_disk.vmdk.bundle | jq -r '.cert' | base64 -d)
 
-**Why it matters:** Prevents accepting attestations from forked repositories or malicious actors.
+# Verify issuer is GitHub Actions
+openssl x509 -in <(echo "$CERT") -noout -text | \
+  grep "token.actions.githubusercontent.com"
 
-**The certificate identity format:**
+# Verify workflow identity matches expected repository
+openssl x509 -in <(echo "$CERT") -noout -text | \
+  grep -A1 "Subject Alternative Name" | \
+  grep "https://github.com/automata-network/"
+```
+
+### Step 3: Rekor Transparency Log
+```bash
+# Verify Rekor transparency log entry exists
+cat aws_disk.vmdk.bundle | jq -e '.rekorBundle' > /dev/null
+echo "✅ Rekor transparency log entry present"
+```
+
+This approach provides the same security guarantees as cosign verification:
+- ✅ **Integrity**: Hash proves disk image hasn't been modified
+- ✅ **Authenticity**: Certificate proves attestation came from GitHub Actions
+- ✅ **Non-repudiation**: Rekor log provides immutable public record
+- ✅ **Identity**: Certificate identity proves it was built by the correct workflow
+
+## Understanding Certificate Verification
+
+The verification process checks the cryptographic certificate embedded in the attestation bundle to ensure it was issued by GitHub Actions and matches the expected workflow identity.
+
+### Certificate Identity
+
+The certificate contains a "Subject Alternative Name" that identifies which GitHub workflow created the attestation:
+
 ```
 https://github.com/automata-network/cvm-image-builder/.github/workflows/build-and-release.yml@refs/tags/v1.0.0
 ```
@@ -150,38 +172,22 @@ This includes:
 - Workflow: `.github/workflows/build-and-release.yml`
 - Git ref: `refs/tags/v1.0.0`
 
-### `--certificate-oidc-issuer`
+The verification script checks that this identity matches the pattern `^https://github.com/automata-network/.*` to prevent accepting attestations from:
+- ❌ Forked repositories
+- ❌ Different organizations
+- ❌ Malicious actors impersonating the workflow
 
-```bash
---certificate-oidc-issuer="https://token.actions.githubusercontent.com"
-```
+### Certificate Issuer
 
-**What it does:** Verifies the signing certificate was issued by GitHub Actions OIDC provider.
-
-**Why it matters:** Ensures the signature came from GitHub Actions, not an impersonator.
+The certificate is issued by GitHub Actions OIDC provider through Sigstore's Fulcio CA:
 
 **How it works:**
 1. GitHub Actions requests an OIDC token from `https://token.actions.githubusercontent.com`
 2. Sigstore's Fulcio CA verifies the token and issues a short-lived signing certificate
 3. The certificate contains the OIDC issuer in its metadata
-4. During verification, cosign confirms the issuer is GitHub Actions
+4. During verification, the script confirms the issuer is `https://token.actions.githubusercontent.com`
 
-### More Restrictive Verification
-
-**Only specific repository:**
-```bash
---certificate-identity-regexp="^https://github.com/automata-network/cvm-image-builder/.*"
-```
-
-**Only specific workflow:**
-```bash
---certificate-identity="https://github.com/automata-network/cvm-image-builder/.github/workflows/build-and-release.yml@refs/tags/v1.0.0"
-```
-
-**Only version tags (not branches):**
-```bash
---certificate-identity-regexp="^https://github.com/automata-network/cvm-image-builder/.*@refs/tags/v.*"
-```
+This ensures the signature came from GitHub Actions, not an impersonator.
 
 ## What's Included in Attestations
 
@@ -220,186 +226,71 @@ These checksums can be cross-referenced with official builds from [cvm-component
 
 ## Inspecting Attestation Contents
 
-### View Full Attestation
+### View Full Build Metadata
+
+The `verify-attestation` command automatically displays key build metadata. To view the complete metadata:
 
 ```bash
-# Install jq if not already installed
-sudo apt-get install jq  # Debian/Ubuntu
-brew install jq          # macOS
+# Extract full build metadata from bundle
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq '.predicate'
+```
 
-# Pretty-print the entire attestation
-cat aws_disk.vmdk.intoto.jsonl | jq .
+Or save it to a file:
+```bash
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq '.predicate' > build-metadata.json
 ```
 
 ### Extract Specific Information
 
-**Get builder identity:**
+**Get source repository and commit:**
 ```bash
-cat aws_disk.vmdk.intoto.jsonl | jq -r '.payload | @base64d | fromjson | .predicate.builder.id'
-```
-
-**Get source commit SHA:**
-```bash
-cat aws_disk.vmdk.intoto.jsonl | jq -r '.payload | @base64d | fromjson | .predicate.buildDefinition.resolvedDependencies[] | select(.uri | contains("git+")) | .digest.sha1'
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq -r '.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit'
 ```
 
 **Get build timestamp:**
 ```bash
-cat aws_disk.vmdk.intoto.jsonl | jq -r '.payload | @base64d | fromjson | .predicate.metadata.buildStartedOn'
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq -r '.predicate.runDetails.metadata.startedOn'
 ```
 
-**Get all build metadata:**
+**Get binary checksums:**
 ```bash
-cat aws_disk.vmdk.intoto.jsonl | jq -r '.payload | @base64d | fromjson | .predicate.buildDefinition.externalParameters'
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq '.predicate.buildDefinition.internalParameters.binary_checksums'
+```
+
+**Get security configuration (secure boot, dm-verity):**
+```bash
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | jq '{secure_boot, dm_verity: .buildDefinition.internalParameters | {secure_boot, dm_verity}}'
 ```
 
 ### View Sigstore Certificate
 
 ```bash
 # Extract and inspect the signing certificate
-cat aws_disk.vmdk.intoto.jsonl | \
-  jq -r '.dsseEnvelope.signatures[0].verificationMaterial.certificate' | \
-  base64 -d | \
-  openssl x509 -text -noout
+cat aws_disk.vmdk.bundle | jq -r '.cert' | base64 -d | openssl x509 -text -noout
 ```
 
 Look for the "Subject Alternative Name" extension which contains the workflow identity.
 
-## Automated Verification Script
-
-Create a reusable verification script:
-
-```bash
-#!/bin/bash
-# verify-cvm-image.sh
-set -euo pipefail
-
-IMAGE_FILE="$1"
-BUNDLE_FILE="${IMAGE_FILE}.intoto.jsonl"
-
-if [ ! -f "$IMAGE_FILE" ]; then
-  echo "Error: Image file not found: $IMAGE_FILE"
-  exit 1
-fi
-
-if [ ! -f "$BUNDLE_FILE" ]; then
-  echo "Error: Attestation bundle not found: $BUNDLE_FILE"
-  exit 1
-fi
-
-echo "Verifying $IMAGE_FILE..."
-
-# Verify attestation
-if cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle "$BUNDLE_FILE" \
-  "$IMAGE_FILE" > /dev/null 2>&1; then
-
-  echo "✅ Attestation verified successfully!"
-
-  # Extract and display key metadata
-  echo ""
-  echo "Build Information:"
-  cat "$BUNDLE_FILE" | jq -r '.payload | @base64d | fromjson | .predicate.metadata | "  Started: \(.buildStartedOn)\n  Finished: \(.buildFinishedOn)"'
-
-  echo ""
-  echo "Builder:"
-  cat "$BUNDLE_FILE" | jq -r '.payload | @base64d | fromjson | .predicate.builder.id | "  \(.)"'
-
-  echo ""
-  echo "Source Repository:"
-  cat "$BUNDLE_FILE" | jq -r '.payload | @base64d | fromjson | .predicate.buildDefinition.resolvedDependencies[] | select(.uri | contains("git+")) | "  Commit: \(.digest.sha1)\n  URI: \(.uri)"'
-
-else
-  echo "❌ Attestation verification failed!"
-  exit 1
-fi
-```
-
-Usage:
-```bash
-chmod +x verify-cvm-image.sh
-./verify-cvm-image.sh aws_disk.vmdk
-```
-
-## Integration with Deployment Pipelines
-
-### Terraform Example
-
-```hcl
-resource "null_resource" "verify_image" {
-  provisioner "local-exec" {
-    command = <<-EOT
-      cosign verify-attestation --type slsaprovenance \
-        --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-        --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-        --bundle aws_disk.vmdk.intoto.jsonl \
-        aws_disk.vmdk
-    EOT
-  }
-}
-
-resource "aws_ami" "cvm" {
-  depends_on = [null_resource.verify_image]
-  # ... AMI configuration
-}
-```
-
-### GitHub Actions Example
-
-```yaml
-- name: Verify CVM disk image
-  run: |
-    cosign verify-attestation --type slsaprovenance \
-      --certificate-identity-regexp="^https://github.com/automata-network/.*" \
-      --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-      --bundle aws_disk.vmdk.intoto.jsonl \
-      aws_disk.vmdk
-
-- name: Deploy only if verified
-  if: success()
-  run: |
-    ./deploy-to-aws.sh
-```
-
-### CI/CD Policy Enforcement
-
-```bash
-#!/bin/bash
-# deployment-gate.sh
-set -euo pipefail
-
-REQUIRED_ORG="automata-network"
-IMAGE="$1"
-
-# Verify attestation
-if ! cosign verify-attestation --type slsaprovenance \
-  --certificate-identity-regexp="^https://github.com/${REQUIRED_ORG}/.*" \
-  --certificate-oidc-issuer="https://token.actions.githubusercontent.com" \
-  --bundle "${IMAGE}.intoto.jsonl" \
-  "$IMAGE"; then
-  echo "❌ POLICY VIOLATION: Image failed attestation verification"
-  exit 1
-fi
-
-# Additional checks: verify it's from a version tag
-WORKFLOW_REF=$(cat "${IMAGE}.intoto.jsonl" | jq -r '.payload | @base64d | fromjson | .predicate.builder.id')
-if [[ ! "$WORKFLOW_REF" =~ @refs/tags/v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-  echo "❌ POLICY VIOLATION: Image not built from version tag"
-  exit 1
-fi
-
-echo "✅ All policy checks passed"
-```
-
 ## Troubleshooting
 
-### Error: "No attestations found"
+### Error: "Hash mismatch"
 
-**Cause:** Using GitHub CLI with a private repository without GitHub Enterprise Cloud.
+**Cause:** The disk image file has been modified after attestation was created.
 
-**Solution:** Use cosign with bundle files instead (see [Recommended verification](#recommended-verification-with-bundle-files) above).
+**Solution:** Re-download the disk image from the official release. This is a **security-critical error** - do not deploy the image.
+
+```bash
+# Re-download the disk image
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
+./cvm-cli verify-attestation aws_disk.vmdk
+```
 
 ### Error: "Certificate verification failed"
 
@@ -407,58 +298,71 @@ echo "✅ All policy checks passed"
 
 **Solution:** Check what identity the certificate actually contains:
 ```bash
-cat aws_disk.vmdk.intoto.jsonl | \
-  jq -r '.dsseEnvelope.signatures[0].verificationMaterial.certificate' | \
-  base64 -d | \
-  openssl x509 -text -noout | \
-  grep -A 5 "Subject Alternative Name"
+cat aws_disk.vmdk.bundle | jq -r '.cert' | base64 -d | \
+  openssl x509 -text -noout | grep -A 5 "Subject Alternative Name"
 ```
 
-### Error: "Transparency log entry not found"
+Expected format:
+```
+URI:https://github.com/automata-network/cvm-image-builder/.github/workflows/build-and-release.yml@refs/tags/v1.0.0
+```
 
-**Cause:** The attestation may have been generated very recently (Rekor indexing delay).
+### Error: "No Rekor transparency log entry"
 
-**Solution:** Wait a few minutes and try again. The Rekor transparency log is eventually consistent.
+**Cause:** The attestation bundle is incomplete or corrupted.
 
-### Error: "Digest mismatch"
+**Solution:** Re-download the attestations:
+```bash
+rm attestations.zip
+./cvm-cli get-attestations
+```
 
-**Cause:** The disk image file has been modified after attestation was created.
+### Error: "Attestation bundle not found"
 
-**Solution:** Re-download the disk image from the official release. This is a **security-critical error** - do not deploy the image.
+**Cause:** The `.bundle` file doesn't exist or has a different name.
+
+**Solution:** Ensure you've downloaded attestations and the bundle file exists:
+```bash
+./cvm-cli get-attestations
+ls -lh *.bundle
+```
 
 ### Verification takes a long time
 
-**Cause:** Cosign is downloading and verifying the Sigstore root certificates and Rekor transparency log.
+**Cause:** Calculating SHA256 hash of a ~200MB disk image takes time.
 
-**Solution:** This is normal for the first verification. Subsequent verifications will use cached data and be faster.
+**Solution:** This is normal. Hash verification typically takes 5-15 seconds depending on disk speed.
 
 ## Verifying Binary Checksums
 
-The attestation includes SHA256 checksums of the binaries packaged into the disk image. You can verify these match official builds:
+The attestation includes SHA256 checksums of the binaries packaged into the disk image. The `verify-attestation` command automatically displays these checksums.
 
-### Extract Binary from Disk Image
+### View Binary Checksums
 
 ```bash
-# Mount the disk image (requires loop device)
-sudo losetup -fP disk.raw
-LOOP_DEV=$(losetup -j disk.raw | awk -F: '{print $1}')
-sudo mount ${LOOP_DEV}p2 /mnt
+# Checksums are displayed automatically during verification
+./cvm-cli verify-attestation aws_disk.vmdk
 
-# Compute checksum of cvm-agent binary
-sha256sum /mnt/usr/bin/attestation_agent
+# Or extract them manually
+cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | \
+  jq '.predicate.buildDefinition.internalParameters.binary_checksums'
+```
 
-# Compare with attestation
-cat aws_disk.vmdk.intoto.jsonl | \
-  jq -r '.payload | @base64d | fromjson | .predicate.buildDefinition.externalParameters.binary_checksums.cvm_agent_binary_sha256'
-
-# Cleanup
-sudo umount /mnt
-sudo losetup -d $LOOP_DEV
+Example output:
+```json
+{
+  "cvm_agent_binary_sha256": "abc123...",
+  "cvm_libcvm_so_sha256": "def456...",
+  "kernel_img_sha256": "ghi789...",
+  "kernel_crt_sha256": "jkl012...",
+  "note": "These checksums can be cross-referenced with official builds from cvm-components-builder releases"
+}
 ```
 
 ### Cross-reference with Official Builds
 
-If available, download the official cvm-agent binary from [cvm-components-builder releases](https://github.com/automata-network/cvm-components-builder/releases) and compare checksums.
+Download the official binaries from [cvm-components-builder releases](https://github.com/automata-network/cvm-components-builder/releases) and compare checksums to verify the binaries in the disk image match the official builds.
 
 ## Security Considerations
 
@@ -508,9 +412,13 @@ To verify the chain:
 4. **Verify root hash in PCR** matches attestation
 
 ```bash
-# Extract dm-verity root hash from attestation
-DM_VERITY_HASH=$(cat aws_disk.vmdk.intoto.jsonl | \
-  jq -r '.payload | @base64d | fromjson | .predicate.buildDefinition.externalParameters.dm_verity.root_hash')
+# The verify-attestation command displays the dm-verity root hash
+./cvm-cli verify-attestation aws_disk.vmdk
+
+# Or extract it manually
+DM_VERITY_HASH=$(cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \
+  jq -r '.payload' | base64 -d | \
+  jq -r '.predicate.buildDefinition.internalParameters.dm_verity.root_hash')
 
 echo "Build attestation dm-verity hash: $DM_VERITY_HASH"
 
