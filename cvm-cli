@@ -9,6 +9,8 @@ usage() {
     echo "  deploy-gcp               Deploy a VM onto GCP using gcp_disk.tar.gz."
     echo "  update-workload          Update the workload on a deployed CVM."
     echo "  get-disk                 Get the disk image for a specific Cloud Provider."
+    echo "  get-attestations         Download SLSA provenance attestations from GitHub Release."
+    echo "  verify-attestation       Verify SLSA provenance attestation for a disk image."
     echo "  update-disk              Update the workload on a specified disk file."
     echo "  get-logs                 Retrieve logs from a deployed CVM."
     echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
@@ -58,6 +60,10 @@ usage() {
     echo ""
     echo "Arguments for the 'get-disk' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
+    echo ""
+    echo "Arguments for 'verify-attestation' command:"
+    echo "  <DISK_FILE>    Path to disk image (e.g., aws_disk.vmdk, azure_disk.vhd, gcp_disk.tar.gz)"
+    echo "  [BUNDLE_FILE]  Optional: Path to attestation bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
     echo "  <DISK PATH>    The path to your disk image."
@@ -371,6 +377,26 @@ case "$COMMAND" in
             exit 1
         fi
         ./scripts/get_disk_image.sh "$CSP"
+        ;;
+
+    get-attestations)
+        echo "📦 Downloading SLSA provenance attestations..."
+        ./scripts/get_attestations.sh
+        ;;
+
+    verify-attestation)
+        DISK_FILE=$1; shift 1
+        BUNDLE_FILE="${1:-}"
+        if [[ -z "$DISK_FILE" ]]; then
+            echo "❌ Please provide the disk file to verify"
+            echo "❌ Usage: $0 verify-attestation <DISK_FILE> [BUNDLE_FILE]"
+            exit 1
+        fi
+        if [[ -n "$BUNDLE_FILE" ]]; then
+            ./scripts/verify_attestation.sh "$DISK_FILE" "$BUNDLE_FILE"
+        else
+            ./scripts/verify_attestation.sh "$DISK_FILE"
+        fi
         ;;
 
     update-disk)

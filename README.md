@@ -17,6 +17,7 @@
 - [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
+- [Security & Attestations](#security--attestations)
 - [Troubleshooting](#troubleshooting)
 
 
@@ -58,6 +59,36 @@ export RELEASE_TAG=v1.0.0
 > If these environment variables are not set:
 > - `RELEASE_TAG` defaults to `latest`
 > - `GITHUB_TOKEN` is only required for private repositories
+
+### Verifying Disk Image Attestations <!-- omit in toc -->
+
+All disk images built through the CI pipeline include **SLSA Build Level 2** provenance attestations that cryptographically verify the build process. These attestations provide transparency into what was built, when, and by whom.
+
+**Quick Verification:**
+
+```bash
+# Download disk image and attestations
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
+
+# Verify AWS VMDK attestation
+./cvm-cli verify-attestation aws_disk.vmdk
+```
+
+> [!Note]
+> - For private repositories, set `GITHUB_TOKEN` environment variable before running commands
+> - To use a specific release, set `RELEASE_TAG` (e.g., `export RELEASE_TAG=v1.0.0`)
+> - You must download the disk image first before verifying its attestation
+
+**What's Attested:**
+- Source commit SHA and repository
+- Binary checksums (cvm-agent, kernel, libraries)
+- Secure boot key fingerprints
+- dm-verity root hash for rootfs integrity
+- Build tool versions and environment
+- Build timestamp and builder identity
+
+For complete verification instructions and security details, see [docs/ATTESTATION_VERIFICATION.md](docs/ATTESTATION_VERIFICATION.md).
 
 ## Quickstart
 
@@ -246,6 +277,41 @@ A detailed walkthrough of what can be customized and any other features availabl
 
 ## Architecture
 Details of our CVM trust chain and attestation architecture can be found in [this doc](docs/architecture.md).
+
+## Security & Attestations
+
+All disk images released through this repository include cryptographically signed **SLSA Build Level 2** provenance attestations. These attestations provide verifiable proof of the build process and contents.
+
+### What's Attested
+
+Each disk image includes a signed attestation containing:
+
+- **Build Provenance**: Exact source commit, submodule versions, and repository
+- **Binary Integrity**: SHA256 checksums of all binaries (cvm-agent, kernel, libraries)
+- **Security Configuration**: Secure boot key fingerprints and dm-verity root hashes
+- **Build Environment**: Complete build tool versions and parameters
+- **Builder Identity**: GitHub Actions runner and workflow information
+
+### Verifying Attestations
+
+```bash
+# Download disk image and attestations from latest release
+# For private repos: export GITHUB_TOKEN=your_token
+./cvm-cli get-disk aws
+./cvm-cli get-attestations
+
+# Verify the disk image attestation
+./cvm-cli verify-attestation aws_disk.vmdk
+```
+
+### Why Verify Attestations?
+
+- **Supply Chain Security**: Ensure disk images haven't been tampered with
+- **Compliance**: Meet regulatory requirements for software provenance
+- **Transparency**: Understand exactly what's included in each disk image
+- **Reproducibility**: Verify builds match the claimed source code
+
+For detailed verification instructions, security considerations, and troubleshooting, see [docs/ATTESTATION_VERIFICATION.md](docs/ATTESTATION_VERIFICATION.md).
 
 ## Troubleshooting
 Running into trouble deploying the CVM? We have some common Q&A in [this doc](docs/troubleshooting.md).
