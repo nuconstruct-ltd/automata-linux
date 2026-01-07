@@ -185,6 +185,8 @@ case "$COMMAND" in
         set -euo pipefail
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "aws" "$VM_TYPE" "$REGION"
+        # Change to disk directory for disk operations
+        cd "$DISK_DIR"
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "aws"
         # Update the disk image with the latest workload
@@ -260,6 +262,8 @@ case "$COMMAND" in
         set -euo pipefail
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "gcp" "$VM_TYPE" "$REGION"
+        # Change to disk directory for disk operations
+        cd "$DISK_DIR"
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "gcp"
         # Update the disk image with the latest workload
@@ -372,6 +376,8 @@ case "$COMMAND" in
 
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "azure" "$VM_TYPE" "$REGION"
+        # Change to disk directory for disk operations
+        cd "$DISK_DIR"
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "azure"
         # Update the disk image with the latest workload
@@ -420,11 +426,13 @@ case "$COMMAND" in
             echo "❌ Usage: $0 get-disk <CSP>"
             exit 1
         fi
+        cd "$DISK_DIR"
         "$SCRIPT_DIR/get_disk_image.sh" "$CSP"
         ;;
 
     get-attestations)
         echo "📦 Downloading SLSA provenance attestations..."
+        cd "$DISK_DIR"
         "$SCRIPT_DIR/get_attestations.sh"
         ;;
 
@@ -451,6 +459,7 @@ case "$COMMAND" in
             exit 1
         fi
         echo "Updating workload on disk: $DISK_FILE"
+        cd "$DISK_DIR"
         "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
         ;;
 
