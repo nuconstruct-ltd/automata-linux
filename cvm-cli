@@ -1,5 +1,49 @@
 #!/bin/bash
 
+# ============================================================================
+# Path Detection - Support both installed and development modes
+# ============================================================================
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if installed via package manager (highest priority)
+if [ -d "/usr/local/share/cvm-cli/scripts" ]; then
+    INSTALL_DIR="/usr/local/share/cvm-cli"
+    SCRIPT_DIR="$INSTALL_DIR/scripts"
+    WORKLOAD_DIR="$INSTALL_DIR/workload"
+    TOOLS_DIR="$INSTALL_DIR/tools"
+    IS_INSTALLED=true
+elif [ -d "/usr/share/cvm-cli/scripts" ]; then
+    # Alternative system installation path
+    INSTALL_DIR="/usr/share/cvm-cli"
+    SCRIPT_DIR="$INSTALL_DIR/scripts"
+    WORKLOAD_DIR="$INSTALL_DIR/workload"
+    TOOLS_DIR="$INSTALL_DIR/tools"
+    IS_INSTALLED=true
+elif [ -d "$SCRIPT_PATH/scripts" ]; then
+    # Running from git clone (development mode)
+    SCRIPT_DIR="$SCRIPT_PATH/scripts"
+    WORKLOAD_DIR="$SCRIPT_PATH/workload"
+    TOOLS_DIR="$SCRIPT_PATH/tools"
+    IS_INSTALLED=false
+else
+    echo "❌ Error: Cannot locate cvm-cli installation"
+    exit 1
+fi
+
+# Create working directory for artifacts and disk images
+# When installed: use ~/.cvm-cli for user data
+# When in dev mode: use ./_artifacts in repo
+if [ "$IS_INSTALLED" = true ]; then
+    CVM_HOME="$HOME/.cvm-cli"
+    ARTIFACT_DIR="$CVM_HOME/artifacts"
+    DISK_DIR="$CVM_HOME/disks"
+    mkdir -p "$ARTIFACT_DIR" "$DISK_DIR"
+else
+    ARTIFACT_DIR="$SCRIPT_PATH/_artifacts"
+    DISK_DIR="$SCRIPT_PATH"
+    mkdir -p "$ARTIFACT_DIR"
+fi
+
 usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -126,9 +170,9 @@ case "$COMMAND" in
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
             # Check whether bucket exists in _artifacts, use that first, if not generate a new one
-            if [[ -f "./_artifacts/aws_${VM_NAME}_bucket" ]]; then
-                BUCKET=$(<"_artifacts/aws_${VM_NAME}_bucket")
-                echo "ℹ️  Using existing bucket name from _artifacts: $BUCKET"
+            if [[ -f "$ARTIFACT_DIR/aws_${VM_NAME}_bucket" ]]; then
+                BUCKET=$(<"$ARTIFACT_DIR/aws_${VM_NAME}_bucket")
+                echo "ℹ️  Using existing bucket name from artifacts: $BUCKET"
             else
                 # Generate a new bucket name
                 SANITIZED_VM_NAME=$(echo "$VM_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
@@ -140,17 +184,17 @@ case "$COMMAND" in
 
         set -euo pipefail
         # Check vm options
-        ./scripts/check_options.sh "aws" "$VM_TYPE" "$REGION"
+        "$SCRIPT_DIR/check_options.sh" "aws" "$VM_TYPE" "$REGION"
         # Ensure the disk image exists
-        ./scripts/get_disk_image.sh "aws"
+        "$SCRIPT_DIR/get_disk_image.sh" "aws"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
-            ./scripts/update_disk.sh "aws_disk.vmdk"
+            "$SCRIPT_DIR/update_disk.sh" "aws_disk.vmdk"
         fi
         # Check that CSP CLI dependencies are installed
-        ./scripts/check_csp_deps.sh "aws"
+        "$SCRIPT_DIR/check_csp_deps.sh" "aws"
         # Generate API token for disk
-        ./scripts/generate_api_token.sh "aws_disk.vmdk" "aws" "$VM_NAME"
+        "$SCRIPT_DIR/generate_api_token.sh" "aws_disk.vmdk" "aws" "$VM_NAME"
         # Deploy the VM
         echo "Deploying aws_disk.vmdk with the following parameters:"
         echo "🔹VM Name: $VM_NAME"
@@ -161,8 +205,8 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
-        ./scripts/make_aws_vm.sh "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$EIP_AID" "$ATTACH_DISK" "$DISK_SIZE"
-        ./scripts/get_golden_measurements.sh "aws" "$VM_NAME"
+        "$SCRIPT_DIR/make_aws_vm.sh" "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$EIP_AID" "$ATTACH_DISK" "$DISK_SIZE"
+        "$SCRIPT_DIR/get_golden_measurements.sh" "aws" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
         ;;
@@ -201,9 +245,9 @@ case "$COMMAND" in
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
             # Check whether bucket exists in _artifacts, use that first, if not generate a new one
-            if [[ -f "./_artifacts/gcp_${VM_NAME}_bucket" ]]; then
-                BUCKET=$(<"_artifacts/gcp_${VM_NAME}_bucket")
-                echo "ℹ️  Using existing bucket name from _artifacts: $BUCKET"
+            if [[ -f "$ARTIFACT_DIR/gcp_${VM_NAME}_bucket" ]]; then
+                BUCKET=$(<"$ARTIFACT_DIR/gcp_${VM_NAME}_bucket")
+                echo "ℹ️  Using existing bucket name from artifacts: $BUCKET"
             else
                 # Generate a new bucket name
                 SANITIZED_VM_NAME=$(echo "$VM_NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
@@ -215,15 +259,15 @@ case "$COMMAND" in
 
         set -euo pipefail
         # Check vm options
-        ./scripts/check_options.sh "gcp" "$VM_TYPE" "$REGION"
+        "$SCRIPT_DIR/check_options.sh" "gcp" "$VM_TYPE" "$REGION"
         # Ensure the disk image exists
-        ./scripts/get_disk_image.sh "gcp"
+        "$SCRIPT_DIR/get_disk_image.sh" "gcp"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
-            ./scripts/update_disk.sh "gcp_disk.tar.gz"
+            "$SCRIPT_DIR/update_disk.sh" "gcp_disk.tar.gz"
         fi
         # Check that CSP CLI dependencies are installed
-        ./scripts/check_csp_deps.sh "gcp"
+        "$SCRIPT_DIR/check_csp_deps.sh" "gcp"
 
         # === Derive PROJECT_ID if not provided ===
         if [[ -z "$PROJECT_ID" ]]; then
@@ -237,7 +281,7 @@ case "$COMMAND" in
         fi
 
         # Generate API token for disk
-        ./scripts/generate_api_token.sh "gcp_disk.tar.gz" "gcp" "$VM_NAME"
+        "$SCRIPT_DIR/generate_api_token.sh" "gcp_disk.tar.gz" "gcp" "$VM_NAME"
         # Deploy the VM
         echo "Deploying gcp_disk.tar.gz with the following parameters:"
         echo "🔹VM Name: $VM_NAME"
@@ -248,8 +292,8 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
-        ./scripts/make_gcp_vm.sh "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$IP" "$ATTACH_DISK" "$DISK_SIZE"
-        ./scripts/get_golden_measurements.sh "gcp" "$VM_NAME"
+        "$SCRIPT_DIR/make_gcp_vm.sh" "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$IP" "$ATTACH_DISK" "$DISK_SIZE"
+        "$SCRIPT_DIR/get_golden_measurements.sh" "gcp" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
         ;;
@@ -285,7 +329,7 @@ case "$COMMAND" in
 
         set -euo pipefail
         # Check that CSP CLI dependencies are installed
-        ./scripts/check_csp_deps.sh "azure"
+        "$SCRIPT_DIR/check_csp_deps.sh" "azure"
 
         # === Derive from VM_NAME ===
         if [[ -z "$RESOURCE_GROUP" ]]; then
@@ -327,15 +371,15 @@ case "$COMMAND" in
         fi
 
         # Check vm options
-        ./scripts/check_options.sh "azure" "$VM_TYPE" "$REGION"
+        "$SCRIPT_DIR/check_options.sh" "azure" "$VM_TYPE" "$REGION"
         # Ensure the disk image exists
-        ./scripts/get_disk_image.sh "azure"
+        "$SCRIPT_DIR/get_disk_image.sh" "azure"
         # Update the disk image with the latest workload
         if [ "$ADD_WORKLOAD" = true ]; then
-            ./scripts/update_disk.sh "azure_disk.vhd"
+            "$SCRIPT_DIR/update_disk.sh" "azure_disk.vhd"
         fi
         # Generate API token for disk
-        ./scripts/generate_api_token.sh "azure_disk.vhd" "azure" "$VM_NAME"
+        "$SCRIPT_DIR/generate_api_token.sh" "azure_disk.vhd" "azure" "$VM_NAME"
         echo "Deploying azure_disk.vhd with the following parameters:"
         echo "🔹VM Name: $VM_NAME"
         echo "🔹Resource Group: $RESOURCE_GROUP"
@@ -347,9 +391,9 @@ case "$COMMAND" in
         echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
 
-        ./scripts/make_azure_vm.sh "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"  \
+        "$SCRIPT_DIR/make_azure_vm.sh" "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"  \
                         "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE"
-        ./scripts/get_golden_measurements.sh "azure" "$VM_NAME"
+        "$SCRIPT_DIR/get_golden_measurements.sh" "azure" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
         ;;
@@ -363,9 +407,9 @@ case "$COMMAND" in
             exit 1
         fi
         set -euo pipefail
-        ./scripts/update_remote_workload.sh "$CSP" "$VM_NAME"
+        "$SCRIPT_DIR/update_remote_workload.sh" "$CSP" "$VM_NAME"
         echo "Updating golden measurements..."
-        ./scripts/get_golden_measurements.sh "$CSP" "$VM_NAME"
+        "$SCRIPT_DIR/get_golden_measurements.sh" "$CSP" "$VM_NAME"
         set +e
         ;;
 
@@ -376,12 +420,12 @@ case "$COMMAND" in
             echo "❌ Usage: $0 get-disk <CSP>"
             exit 1
         fi
-        ./scripts/get_disk_image.sh "$CSP"
+        "$SCRIPT_DIR/get_disk_image.sh" "$CSP"
         ;;
 
     get-attestations)
         echo "📦 Downloading SLSA provenance attestations..."
-        ./scripts/get_attestations.sh
+        "$SCRIPT_DIR/get_attestations.sh"
         ;;
 
     verify-attestation)
@@ -393,9 +437,9 @@ case "$COMMAND" in
             exit 1
         fi
         if [[ -n "$BUNDLE_FILE" ]]; then
-            ./scripts/verify_attestation.sh "$DISK_FILE" "$BUNDLE_FILE"
+            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE" "$BUNDLE_FILE"
         else
-            ./scripts/verify_attestation.sh "$DISK_FILE"
+            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE"
         fi
         ;;
 
@@ -407,7 +451,7 @@ case "$COMMAND" in
             exit 1
         fi
         echo "Updating workload on disk: $DISK_FILE"
-        ./scripts/update_disk.sh "$DISK_FILE"
+        "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
         ;;
 
     get-logs)
@@ -419,7 +463,7 @@ case "$COMMAND" in
             exit 1
         fi
         set -euo pipefail
-        ./scripts/get_cvm_logs.sh "$CSP" "$VM_NAME"
+        "$SCRIPT_DIR/get_cvm_logs.sh" "$CSP" "$VM_NAME"
         set +e
         ;;
 
@@ -433,13 +477,13 @@ case "$COMMAND" in
         fi
         case "$CSP" in
             aws)
-                ./scripts/cleanup_aws_vm.sh "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_aws_vm.sh" "$VM_NAME"
                 ;;
             gcp)
-                ./scripts/cleanup_gcp_vm.sh "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_gcp_vm.sh" "$VM_NAME"
                 ;;
             azure)
-                ./scripts/cleanup_azure_vm.sh "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_azure_vm.sh" "$VM_NAME"
                 ;;
         esac
         ;;
@@ -452,7 +496,7 @@ case "$COMMAND" in
             exit 1
         fi
         set -euo pipefail
-        ./scripts/sign_livepatch.sh "$LIVEPATCH_FILE"
+        "$SCRIPT_DIR/sign_livepatch.sh" "$LIVEPATCH_FILE"
         echo "Livepatch signed successfully: $LIVEPATCH_FILE"
         set +e
         ;;
@@ -467,13 +511,13 @@ case "$COMMAND" in
             exit 1
         fi
         set -euo pipefail
-        ./scripts/livepatch.sh "$CSP" "$VM_NAME" "$LIVEPATCH_PATH"
+        "$SCRIPT_DIR/livepatch.sh" "$CSP" "$VM_NAME" "$LIVEPATCH_PATH"
         set +e
         ;;
 
     generate-livepatch-keys)
         # Generate livepatch keys
-        ./scripts/generate_livepatch_keys.sh
+        "$SCRIPT_DIR/generate_livepatch_keys.sh
         ;;
 
     sign-image)
@@ -486,7 +530,7 @@ case "$COMMAND" in
         if [[ -z "$SOURCE_IMAGE" || -z "$TARGET_IMAGE" || -z "$COSIGN_PRI" || -z "$COSIGN_PUB" ]]; then
             usage
         fi
-        ./scripts/sign-and-verify.sh $SOURCE_IMAGE $TARGET_IMAGE $COSIGN_PRI $COSIGN_PUB
+        "$SCRIPT_DIR/sign-and-verify.sh $SOURCE_IMAGE $TARGET_IMAGE $COSIGN_PRI $COSIGN_PUB
         ;;
 
     *)

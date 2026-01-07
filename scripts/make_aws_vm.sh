@@ -94,7 +94,7 @@ if [ -f "$UEFI_BLOB" ]; then
   echo "$UEFI_BLOB exists. Continuing..."
 else
   echo "$UEFI_BLOB does not exist! Creating now!"
-  ./scripts/create-aws-uefi-blob.sh
+  $SCRIPT_DIR/create-aws-uefi-blob.sh
 fi
 
 # First delete any old AMI with the same name

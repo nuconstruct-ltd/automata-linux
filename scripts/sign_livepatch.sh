@@ -14,10 +14,10 @@ fi
 os_type="$(uname)"
 if [[ "$os_type" == "Linux" ]]; then
     echo "Signing livepatch locally..."
-    ./scripts/sign_livepatch_locally.sh $LIVEPATCH_PATH
+    $SCRIPT_DIR/sign_livepatch_locally.sh $LIVEPATCH_PATH
 elif [[ "$os_type" == "Darwin" ]]; then
     echo "🔁 Using Multipass to sign livepatch..."
-    bash "./scripts/sign_livepatch_via_multipass.sh" "$LIVEPATCH_PATH"
+    bash "$SCRIPT_DIR/sign_livepatch_via_multipass.sh" "$LIVEPATCH_PATH"
 else
     echo "Unsupported OS: $os_type"
     exit 1

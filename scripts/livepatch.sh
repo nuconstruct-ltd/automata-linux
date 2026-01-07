@@ -44,7 +44,7 @@ if [[ "$code" -ne 200 ]]; then
 else
     echo "✅ Livepatch successfully deployed to $VM_NAME ($CSP)."
     echo "ℹ️  Regenerating Golden Measurements now..."
-    ./scripts/get_golden_measurements.sh "$CSP" "$VM_NAME"
+    $SCRIPT_DIR/get_golden_measurements.sh "$CSP" "$VM_NAME"
 fi
 
 set +e

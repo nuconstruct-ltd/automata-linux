@@ -50,9 +50,9 @@ echo "🛠️ Running update logic inside VM..."
 multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
   cd $VM_PROJECT_PATH
-  chmod +x ./scripts/update_disk_locally.sh
-  echo '▶️ Running: ./scripts/update_disk_locally.sh $DISK_FILENAME'
-  ./scripts/update_disk_locally.sh $DISK_FILENAME
+  chmod +x $SCRIPT_DIR/update_disk_locally.sh
+  echo '▶️ Running: $SCRIPT_DIR/update_disk_locally.sh $DISK_FILENAME'
+  $SCRIPT_DIR/update_disk_locally.sh $DISK_FILENAME
 "
 
 # Step 8: Retrieve updated disk
