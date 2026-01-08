@@ -14,7 +14,19 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 ## Installation
 
-### Quick Install
+## 📑 Table of Contents <!-- omit in toc -->
+- [Quick Install](#quick-install)
+- [Prerequisites](#prerequisites)
+- [Quickstart](#quickstart)
+- [Deploying the CVM with your Workload](#deploying-the-cvm-with-your-workload)
+- [Live Demo](#live-demo)
+- [Detailed Walkthrough](#detailed-walkthrough)
+- [Architecture](#architecture)
+- [Security & Attestations](#security--attestations)
+- [Troubleshooting](#troubleshooting)
+
+
+## Quick Install
 
 **Ubuntu/Debian:**
 ```bash
@@ -36,18 +48,6 @@ brew install cvm-cli
 ```
 
 📖 **For detailed installation instructions, see [INSTALL.md](INSTALL.md)**
-
-## 📑 Table of Contents <!-- omit in toc -->
-- [Installation](#installation)
-- [Prerequisites](#prerequisites)
-- [Quickstart](#quickstart)
-- [Deploying the CVM with your workload](#deploying-the-cvm-with-your-workload)
-- [Live Demo](#live-demo)
-- [Detailed Walkthrough](#detailed-walkthrough)
-- [Architecture](#architecture)
-- [Security & Attestations](#security--attestations)
-- [Troubleshooting](#troubleshooting)
-
 
 ## Prerequisites
 
