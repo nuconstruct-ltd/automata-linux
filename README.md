@@ -277,6 +277,13 @@ Use this command to delete the VM once you no longer need it.
 ./cvm-cli cleanup gcp cvm-test
 ```
 
+#### Cleaning Up Local Artifacts <!-- omit in toc -->
+Use this command to remove all locally downloaded disk images, attestations, and other artifacts.
+
+```bash
+./cvm-cli cleanup-local
+```
+
 #### (Advanced) Kernel Livepatching <!-- omit in toc -->
 Use this command to deploy a livepatch onto the CVM. Please checkout our [kernel livepatch guide](./docs/livepatching.md) for more details.
 
