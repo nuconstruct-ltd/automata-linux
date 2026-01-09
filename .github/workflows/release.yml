@@ -43,9 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     container: fedora:latest
     steps:
-      - name: Install dependencies
+      - name: Install Git and dependencies
         run: |
-          dnf install -y rpm-build rpmdevtools make jq curl openssl qemu-img python3
+          dnf install -y git rpm-build rpmdevtools make jq curl openssl qemu-img python3
 
       - name: Checkout code
         uses: actions/checkout@v4
