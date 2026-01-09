@@ -4,7 +4,7 @@ CSP="$1"
 
 # GitHub repository information
 REPO="automata-network/cvm-base-image"
-RELEASE_TAG="${RELEASE_TAG:-latest}"  # Use RELEASE_TAG env var or default to "latest"
+RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 
 # Track whether we downloaded a new disk image
 DOWNLOADED_IMAGE=false
@@ -22,9 +22,43 @@ echo "⌛ Checking whether disk image exists..."
 
 # ---------- helpers ----------------------------------------------------------
 
+# Find the latest release that contains disk images (not CLI-only releases)
+find_latest_image_release() {
+  local api_url="https://api.github.com/repos/${REPO}/releases?per_page=20"
+  local releases_json
+
+  echo "⌛ Finding latest release with disk images..."
+
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    releases_json=$(curl -sL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$api_url")
+  else
+    releases_json=$(curl -sL "$api_url")
+  fi
+
+  # Find the first release that contains a disk image file (gcp_disk.tar.gz, aws_disk.vmdk, or azure_disk.vhd.xz)
+  local tag
+  tag=$(echo "$releases_json" | jq -r '
+    .[] | select(.assets[].name | test("gcp_disk\\.tar\\.gz|aws_disk\\.vmdk|azure_disk\\.vhd\\.xz")) | .tag_name
+  ' | head -1)
+
+  if [[ -z "$tag" || "$tag" == "null" ]]; then
+    echo "❌ Error: Could not find any release containing disk images"
+    echo "   Please set RELEASE_TAG environment variable to specify a release"
+    exit 1
+  fi
+
+  echo "✅ Found image release: ${tag}"
+  echo "$tag"
+}
+
 # Download file from GitHub Release
 download_from_github() {
   local filename="$1"
+
+  # Auto-detect release tag if not specified
+  if [[ -z "$RELEASE_TAG" ]]; then
+    RELEASE_TAG=$(find_latest_image_release)
+  fi
 
   # Determine API endpoint based on release tag
   if [[ "$RELEASE_TAG" == "latest" ]]; then
