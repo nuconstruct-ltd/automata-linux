@@ -1,10 +1,11 @@
 # Makefile for cvm-cli installation
 # Supports installation on Linux and macOS
 
+DESTDIR ?=
 PREFIX ?= /usr/local
-BINDIR = $(PREFIX)/bin
-SHAREDIR = $(PREFIX)/share/cvm-cli
-DOCDIR = $(PREFIX)/share/doc/cvm-cli
+BINDIR = $(DESTDIR)$(PREFIX)/bin
+SHAREDIR = $(DESTDIR)$(PREFIX)/share/cvm-cli
+DOCDIR = $(DESTDIR)$(PREFIX)/share/doc/cvm-cli
 
 VERSION = 0.1.0
 
