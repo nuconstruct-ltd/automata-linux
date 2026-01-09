@@ -113,34 +113,82 @@ jobs:
             dist/*.rpm
             dist/SHA256SUMS
           body: |
-            ## cvm-cli ${{ github.ref_name }}
+            ## cvm-cli ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
-            ### Installation
+            This release contains the **CLI packages only** (`.deb` and `.rpm`).
+            Disk images are released separately - the CLI will automatically find and download them.
+
+            ### Installation (Private Repository)
+
+            This is a private repository. You need a GitHub personal access token with `repo` scope.
 
             **Ubuntu/Debian:**
             ```bash
-            wget https://github.com/automata-network/cvm-base-image/releases/download/${{ github.ref_name }}/cvm-cli_0.1.0-1_all.deb
-            sudo dpkg -i cvm-cli_0.1.0-1_all.deb
+            # Set your GitHub token and release tag
+            export GITHUB_TOKEN=your_github_token_here
+            export RELEASE_TAG=${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+
+            # Get release info and download .deb package
+            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/automata-network/cvm-base-image/releases/tags/$RELEASE_TAG")
+            ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | endswith(".deb")) | .id')
+            DEB_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".deb")) | .name')
+
+            curl -L -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/$ASSET_ID" \
+              -o "$DEB_NAME"
+
+            # Install
+            sudo dpkg -i "$DEB_NAME"
             sudo apt-get install -f
             ```
 
             **Fedora/RHEL:**
             ```bash
-            wget https://github.com/automata-network/cvm-base-image/releases/download/${{ github.ref_name }}/cvm-cli-0.1.0-1.noarch.rpm
-            sudo dnf install cvm-cli-0.1.0-1.noarch.rpm
+            # Set your GitHub token and release tag
+            export GITHUB_TOKEN=your_github_token_here
+            export RELEASE_TAG=${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+
+            # Get release info and download .rpm package
+            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/automata-network/cvm-base-image/releases/tags/$RELEASE_TAG")
+            ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | endswith(".rpm")) | .id')
+            RPM_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .name')
+
+            curl -L -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/$ASSET_ID" \
+              -o "$RPM_NAME"
+
+            # Install
+            sudo dnf install "./$RPM_NAME"
             ```
 
-            **macOS (Homebrew):**
+            **Alternative: Using GitHub CLI**
             ```bash
-            brew tap automata-network/cvm-cli
-            brew install cvm-cli
+            gh release download ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }} --repo automata-network/cvm-base-image --pattern "*.deb"
+            sudo dpkg -i cvm-cli_*.deb
+            sudo apt-get install -f
             ```
+
+            ### Usage
+
+            After installation, set your GitHub token and run:
+            ```bash
+            export GITHUB_TOKEN=your_github_token_here
+            cvm-cli deploy-gcp    # Deploy to GCP
+            cvm-cli deploy-aws    # Deploy to AWS
+            cvm-cli deploy-azure  # Deploy to Azure
+            ```
+
+            The CLI will automatically find and download the latest disk image from image releases.
 
             ### What's New
             - Initial release of cvm-cli
             - Support for AWS, GCP, and Azure deployments
             - SLSA attestation verification
-            - Git-like command-line interface
+            - Automatic detection of latest image release
 
             ### Verify Downloads
             ```bash
