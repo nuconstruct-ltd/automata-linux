@@ -61,9 +61,19 @@ After installing `cvm-cli`, you need to set up credentials for the cloud provide
 ### AWS Setup
 
 ```bash
-# Install AWS CLI (if not already installed)
-# Ubuntu/Debian:
-sudo apt-get install awscli
+# Install AWS CLI v2 (if not already installed)
+# Linux (x86_64):
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Linux (ARM):
+curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Or using snap (Ubuntu):
+sudo snap install aws-cli --classic
 
 # macOS:
 brew install awscli
@@ -71,6 +81,8 @@ brew install awscli
 # Configure AWS credentials
 aws configure
 ```
+
+For more installation options, see: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 
 ### Google Cloud Platform Setup
 

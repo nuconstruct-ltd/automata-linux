@@ -24,6 +24,12 @@ help:
 install:
 	@echo "Installing cvm-cli $(VERSION) to $(PREFIX)..."
 
+	# Initialize git submodules if needed
+	@if [ -d .git ] && [ -z "$$(ls -A tools/python-uefivars 2>/dev/null)" ]; then \
+		echo "Initializing git submodules..."; \
+		git submodule update --init --recursive; \
+	fi
+
 	# Create installation directories
 	install -d $(BINDIR)
 	install -d $(SHAREDIR)/scripts

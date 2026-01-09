@@ -44,8 +44,10 @@ else
     mkdir -p "$ARTIFACT_DIR"
 fi
 
-# Export ARTIFACT_DIR so child scripts can inherit it
+# Export variables so child scripts can inherit them
 export ARTIFACT_DIR
+export SCRIPT_DIR
+export TOOLS_DIR
 
 usage() {
     echo "Usage: $0 <command> [options]"

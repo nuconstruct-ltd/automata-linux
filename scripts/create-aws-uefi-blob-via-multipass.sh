@@ -48,9 +48,10 @@ multipass exec "$VM_NAME" -- bash -c "
   sudo apt update && sudo apt install -yq efitools python3 python3-pip
   sudo pip3 install --no-input pefile google_crc32c
   cd $VM_PROJECT_PATH
-  chmod +x $SCRIPT_DIR/create-aws-uefi-blob-locally.sh
-  echo '▶️ Running: $SCRIPT_DIR/create-aws-uefi-blob-locally.sh'
-  $SCRIPT_DIR/create-aws-uefi-blob-locally.sh
+  SCRIPT_DIR=$VM_PROJECT_PATH/scripts
+  chmod +x \$SCRIPT_DIR/create-aws-uefi-blob-locally.sh
+  echo '▶️ Running: \$SCRIPT_DIR/create-aws-uefi-blob-locally.sh'
+  \$SCRIPT_DIR/create-aws-uefi-blob-locally.sh
 "
 
 # Step 5: Retrieve updated AWS UEFI blob

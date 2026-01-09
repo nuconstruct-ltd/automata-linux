@@ -44,9 +44,10 @@ echo "🛠️ Running logic inside VM..."
 multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
   cd $VM_PROJECT_PATH
-  chmod +x $SCRIPT_DIR/sign_livepatch_locally.sh
-  echo '▶️ Running: $SCRIPT_DIR/sign_livepatch_locally.sh $LIVEPATCH_FILENAME'
-  $SCRIPT_DIR/sign_livepatch_locally.sh $LIVEPATCH_FILENAME
+  SCRIPT_DIR=$VM_PROJECT_PATH/scripts
+  chmod +x \$SCRIPT_DIR/sign_livepatch_locally.sh
+  echo '▶️ Running: \$SCRIPT_DIR/sign_livepatch_locally.sh $LIVEPATCH_FILENAME'
+  \$SCRIPT_DIR/sign_livepatch_locally.sh $LIVEPATCH_FILENAME
 "
 
 # Step 6: Retrieve updated livepatch

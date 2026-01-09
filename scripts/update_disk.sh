@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Use SCRIPT_DIR from environment, or detect from this script's location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 DISK_FILE=$1
 
 # quit when any error occurs

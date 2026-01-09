@@ -8,6 +8,9 @@ DATA_DISK="$7"       # Optional EBS volume name
 DISK_SIZE_GB="$8"    # Optional disk size (for new disk)
 ARTIFACT_DIR="${9:-_artifacts}"  # Artifact directory (passed from cvm-cli)
 
+# Use SCRIPT_DIR from environment, or detect from this script's location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 DISK_FILE=aws_disk.vmdk
 UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
 IMAGE_NAME="${VM_NAME}-image"

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Use SCRIPT_DIR from environment, or detect from this script's location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+# Derive TOOLS_DIR (tools is sibling to scripts)
+TOOLS_DIR="${TOOLS_DIR:-$(dirname "$SCRIPT_DIR")/tools}"
+
 # quit when any error occurs
 set -Eeuo pipefail
 
@@ -24,7 +29,7 @@ fi
 
 # 2. Create the UEFI blob
 UEFI_BLOB="secure_boot/aws-uefi-blob.bin"
-./tools/python-uefivars/uefivars -i none -o aws -O $UEFI_BLOB -P secure_boot/PK.esl -K secure_boot/KEK.esl -b secure_boot/db_combined.esl
+"$TOOLS_DIR/python-uefivars/uefivars" -i none -o aws -O $UEFI_BLOB -P secure_boot/PK.esl -K secure_boot/KEK.esl -b secure_boot/db_combined.esl
 
 # 3. Remove temporary files
 rm secure_boot/*.pem secure_boot/*.esl
