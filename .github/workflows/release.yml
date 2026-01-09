@@ -107,7 +107,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref_name != github.sha && github.ref_name || 'v0.1.0' }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
           files: |
             dist/*.deb
             dist/*.rpm
