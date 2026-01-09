@@ -1,8 +1,12 @@
 #!/bin/bash
 
+# Use SCRIPT_DIR from environment, or detect from this script's location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 CSP=$1
 VM_NAME=$2
 LIVEPATCH_PATH=$3
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # Ensure all arguments are provided
 if [[ $# -lt 3 ]]; then
@@ -13,8 +17,8 @@ fi
 # quit when any error occurs
 set -Eeuo pipefail
 
-IP_FILE="_artifacts/${CSP}_${VM_NAME}_ip"
-API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
+IP_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
+API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_token"
 
 
 if [[ ! -f "$IP_FILE" ]]; then
@@ -44,7 +48,7 @@ if [[ "$code" -ne 200 ]]; then
 else
     echo "✅ Livepatch successfully deployed to $VM_NAME ($CSP)."
     echo "ℹ️  Regenerating Golden Measurements now..."
-    ./scripts/get_golden_measurements.sh "$CSP" "$VM_NAME"
+    $SCRIPT_DIR/get_golden_measurements.sh "$CSP" "$VM_NAME"
 fi
 
 set +e

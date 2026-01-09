@@ -8,12 +8,17 @@
 
 # cvm-base-image
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/automata-network/cvm-base-image)](https://github.com/automata-network/cvm-base-image/releases)
 
+A command-line tool for deploying and managing Confidential Virtual Machines (CVMs) across AWS, GCP, and Azure.
+
+## Installation
 
 ## 📑 Table of Contents <!-- omit in toc -->
+- [Quick Install](#quick-install)
 - [Prerequisites](#prerequisites)
 - [Quickstart](#quickstart)
-- [Deploying the CVM with your workload](#deploying-the-cvm-with-your-workload)
+- [Deploying the CVM with your Workload](#deploying-the-cvm-with-your-workload)
 - [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
@@ -21,12 +26,46 @@
 - [Troubleshooting](#troubleshooting)
 
 
+## Quick Install
+
+**Ubuntu/Debian:**
+```bash
+wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli_0.1.0-1_all.deb
+sudo dpkg -i cvm-cli_0.1.0-1_all.deb
+sudo apt-get install -f
+```
+
+**Fedora/RHEL:**
+```bash
+wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli-0.1.0-1.noarch.rpm
+sudo dnf install cvm-cli-0.1.0-1.noarch.rpm
+```
+
+**macOS (Homebrew):**
+```bash
+brew tap automata-network/cvm-cli https://github.com/automata-network/cvm-base-image
+brew install cvm-cli
+```
+
+📖 **For detailed installation instructions, see [INSTALL.md](INSTALL.md)**
+
 ## Prerequisites
 
 - Ensure that you have enough permissions on your account on either GCP, AWS or Azure to create virtual machines, disks, networks, firewall rules, buckets/storage accounts and service roles.
 
+### For Package Installation
+
+If you installed `cvm-cli` via a package manager (recommended), it's already available system-wide. Just run:
+```bash
+cvm-cli --help
+```
+
+### For Development/Source Installation
+
 ```bash
 git clone --recurse-submodules https://github.com/automata-network/cvm-base-image
+cd cvm-base-image
+sudo make install
 ```
 
 ### Downloading Disk Images <!-- omit in toc -->
@@ -236,6 +275,13 @@ Use this command to delete the VM once you no longer need it.
 # ./cvm-cli cleanup <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
 ./cvm-cli cleanup gcp cvm-test
+```
+
+#### Cleaning Up Local Artifacts <!-- omit in toc -->
+Use this command to remove all locally downloaded disk images, attestations, and other artifacts.
+
+```bash
+./cvm-cli cleanup-local
 ```
 
 #### (Advanced) Kernel Livepatching <!-- omit in toc -->

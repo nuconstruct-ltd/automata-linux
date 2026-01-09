@@ -1,0 +1,149 @@
+name: Build and Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-deb:
+    name: Build Debian Package
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper devscripts build-essential
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Move artifacts
+        run: |
+          mkdir -p dist
+          mv ../cvm-cli_*.deb dist/
+          mv ../cvm-cli_*.buildinfo dist/
+          mv ../cvm-cli_*.changes dist/
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: dist/*.deb
+
+  build-rpm:
+    name: Build RPM Package
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y rpm-build rpmdevtools make jq curl openssl qemu-img python3
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup RPM build environment
+        run: |
+          rpmdev-setuptree
+          tar czf ~/rpmbuild/SOURCES/cvm-cli-0.1.0.tar.gz \
+            --transform 's,^,cvm-cli-0.1.0/,' \
+            --exclude=.git \
+            --exclude=dist \
+            .
+
+      - name: Build RPM
+        run: |
+          rpmbuild -bb cvm-cli.spec
+
+      - name: Move artifacts
+        run: |
+          mkdir -p dist
+          cp ~/rpmbuild/RPMS/noarch/cvm-cli-*.rpm dist/
+
+      - name: Upload RPM package
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: dist/*.rpm
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-deb, build-rpm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Debian package
+        uses: actions/download-artifact@v4
+        with:
+          name: debian-package
+          path: dist/
+
+      - name: Download RPM package
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-package
+          path: dist/
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum *.deb *.rpm > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.deb
+            dist/*.rpm
+            dist/SHA256SUMS
+          body: |
+            ## cvm-cli ${{ github.ref_name }}
+
+            ### Installation
+
+            **Ubuntu/Debian:**
+            ```bash
+            wget https://github.com/automata-network/cvm-base-image/releases/download/${{ github.ref_name }}/cvm-cli_0.1.0-1_all.deb
+            sudo dpkg -i cvm-cli_0.1.0-1_all.deb
+            sudo apt-get install -f
+            ```
+
+            **Fedora/RHEL:**
+            ```bash
+            wget https://github.com/automata-network/cvm-base-image/releases/download/${{ github.ref_name }}/cvm-cli-0.1.0-1.noarch.rpm
+            sudo dnf install cvm-cli-0.1.0-1.noarch.rpm
+            ```
+
+            **macOS (Homebrew):**
+            ```bash
+            brew tap automata-network/cvm-cli
+            brew install cvm-cli
+            ```
+
+            ### What's New
+            - Initial release of cvm-cli
+            - Support for AWS, GCP, and Azure deployments
+            - SLSA attestation verification
+            - Git-like command-line interface
+
+            ### Verify Downloads
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

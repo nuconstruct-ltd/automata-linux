@@ -7,7 +7,7 @@ GALLERY_NAME="$6"
 REGION="$7"
 DATA_DISK="$8"        # NEW: Optional disk name
 DISK_SIZE_GB="$9"     # NEW: Optional disk size (for new disk)
-
+ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from cvm-cli)
 
 VHD=azure_disk.vhd
 IMAGE_DEF="${VM_NAME}-def"
@@ -19,7 +19,7 @@ VHD_BLOB_NAME="${VM_NAME}.vhd"
 blob_url="https://${STORAGE_ACC}.blob.core.windows.net/$STORAGE_CONTAINER/$VHD_BLOB_NAME"
 
 # Ensure all arguments are provided
-if [[ $# -lt 7 ]]; then
+if [[ $# -lt 10 ]]; then
     echo "❌ Error: Arguments are missing! (make_azure_vm.sh)"
     exit 1
 fi
@@ -258,11 +258,11 @@ echo "Public IP of VM: $PUBLIC_IP"
 
 
 # Save artifacts for later use
-mkdir -p _artifacts
-echo "$PUBLIC_IP" > _artifacts/azure_${VM_NAME}_ip
-echo "$RG" > _artifacts/azure_${VM_NAME}_resource_group
-echo "$GALLERY_NAME" > _artifacts/azure_${VM_NAME}_gallery
-echo "$STORAGE_ACC" > _artifacts/azure_${VM_NAME}_storage_account
+mkdir -p "$ARTIFACT_DIR"
+echo "$PUBLIC_IP" > "$ARTIFACT_DIR/azure_${VM_NAME}_ip"
+echo "$RG" > "$ARTIFACT_DIR/azure_${VM_NAME}_resource_group"
+echo "$GALLERY_NAME" > "$ARTIFACT_DIR/azure_${VM_NAME}_gallery"
+echo "$STORAGE_ACC" > "$ARTIFACT_DIR/azure_${VM_NAME}_storage_account"
 
 set +x
 set +e

@@ -3,13 +3,14 @@
 DISK_FILE=$1
 CSP=$2
 VM_NAME=$3
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # quit when any error occurs
 set -Eeuo pipefail
 
 # Ensure all arguments are provided
 if [[ $# -lt 3 ]]; then
-    echo "❌ Error: Arguments are missing! (update_disk_locally.sh)"
+    echo "❌ Error: Arguments are missing! (generate_api_token_locally.sh)"
     exit 1
 fi
 
@@ -40,17 +41,17 @@ populate() {
         sudo mount ${LOOP_DEV}p3 /tmp/data
 
         # Generate API token
-        API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
+        API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_token"
         echo "ℹ️  Generating API token..."
-        mkdir -p $(dirname $API_TOKEN_FILE)
-        openssl rand -hex 16 | tr -d '\n' > $API_TOKEN_FILE
+        mkdir -p "$(dirname "$API_TOKEN_FILE")"
+        openssl rand -hex 16 | tr -d '\n' > "$API_TOKEN_FILE"
 
-        tr -d '\n' < $API_TOKEN_FILE | sha256sum | cut -d ' ' -f1 > _artifacts/token_hash
-        sudo cp _artifacts/token_hash /tmp/data/token_hash
+        tr -d '\n' < "$API_TOKEN_FILE" | sha256sum | cut -d ' ' -f1 > "$ARTIFACT_DIR/token_hash"
+        sudo cp "$ARTIFACT_DIR/token_hash" /tmp/data/token_hash
         sudo chown 1000:1000 /tmp/data/token_hash
         sync
         #Remove temporary file.
-        rm -f _artifacts/token_hash
+        rm -f "$ARTIFACT_DIR/token_hash"
         # Unmount partition
         sudo umount ${LOOP_DEV}p3
 

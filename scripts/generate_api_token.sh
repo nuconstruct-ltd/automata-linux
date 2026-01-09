@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Detect script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 DISK_FILE=$1
 CSP=$2
 VM_NAME=$3
@@ -16,10 +19,10 @@ fi
 os_type="$(uname)"
 if [[ "$os_type" == "Linux" ]]; then
     echo "⌛ Adding API token to disk..."
-    ./scripts/generate_api_token_locally.sh "$DISK_FILE" "$CSP" "$VM_NAME"
+    "$SCRIPT_DIR/generate_api_token_locally.sh" "$DISK_FILE" "$CSP" "$VM_NAME"
 elif [[ "$os_type" == "Darwin" ]]; then
     echo "🔁 Using Multipass to add API token to disk..."
-    bash "./scripts/generate_api_token_multipass.sh" "$DISK_FILE" "$CSP" "$VM_NAME"
+    bash "$SCRIPT_DIR/generate_api_token_multipass.sh" "$DISK_FILE" "$CSP" "$VM_NAME"
 else
     echo "Unsupported OS: $os_type"
     exit 1

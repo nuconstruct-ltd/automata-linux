@@ -1,0 +1,36 @@
+Source: cvm-cli
+Section: utils
+Priority: optional
+Maintainer: Yaoxin Jin <yaoxin.j@ata.network>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/automata-network/cvm-base-image
+Vcs-Browser: https://github.com/automata-network/cvm-base-image
+Vcs-Git: https://github.com/automata-network/cvm-base-image.git
+Rules-Requires-Root: no
+
+Package: cvm-cli
+Architecture: all
+Depends: ${misc:Depends},
+         bash (>= 4.0),
+         jq,
+         curl,
+         openssl,
+         qemu-utils,
+         python3 (>= 3.9)
+Suggests: awscli,
+          google-cloud-sdk,
+          azure-cli,
+          docker.io | podman
+Description: CLI tool for managing Confidential VMs
+ cvm-cli is a command-line interface for deploying and managing
+ Confidential Virtual Machines (CVMs) across multiple cloud platforms
+ including AWS, Google Cloud Platform (GCP), and Microsoft Azure.
+ .
+ Features:
+  * Deploy CVMs to AWS, GCP, and Azure
+  * Update workloads on running CVMs
+  * Download and verify disk images with SLSA attestations
+  * Manage VM resources and retrieve logs
+  * Sign container images and kernel livepatches
+  * Support for secure boot and attestation

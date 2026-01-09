@@ -2,6 +2,7 @@
 DISK_FILE="$1"
 CSP="$2"
 CSP_VM_NAME="$3"
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # Ensure all arguments are provided
 if [[ $# -lt 3 ]]; then
@@ -58,9 +59,10 @@ echo "🛠️ Running update logic inside VM..."
 multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
   cd $VM_PROJECT_PATH
-  chmod +x ./scripts/generate_api_token_locally.sh
-  echo '▶️ Running: ./scripts/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME'
-  ./scripts/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME
+  SCRIPT_DIR=$VM_PROJECT_PATH/scripts
+  chmod +x \$SCRIPT_DIR/generate_api_token_locally.sh
+  echo '▶️ Running: \$SCRIPT_DIR/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME'
+  \$SCRIPT_DIR/generate_api_token_locally.sh $DISK_FILENAME $CSP $CSP_VM_NAME
 "
 
 # Step 7: Retrieve updated disk
@@ -69,9 +71,9 @@ multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$DISK_FILENAME" "$UPDATED_DISK"
 
 # Step 8: Retrieve api_token
 echo "📥 Retrieving API token..."
-API_TOKEN_FILE="_artifacts/${CSP}_${CSP_VM_NAME}_token"
+API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${CSP_VM_NAME}_token"
 mkdir -p "$(dirname "$API_TOKEN_FILE")"
-multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$API_TOKEN_FILE" "$API_TOKEN_FILE"
+multipass transfer "$VM_NAME:$VM_PROJECT_PATH/_artifacts/${CSP}_${CSP_VM_NAME}_token" "$API_TOKEN_FILE"
 
 # Step 9: Checksum after update
 echo "🔍 Calculating checksum after update..."

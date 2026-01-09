@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Use SCRIPT_DIR from environment, or detect from this script's location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 DISK_FILE=$1
 
 # quit when any error occurs
@@ -14,10 +17,10 @@ fi
 os_type="$(uname)"
 if [[ "$os_type" == "Linux" ]]; then
     echo "Reloading workload onto an existing disk..."
-    ./scripts/update_disk_locally.sh $DISK_FILE
+    $SCRIPT_DIR/update_disk_locally.sh $DISK_FILE
 elif [[ "$os_type" == "Darwin" ]]; then
     echo "🔁 Using Multipass to update workload..."
-    bash "./scripts/update_disk_via_multipass.sh" "$DISK_FILE"
+    bash "$SCRIPT_DIR/update_disk_via_multipass.sh" "$DISK_FILE"
 else
     echo "Unsupported OS: $os_type"
     exit 1

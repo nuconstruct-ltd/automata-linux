@@ -98,6 +98,7 @@ download_from_github() {
   fi
 
   echo "✅ Downloaded ${filename}"
+  echo "   Location: $(pwd)/${filename}"
 }
 
 # Download and extract secure boot certificates from GitHub Release
@@ -171,9 +172,20 @@ else
   exit 1
 fi
 
-# Download and extract secure boot certificates only if we downloaded a new disk image
+# Download and extract secure boot certificates if we downloaded a new disk image
+# OR if the certificates are missing but the zip file exists locally
 if [[ "$DOWNLOADED_IMAGE" == "true" ]]; then
   download_secure_boot_certs
+elif [ ! -f "secure_boot/PK.crt" ] || [ ! -f "secure_boot/KEK.crt" ] || [ ! -f "secure_boot/db.crt" ] || [ ! -f "secure_boot/kernel.crt" ]; then
+  if [ -f "secure-boot-certs.zip" ]; then
+    echo "⌛ Secure boot certificates missing but zip file exists. Extracting..."
+    mkdir -p "secure_boot"
+    unzip -o "secure-boot-certs.zip" -d "secure_boot/"
+    echo "✅ Secure boot certificates extracted to secure_boot/"
+  else
+    echo "⚠️  Warning: Secure boot certificates not found. Downloading from GitHub..."
+    download_secure_boot_certs
+  fi
 fi
 
 set +e
