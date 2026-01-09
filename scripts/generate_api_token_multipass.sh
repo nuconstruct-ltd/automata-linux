@@ -2,6 +2,7 @@
 DISK_FILE="$1"
 CSP="$2"
 CSP_VM_NAME="$3"
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # Ensure all arguments are provided
 if [[ $# -lt 3 ]]; then
@@ -69,9 +70,9 @@ multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$DISK_FILENAME" "$UPDATED_DISK"
 
 # Step 8: Retrieve api_token
 echo "📥 Retrieving API token..."
-API_TOKEN_FILE="_artifacts/${CSP}_${CSP_VM_NAME}_token"
+API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${CSP_VM_NAME}_token"
 mkdir -p "$(dirname "$API_TOKEN_FILE")"
-multipass transfer "$VM_NAME:$VM_PROJECT_PATH/$API_TOKEN_FILE" "$API_TOKEN_FILE"
+multipass transfer "$VM_NAME:$VM_PROJECT_PATH/_artifacts/${CSP}_${CSP_VM_NAME}_token" "$API_TOKEN_FILE"
 
 # Step 9: Checksum after update
 echo "🔍 Calculating checksum after update..."

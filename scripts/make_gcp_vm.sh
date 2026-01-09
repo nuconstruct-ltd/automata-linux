@@ -7,6 +7,7 @@ ADDITIONAL_PORTS=$6
 IP=$7
 DATA_DISK="$8"          # Optional disk name
 DISK_SIZE_GB="$9"       # Optional disk size (for new disk)
+ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from cvm-cli)
 
 
 
@@ -17,7 +18,7 @@ IMAGE_NAME="${VM_NAME}-image"
 
 
 # Ensure all arguments are provided
-if [[ $# -lt 9 ]]; then
+if [[ $# -lt 10 ]]; then
     echo "❌ Error: Arguments are missing! (make_gcp_vm.sh)"
     exit 1
 fi
@@ -182,13 +183,13 @@ PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
 echo "Public IP: $PUBLIC_IP"
 
 # Save artifacts for later use
-mkdir -p _artifacts
-echo "$PUBLIC_IP" > _artifacts/gcp_${VM_NAME}_ip
-echo "$BUCKET" > _artifacts/gcp_${VM_NAME}_bucket
-echo "$ZONE" > _artifacts/gcp_${VM_NAME}_region
-echo "$PROJECT_ID" > _artifacts/gcp_${VM_NAME}_project
+mkdir -p "$ARTIFACT_DIR"
+echo "$PUBLIC_IP" > "$ARTIFACT_DIR/gcp_${VM_NAME}_ip"
+echo "$BUCKET" > "$ARTIFACT_DIR/gcp_${VM_NAME}_bucket"
+echo "$ZONE" > "$ARTIFACT_DIR/gcp_${VM_NAME}_region"
+echo "$PROJECT_ID" > "$ARTIFACT_DIR/gcp_${VM_NAME}_project"
 if [[ -n "$DATA_DISK" ]]; then
-  echo "$DATA_DISK" > _artifacts/gcp_${VM_NAME}_disk
+  echo "$DATA_DISK" > "$ARTIFACT_DIR/gcp_${VM_NAME}_disk"
 fi
 
 set +x

@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 CSP=$1
 VM_NAME=$2
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 if [[ $# -lt 2 ]]; then
     echo "❌ Error: Arguments are missing! (get_golden_measurements.sh)"
@@ -10,9 +11,9 @@ if [[ $# -lt 2 ]]; then
     exit 1
 fi
 
-IP_FILE="_artifacts/${CSP}_${VM_NAME}_ip"
-OFFCHAIN_GOLDEN_MEASUREMENT_FILE="_artifacts/golden-measurements/offchain/${CSP}-${VM_NAME}.json"
-ONCHAIN_GOLDEN_MEASUREMENT_FILE="_artifacts/golden-measurements/onchain/${CSP}-${VM_NAME}.json"
+IP_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
+OFFCHAIN_GOLDEN_MEASUREMENT_FILE="$ARTIFACT_DIR/golden-measurements/offchain/${CSP}-${VM_NAME}.json"
+ONCHAIN_GOLDEN_MEASUREMENT_FILE="$ARTIFACT_DIR/golden-measurements/onchain/${CSP}-${VM_NAME}.json"
 
 MAX_RETRIES=10
 RETRY_DELAY=30

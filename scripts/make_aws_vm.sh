@@ -6,6 +6,7 @@ ADDITIONAL_PORTS=$5
 EIP_AID=$6
 DATA_DISK="$7"       # Optional EBS volume name
 DISK_SIZE_GB="$8"    # Optional disk size (for new disk)
+ARTIFACT_DIR="${9:-_artifacts}"  # Artifact directory (passed from cvm-cli)
 
 DISK_FILE=aws_disk.vmdk
 UPLOADED_DISK_FILE="${VM_NAME}.vmdk"
@@ -13,7 +14,7 @@ IMAGE_NAME="${VM_NAME}-image"
 export AWS_PAGER=""
 
 # Ensure all arguments are provided
-if [[ $# -lt 8 ]]; then
+if [[ $# -lt 9 ]]; then
     echo "❌ Error: Arguments are missing! (make_aws_vm.sh)"
     exit 1
 fi
@@ -288,14 +289,14 @@ PUBLIC_IP=$(aws ec2 describe-instances \
 
 echo "VM Public IP: $PUBLIC_IP"
 
-mkdir -p _artifacts
-echo "$PUBLIC_IP" > _artifacts/aws_${VM_NAME}_ip
-echo "$BUCKET" > _artifacts/aws_${VM_NAME}_bucket
-echo "$REGION" > _artifacts/aws_${VM_NAME}_region
-echo "$IMAGE_ID" > _artifacts/aws_${VM_NAME}_image
-echo "$SECGRP_ID" > _artifacts/aws_${VM_NAME}_secgrp
-echo "$INSTANCE_ID" > _artifacts/aws_${VM_NAME}_vmid
-[[ -n "$VOL_ID" ]] && echo "$VOL_ID" > _artifacts/aws_${VM_NAME}_data_volume
+mkdir -p "$ARTIFACT_DIR"
+echo "$PUBLIC_IP" > "$ARTIFACT_DIR/aws_${VM_NAME}_ip"
+echo "$BUCKET" > "$ARTIFACT_DIR/aws_${VM_NAME}_bucket"
+echo "$REGION" > "$ARTIFACT_DIR/aws_${VM_NAME}_region"
+echo "$IMAGE_ID" > "$ARTIFACT_DIR/aws_${VM_NAME}_image"
+echo "$SECGRP_ID" > "$ARTIFACT_DIR/aws_${VM_NAME}_secgrp"
+echo "$INSTANCE_ID" > "$ARTIFACT_DIR/aws_${VM_NAME}_vmid"
+[[ -n "$VOL_ID" ]] && echo "$VOL_ID" > "$ARTIFACT_DIR/aws_${VM_NAME}_data_volume"
 
 
 set +x

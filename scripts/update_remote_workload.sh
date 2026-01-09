@@ -2,6 +2,7 @@
 
 CSP=$1
 VM_NAME=$2
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # Ensure all arguments are provided
 if [[ $# -lt 2 ]]; then
@@ -9,8 +10,8 @@ if [[ $# -lt 2 ]]; then
     exit 1
 fi
 
-IP_FILE="_artifacts/${CSP}_${VM_NAME}_ip"
-API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
+IP_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
+API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_token"
 
 # quit when any error occurs
 set -Eeuo pipefail

@@ -3,6 +3,7 @@
 CSP=$1
 VM_NAME=$2
 LIVEPATCH_PATH=$3
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 # Ensure all arguments are provided
 if [[ $# -lt 3 ]]; then
@@ -13,8 +14,8 @@ fi
 # quit when any error occurs
 set -Eeuo pipefail
 
-IP_FILE="_artifacts/${CSP}_${VM_NAME}_ip"
-API_TOKEN_FILE="_artifacts/${CSP}_${VM_NAME}_token"
+IP_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
+API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_token"
 
 
 if [[ ! -f "$IP_FILE" ]]; then

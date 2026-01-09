@@ -44,6 +44,9 @@ else
     mkdir -p "$ARTIFACT_DIR"
 fi
 
+# Export ARTIFACT_DIR so child scripts can inherit it
+export ARTIFACT_DIR
+
 usage() {
     echo "Usage: $0 <command> [options]"
     echo ""
@@ -207,7 +210,7 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
-        "$SCRIPT_DIR/make_aws_vm.sh" "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$EIP_AID" "$ATTACH_DISK" "$DISK_SIZE"
+        "$SCRIPT_DIR/make_aws_vm.sh" "$VM_NAME" "$REGION" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$EIP_AID" "$ATTACH_DISK" "$DISK_SIZE" "$ARTIFACT_DIR"
         "$SCRIPT_DIR/get_golden_measurements.sh" "aws" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -296,7 +299,7 @@ case "$COMMAND" in
         echo "🔹Additional Ports: $ADDITIONAL_PORTS"
         echo "🔹Attach Disk: ${ATTACH_DISK:-none}"
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
-        "$SCRIPT_DIR/make_gcp_vm.sh" "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$IP" "$ATTACH_DISK" "$DISK_SIZE"
+        "$SCRIPT_DIR/make_gcp_vm.sh" "$VM_NAME" "$REGION" "$PROJECT_ID" "$VM_TYPE" "$BUCKET" "$ADDITIONAL_PORTS" "$IP" "$ATTACH_DISK" "$DISK_SIZE" "$ARTIFACT_DIR"
         "$SCRIPT_DIR/get_golden_measurements.sh" "gcp" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -398,7 +401,7 @@ case "$COMMAND" in
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
 
         "$SCRIPT_DIR/make_azure_vm.sh" "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"  \
-                        "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE"
+                        "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE" "$ARTIFACT_DIR"
         "$SCRIPT_DIR/get_golden_measurements.sh" "azure" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -486,13 +489,13 @@ case "$COMMAND" in
         fi
         case "$CSP" in
             aws)
-                "$SCRIPT_DIR/cleanup_aws_vm.sh" "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_aws_vm.sh" "$VM_NAME" "$ARTIFACT_DIR"
                 ;;
             gcp)
-                "$SCRIPT_DIR/cleanup_gcp_vm.sh" "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_gcp_vm.sh" "$VM_NAME" "$ARTIFACT_DIR"
                 ;;
             azure)
-                "$SCRIPT_DIR/cleanup_azure_vm.sh" "$VM_NAME"
+                "$SCRIPT_DIR/cleanup_azure_vm.sh" "$VM_NAME" "$ARTIFACT_DIR"
                 ;;
         esac
         ;;
