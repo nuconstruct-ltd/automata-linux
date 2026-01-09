@@ -61,6 +61,7 @@ usage() {
     echo "  update-disk              Update the workload on a specified disk file."
     echo "  get-logs                 Retrieve logs from a deployed CVM."
     echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
+    echo "  cleanup-local            Remove all locally downloaded disk images, attestations, and artifacts."
     echo "  sign-image               Sign and verify a container image using Cosign."
     echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
     echo "  sign-livepatch           Sign a livepatch file."
@@ -498,6 +499,35 @@ case "$COMMAND" in
                 "$SCRIPT_DIR/cleanup_azure_vm.sh" "$VM_NAME" "$ARTIFACT_DIR"
                 ;;
         esac
+        ;;
+
+    cleanup-local)
+        echo "🧹 Cleaning up local artifacts..."
+
+        # Clean disk images
+        DISK_FILES=("aws_disk.vmdk" "gcp_disk.tar.gz" "azure_disk.vhd")
+        for disk in "${DISK_FILES[@]}"; do
+            if [[ -f "$DISK_DIR/$disk" ]]; then
+                rm -f "$DISK_DIR/$disk"
+                echo "  Removed: $DISK_DIR/$disk"
+            fi
+        done
+
+        # Clean attestation bundles
+        for disk in "${DISK_FILES[@]}"; do
+            if [[ -f "$DISK_DIR/${disk}.bundle" ]]; then
+                rm -f "$DISK_DIR/${disk}.bundle"
+                echo "  Removed: $DISK_DIR/${disk}.bundle"
+            fi
+        done
+
+        # Clean artifacts directory
+        if [[ -d "$ARTIFACT_DIR" ]]; then
+            rm -rf "$ARTIFACT_DIR"/*
+            echo "  Cleaned: $ARTIFACT_DIR"
+        fi
+
+        echo "✅ Local cleanup complete!"
         ;;
 
     sign-livepatch)

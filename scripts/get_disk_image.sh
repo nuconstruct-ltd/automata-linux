@@ -98,6 +98,7 @@ download_from_github() {
   fi
 
   echo "✅ Downloaded ${filename}"
+  echo "   Location: $(pwd)/${filename}"
 }
 
 # Download and extract secure boot certificates from GitHub Release
