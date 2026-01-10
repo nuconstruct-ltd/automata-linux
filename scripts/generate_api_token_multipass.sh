@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Detect script directory - this is where all the scripts live
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+
 DISK_FILE="$1"
 CSP="$2"
 CSP_VM_NAME="$3"
@@ -52,7 +56,7 @@ VM_PROJECT_PATH="/tmp/$VM_PROJECT_DIR"
 multipass exec "$VM_NAME" -- bash -c "
   mkdir -p $VM_PROJECT_PATH
 "
-multipass transfer -r "scripts/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
+multipass transfer -r "$SCRIPT_DIR/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
 
 # Step 6: Add API token to VM.
 echo "🛠️ Running update logic inside VM..."
