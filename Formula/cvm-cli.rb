@@ -1,9 +1,16 @@
 class CvmCli < Formula
   desc "CLI tool for managing Confidential VMs across AWS, GCP, and Azure"
   homepage "https://github.com/automata-network/cvm-base-image"
-  url "https://github.com/automata-network/cvm-base-image/archive/refs/tags/v0.1.0.tar.gz"
-  sha256 "PUT_SHA256_HERE" # Update this after creating the release
+  version "0.1.0"
   license "Apache-2.0"
+
+  depends_on arch: :arm64
+
+  # For private repos, use HOMEBREW_GITHUB_API_TOKEN
+  # Usage: export HOMEBREW_GITHUB_API_TOKEN=your_token && brew install cvm-cli
+  url "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/ASSET_ID_PLACEHOLDER",
+      headers: ["Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", "")}", "Accept: application/octet-stream"]
+  sha256 "SHA256_PLACEHOLDER"
 
   depends_on "jq"
   depends_on "curl"
@@ -12,7 +19,8 @@ class CvmCli < Formula
   depends_on "python@3.9" => :recommended
 
   def install
-    system "make", "install", "PREFIX=#{prefix}"
+    bin.install "bin/cvm-cli"
+    (share/"cvm-cli").install Dir["share/cvm-cli/*"]
   end
 
   test do

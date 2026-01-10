@@ -76,9 +76,60 @@ jobs:
           name: rpm-package
           path: dist/*.rpm
 
+  build-macos:
+    name: Build macOS Package (ARM64)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Create macOS tarball
+        run: |
+          VERSION="0.1.0"
+          PKG_NAME="cvm-cli-${VERSION}-macos-arm64"
+          mkdir -p "${PKG_NAME}/bin"
+          mkdir -p "${PKG_NAME}/share/cvm-cli/scripts"
+          mkdir -p "${PKG_NAME}/share/cvm-cli/tools"
+          mkdir -p "${PKG_NAME}/share/cvm-cli/workload/config/cvm_agent"
+
+          # Copy files
+          cp cvm-cli "${PKG_NAME}/bin/"
+          cp scripts/*.sh "${PKG_NAME}/share/cvm-cli/scripts/"
+          cp tools/json_sig_tool.py "${PKG_NAME}/share/cvm-cli/tools/"
+          cp workload/docker-compose.yml "${PKG_NAME}/share/cvm-cli/workload/"
+          cp workload/config/cvm_agent/*.json "${PKG_NAME}/share/cvm-cli/workload/config/cvm_agent/"
+          cp workload/config/*.yml "${PKG_NAME}/share/cvm-cli/workload/config/"
+          cp workload/config/*.conf "${PKG_NAME}/share/cvm-cli/workload/config/"
+          cp README.md LICENSE "${PKG_NAME}/"
+
+          # Create install script
+          cat > "${PKG_NAME}/install.sh" << 'INSTALL_EOF'
+          #!/bin/bash
+          set -e
+          PREFIX="${PREFIX:-/usr/local}"
+          cp -r bin/* "${PREFIX}/bin/"
+          mkdir -p "${PREFIX}/share/cvm-cli"
+          cp -r share/cvm-cli/* "${PREFIX}/share/cvm-cli/"
+          echo "✅ cvm-cli installed to ${PREFIX}"
+          INSTALL_EOF
+          chmod +x "${PKG_NAME}/install.sh"
+
+          # Create tarball
+          tar -czvf "${PKG_NAME}.tar.gz" "${PKG_NAME}"
+          mkdir -p dist
+          mv "${PKG_NAME}.tar.gz" dist/
+
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package
+          path: dist/*.tar.gz
+
   create-release:
     name: Create GitHub Release
-    needs: [build-deb, build-rpm]
+    needs: [build-deb, build-rpm, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -98,10 +149,16 @@ jobs:
           name: rpm-package
           path: dist/
 
+      - name: Download macOS package
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-package
+          path: dist/
+
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum *.deb *.rpm > SHA256SUMS
+          sha256sum *.deb *.rpm *.tar.gz > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create Release
@@ -111,11 +168,12 @@ jobs:
           files: |
             dist/*.deb
             dist/*.rpm
+            dist/*.tar.gz
             dist/SHA256SUMS
           body: |
             ## cvm-cli ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
-            This release contains the **CLI packages only** (`.deb` and `.rpm`).
+            This release contains the **CLI packages only** (`.deb`, `.rpm`, and `.tar.gz`).
             Disk images are released separately - the CLI will automatically find and download them.
 
             ### Installation (Private Repository)
@@ -172,6 +230,18 @@ jobs:
             sudo apt-get install -f
             ```
 
+            **macOS (ARM64 only via Homebrew):**
+            ```bash
+            # Set your GitHub token (requires repo scope)
+            export HOMEBREW_GITHUB_API_TOKEN=your_github_token_here
+
+            # Tap and install
+            brew tap automata-network/cvm-base-image https://github.com/automata-network/cvm-base-image
+            brew install cvm-cli
+            ```
+
+            > **Tip:** If you use GitHub CLI, you can get your token with: `export HOMEBREW_GITHUB_API_TOKEN=$(gh auth token)`
+
             ### Usage
 
             After installation, set your GitHub token and run:
@@ -196,3 +266,62 @@ jobs:
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew-formula:
+    name: Update Homebrew Formula
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Get release asset info
+        id: asset-info
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}"
+
+          # Get release info
+          RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG")
+
+          # Find the macOS ARM64 tarball asset
+          ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | contains("macos-arm64")) | .id')
+          ASSET_URL=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | contains("macos-arm64")) | .browser_download_url')
+
+          if [ -z "$ASSET_ID" ] || [ "$ASSET_ID" = "null" ]; then
+            echo "Error: Could not find macOS ARM64 asset"
+            exit 1
+          fi
+
+          # Download the asset to compute SHA256
+          curl -L -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/assets/$ASSET_ID" \
+            -o macos-arm64.tar.gz
+
+          SHA256=$(sha256sum macos-arm64.tar.gz | awk '{print $1}')
+
+          echo "asset_id=$ASSET_ID" >> $GITHUB_OUTPUT
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Found asset ID: $ASSET_ID"
+          echo "SHA256: $SHA256"
+
+      - name: Update formula
+        run: |
+          sed -i "s/ASSET_ID_PLACEHOLDER/${{ steps.asset-info.outputs.asset_id }}/g" Formula/cvm-cli.rb
+          sed -i "s/SHA256_PLACEHOLDER/${{ steps.asset-info.outputs.sha256 }}/g" Formula/cvm-cli.rb
+          cat Formula/cvm-cli.rb
+
+      - name: Commit and push formula update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/cvm-cli.rb
+          git commit -m "chore: update Homebrew formula for ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}"
+          git push

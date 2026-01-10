@@ -27,7 +27,7 @@ find_latest_image_release() {
   local api_url="https://api.github.com/repos/${REPO}/releases?per_page=20"
   local releases_json
 
-  echo "⌛ Finding latest release with disk images..."
+  echo "⌛ Finding latest release with disk images..." >&2
 
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     releases_json=$(curl -sL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$api_url")
@@ -35,25 +35,35 @@ find_latest_image_release() {
     releases_json=$(curl -sL "$api_url")
   fi
 
-  # Find the first release that contains a disk image file (gcp_disk.tar.gz, aws_disk.vmdk, or azure_disk.vhd.xz)
-  local tag
-  tag=$(echo "$releases_json" | jq -r '
-    .[] | select(.assets[].name | test("gcp_disk\\.tar\\.gz|aws_disk\\.vmdk|azure_disk\\.vhd\\.xz")) | .tag_name
-  ' | head -1)
-
-  if [[ -z "$tag" || "$tag" == "null" ]]; then
-    echo "❌ Error: Could not find any release containing disk images"
-    echo "   Please set RELEASE_TAG environment variable to specify a release"
+  # Check if we got a valid response
+  if [[ -z "$releases_json" ]] || echo "$releases_json" | jq -e 'type != "array"' >/dev/null 2>&1; then
+    echo "❌ Error: Failed to fetch releases from GitHub API" >&2
+    echo "   Response: $releases_json" >&2
     exit 1
   fi
 
-  echo "✅ Found image release: ${tag}"
+  # Find the first release that contains a disk image file (gcp_disk.tar.gz, aws_disk.vmdk, or azure_disk.vhd.xz)
+  local tag
+  tag=$(echo "$releases_json" | jq -r '
+    [.[] | select(.assets[]?.name | test("gcp_disk\\.tar\\.gz|aws_disk\\.vmdk|azure_disk\\.vhd\\.xz"))] | first | .tag_name // empty
+  ' || true)
+
+  if [[ -z "$tag" || "$tag" == "null" ]]; then
+    echo "❌ Error: Could not find any release containing disk images" >&2
+    echo "   Please set RELEASE_TAG environment variable to specify a release" >&2
+    echo "   Available releases:" >&2
+    echo "$releases_json" | jq -r '.[].tag_name' | head -5 | sed 's/^/     /' >&2
+    exit 1
+  fi
+
+  echo "✅ Found image release: ${tag}" >&2
   echo "$tag"
 }
 
 # Download file from GitHub Release
 download_from_github() {
   local filename="$1"
+  local user_specified_tag="${RELEASE_TAG:-}"
 
   # Auto-detect release tag if not specified
   if [[ -z "$RELEASE_TAG" ]]; then
@@ -94,10 +104,23 @@ download_from_github() {
     ASSET_URL=$(echo "$RELEASE_INFO" | \
       grep -B 3 "\"name\": \"${filename}\"" | \
       grep '"url"' | head -1 | \
-      cut -d'"' -f4)
+      cut -d'"' -f4 || true)
+
+    # If user specified a tag but it doesn't have the disk image, fall back to auto-detect
+    if [[ -z "$ASSET_URL" && -n "$user_specified_tag" ]]; then
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest image release..."
+      RELEASE_TAG=$(find_latest_image_release)
+      API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
+      RELEASE_INFO=$(curl -sL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$API_URL")
+      ASSET_URL=$(echo "$RELEASE_INFO" | \
+        grep -B 3 "\"name\": \"${filename}\"" | \
+        grep '"url"' | head -1 | \
+        cut -d'"' -f4 || true)
+    fi
 
     if [[ -z "$ASSET_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
+      echo "   No releases with disk images were found."
       exit 1
     fi
 
@@ -113,10 +136,22 @@ download_from_github() {
     # For public repos, use browser_download_url
     DOWNLOAD_URL=$(echo "$RELEASE_INFO" | \
       grep -o "\"browser_download_url\": \"[^\"]*${filename}\"" | \
-      cut -d'"' -f4)
+      cut -d'"' -f4 || true)
+
+    # If user specified a tag but it doesn't have the disk image, fall back to auto-detect
+    if [[ -z "$DOWNLOAD_URL" && -n "$user_specified_tag" ]]; then
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest image release..."
+      RELEASE_TAG=$(find_latest_image_release)
+      API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
+      RELEASE_INFO=$(curl -sL "$API_URL")
+      DOWNLOAD_URL=$(echo "$RELEASE_INFO" | \
+        grep -o "\"browser_download_url\": \"[^\"]*${filename}\"" | \
+        cut -d'"' -f4 || true)
+    fi
 
     if [[ -z "$DOWNLOAD_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
+      echo "   No releases with disk images were found."
       exit 1
     fi
 
