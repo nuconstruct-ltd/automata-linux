@@ -273,6 +273,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -309,6 +310,7 @@ jobs:
 
           echo "asset_id=$ASSET_ID" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Found asset ID: $ASSET_ID"
           echo "SHA256: $SHA256"
 
@@ -318,10 +320,16 @@ jobs:
           sed -i "s/SHA256_PLACEHOLDER/${{ steps.asset-info.outputs.sha256 }}/g" Formula/cvm-cli.rb
           cat Formula/cvm-cli.rb
 
-      - name: Commit and push formula update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/cvm-cli.rb
-          git commit -m "chore: update Homebrew formula for ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}"
-          git push
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
+          title: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
+          body: |
+            Automated PR to update the Homebrew formula with the correct asset ID and SHA256 for release ${{ steps.asset-info.outputs.tag }}.
+
+            - Asset ID: `${{ steps.asset-info.outputs.asset_id }}`
+            - SHA256: `${{ steps.asset-info.outputs.sha256 }}`
+          branch: update-homebrew-formula-${{ steps.asset-info.outputs.tag }}
+          base: main
