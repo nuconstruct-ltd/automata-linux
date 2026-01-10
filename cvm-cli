@@ -19,6 +19,13 @@ elif [ -d "/usr/share/cvm-cli/scripts" ]; then
     WORKLOAD_DIR="$INSTALL_DIR/workload"
     TOOLS_DIR="$INSTALL_DIR/tools"
     IS_INSTALLED=true
+elif [ -d "/opt/homebrew/share/cvm-cli/scripts" ]; then
+    # Homebrew on Apple Silicon
+    INSTALL_DIR="/opt/homebrew/share/cvm-cli"
+    SCRIPT_DIR="$INSTALL_DIR/scripts"
+    WORKLOAD_DIR="$INSTALL_DIR/workload"
+    TOOLS_DIR="$INSTALL_DIR/tools"
+    IS_INSTALLED=true
 elif [ -d "$SCRIPT_PATH/scripts" ]; then
     # Running from git clone (development mode)
     SCRIPT_DIR="$SCRIPT_PATH/scripts"
