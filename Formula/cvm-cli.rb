@@ -8,9 +8,9 @@ class CvmCli < Formula
 
   # For private repos, use HOMEBREW_GITHUB_API_TOKEN
   # Usage: export HOMEBREW_GITHUB_API_TOKEN=your_token && brew install cvm-cli
-  url "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/ASSET_ID_PLACEHOLDER",
+  url "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/338737236",
       headers: ["Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", "")}", "Accept: application/octet-stream"]
-  sha256 "SHA256_PLACEHOLDER"
+  sha256 "232da257182f6494b8e09c57e924ac9343da35d9b8702ae962adbd0fd1c08202"
 
   depends_on "jq"
   depends_on "curl"
