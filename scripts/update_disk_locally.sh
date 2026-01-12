@@ -40,6 +40,8 @@ populate() {
         sudo mount ${LOOP_DEV}p3 /tmp/data
         WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
 
+        # Remove existing workload and copy new one (avoids nested workload/workload issue)
+        sudo rm -rf /tmp/data/workload
         sudo cp -r "$WORKLOAD_FOLDER" /tmp/data/workload
         sudo chown -R 1000:1000 /tmp/data/workload
 

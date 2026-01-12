@@ -189,6 +189,8 @@ case "$COMMAND" in
         if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
             WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
         fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
@@ -272,6 +274,8 @@ case "$COMMAND" in
         if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
             WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
         fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
@@ -365,6 +369,8 @@ case "$COMMAND" in
         if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
             WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
         fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         set -euo pipefail
         # Check that CSP CLI dependencies are installed
