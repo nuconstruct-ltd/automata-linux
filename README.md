@@ -35,12 +35,6 @@ sudo dpkg -i cvm-cli_0.1.0-1_all.deb
 sudo apt-get install -f
 ```
 
-**Fedora/RHEL:**
-```bash
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli-0.1.0-1.noarch.rpm
-sudo dnf install cvm-cli-0.1.0-1.noarch.rpm
-```
-
 **macOS (Homebrew):**
 ```bash
 brew tap automata-network/cvm-cli https://github.com/automata-network/cvm-base-image

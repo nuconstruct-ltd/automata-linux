@@ -17,19 +17,6 @@ sudo dpkg -i cvm-cli_0.1.0-1_all.deb
 sudo apt-get install -f
 ```
 
-### Fedora / RHEL / CentOS
-
-```bash
-# Download the latest .rpm package
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli-0.1.0-1.noarch.rpm
-
-# Install with dnf
-sudo dnf install cvm-cli-0.1.0-1.noarch.rpm
-
-# OR install with yum
-sudo yum install cvm-cli-0.1.0-1.noarch.rpm
-```
-
 ### macOS (Homebrew)
 
 ```bash
@@ -142,13 +129,6 @@ When installed via package manager, `cvm-cli` stores user data in:
 sudo apt-get remove cvm-cli
 ```
 
-### Fedora / RHEL / CentOS
-```bash
-sudo dnf remove cvm-cli
-# OR
-sudo yum remove cvm-cli
-```
-
 ### macOS
 ```bash
 brew uninstall cvm-cli
@@ -172,12 +152,6 @@ rm -rf ~/.cvm-cli
 ```bash
 wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli_VERSION_all.deb
 sudo dpkg -i cvm-cli_VERSION_all.deb
-```
-
-### Fedora / RHEL / CentOS
-```bash
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli-VERSION.noarch.rpm
-sudo dnf upgrade cvm-cli-VERSION.noarch.rpm
 ```
 
 ### macOS
@@ -227,11 +201,6 @@ If you get errors about missing commands:
 **Ubuntu/Debian:**
 ```bash
 sudo apt-get install jq curl openssl qemu-utils python3
-```
-
-**Fedora/RHEL:**
-```bash
-sudo dnf install jq curl openssl qemu-img python3
 ```
 
 **macOS:**

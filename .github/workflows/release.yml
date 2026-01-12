@@ -38,44 +38,6 @@ jobs:
           name: debian-package
           path: dist/*.deb
 
-  build-rpm:
-    name: Build RPM Package
-    runs-on: ubuntu-latest
-    container: fedora:latest
-    steps:
-      - name: Install Git and dependencies
-        run: |
-          dnf install -y git rpm-build rpmdevtools make jq curl openssl qemu-img python3
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - name: Setup RPM build environment
-        run: |
-          rpmdev-setuptree
-          tar czf ~/rpmbuild/SOURCES/cvm-cli-0.1.0.tar.gz \
-            --transform 's,^,cvm-cli-0.1.0/,' \
-            --exclude=.git \
-            --exclude=dist \
-            .
-
-      - name: Build RPM
-        run: |
-          rpmbuild -bb cvm-cli.spec
-
-      - name: Move artifacts
-        run: |
-          mkdir -p dist
-          cp ~/rpmbuild/RPMS/noarch/cvm-cli-*.rpm dist/
-
-      - name: Upload RPM package
-        uses: actions/upload-artifact@v4
-        with:
-          name: rpm-package
-          path: dist/*.rpm
-
   build-macos:
     name: Build macOS Package (ARM64)
     runs-on: macos-latest
@@ -129,7 +91,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-deb, build-rpm, build-macos]
+    needs: [build-deb, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -143,12 +105,6 @@ jobs:
           name: debian-package
           path: dist/
 
-      - name: Download RPM package
-        uses: actions/download-artifact@v4
-        with:
-          name: rpm-package
-          path: dist/
-
       - name: Download macOS package
         uses: actions/download-artifact@v4
         with:
@@ -158,7 +114,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd dist
-          sha256sum *.deb *.rpm *.tar.gz > SHA256SUMS
+          sha256sum *.deb *.tar.gz > SHA256SUMS
           cat SHA256SUMS
 
       - name: Create Release
@@ -167,13 +123,12 @@ jobs:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
           files: |
             dist/*.deb
-            dist/*.rpm
             dist/*.tar.gz
             dist/SHA256SUMS
           body: |
             ## cvm-cli ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
-            This release contains the **CLI packages only** (`.deb`, `.rpm`, and `.tar.gz`).
+            This release contains the **CLI packages only** (`.deb` and `.tar.gz`).
             Disk images are released separately - the CLI will automatically find and download them.
 
             ### Installation (Private Repository)
@@ -200,27 +155,6 @@ jobs:
             # Install
             sudo dpkg -i "$DEB_NAME"
             sudo apt-get install -f
-            ```
-
-            **Fedora/RHEL:**
-            ```bash
-            # Set your GitHub token and release tag
-            export GITHUB_TOKEN=your_github_token_here
-            export RELEASE_TAG=${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
-
-            # Get release info and download .rpm package
-            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/automata-network/cvm-base-image/releases/tags/$RELEASE_TAG")
-            ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | endswith(".rpm")) | .id')
-            RPM_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .name')
-
-            curl -L -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/octet-stream" \
-              "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/$ASSET_ID" \
-              -o "$RPM_NAME"
-
-            # Install
-            sudo dnf install "./$RPM_NAME"
             ```
 
             **Alternative: Using GitHub CLI**

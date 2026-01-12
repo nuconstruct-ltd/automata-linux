@@ -87,39 +87,11 @@ gcloud_init_login() {
 detect_package_manager() {
     if command -v apt >/dev/null 2>&1; then
         echo "apt"
-    elif command -v dnf >/dev/null 2>&1; then
-        echo "dnf"
     elif command -v pacman >/dev/null 2>&1; then
         echo "pacman"
     else
         echo "unknown"
     fi
-}
-
-detect_rhel_variant() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        case "$ID" in
-            rhel)
-                if [ "$VERSION_ID" = "8" ]; then
-                    echo "rhel8"
-                elif [ "$VERSION_ID" = "9" ]; then
-                    echo "rhel9"
-                else
-                    echo "rhel_unknown"
-                fi
-                ;;
-            centos)
-                if grep -q "Stream" /etc/centos-release 2>/dev/null; then
-                    echo "centos_stream"
-                fi
-                ;;
-            *)
-                echo "unknown_distro"
-                ;;
-        esac
-    fi
-    echo "unsupported_distro"
 }
 
 install_azcli() {
@@ -135,24 +107,6 @@ install_azcli() {
             apt)
                 echo "Detected apt. Installing Azure CLI..."
                 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-                ;;
-            dnf)
-                echo "Detected dnf. Installing Azure CLI..."
-                sudo rpm --import https://packages.microsoft.com/keys/microsoft.asc
-                RHEL_VARIANT=$(detect_rhel_variant)
-                case "$RHEL_VARIANT" in
-                    rhel8)
-                        sudo dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm
-                        ;;
-                    rhel9|centos_stream)
-                        sudo dnf install -y https://packages.microsoft.com/config/rhel/9.0/packages-microsoft-prod.rpm
-                        ;;
-                    *)
-                        echo "❌ Unsupported RHEL variant: $RHEL_VARIANT"
-                        exit 1
-                        ;;
-                esac
-                sudo dnf install -y azure-cli
                 ;;
             *)
                 echo "❌ No supported package manager found. Cannot install Azure CLI."
@@ -176,9 +130,6 @@ install_other_az_deps() {
             case "$PM" in
                 apt)
                     sudo apt install -y jq
-                    ;;
-                dnf)
-                    sudo dnf install jq
                     ;;
             esac
         else

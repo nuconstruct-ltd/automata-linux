@@ -100,7 +100,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf _artifacts/
 	rm -f *.vmdk *.vhd *.vhd.xz *.tar.gz
-	rm -f *.deb *.rpm *.pkg
+	rm -f *.deb *.pkg
 	rm -f secure-boot-certs.zip
 	@echo "✅ Clean complete!"
 

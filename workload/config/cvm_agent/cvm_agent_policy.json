@@ -40,7 +40,7 @@
         }, 
 
         "disk_config": {
-            "enable": false,
+            "enable": true,
             "disk_mount_point": "/data/data-disk",
             "disk_encryption": {
                 "enable": false,
