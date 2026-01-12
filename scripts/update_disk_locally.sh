@@ -38,10 +38,10 @@ populate() {
         echo "ℹ️  Copying workload folder into /MNT/data/workload..."
         mkdir -p /tmp/data
         sudo mount ${LOOP_DEV}p3 /tmp/data
-        WORKLOAD_FOLDER=./workload
+        WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
 
-        sudo cp -r $WORKLOAD_FOLDER /tmp/data/
-        sudo chown -R 1000:1000 /tmp/data/$WORKLOAD_FOLDER
+        sudo cp -r "$WORKLOAD_FOLDER" /tmp/data/workload
+        sudo chown -R 1000:1000 /tmp/data/workload
 
         sync
         sudo umount ${LOOP_DEV}p3
