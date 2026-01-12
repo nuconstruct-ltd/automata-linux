@@ -13,6 +13,8 @@ REPO_NAME="${REPO_PATH%%:*}"            # strip tag → yaoxin111/alpine
 NAMESPACE="${REPO_NAME%%/*}"            # yaoxin111
 REPO_ONLY="${REPO_NAME#*/}"             # alpine
 
+OS_TYPE="$(uname)"
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Usage: ./sign-and-verify.sh <source-image> <registry>/<image-name>:<tag>
 # Example: ./sign-and-verify.sh alpine:latest docker.io/yaoxin111/alpine:secure
@@ -28,6 +30,12 @@ fi
 # Ensure Docker is installed
 # ───────────────────────────────────────────────────────────────────────────────
 if ! command -v docker &>/dev/null; then
+  if [[ "$OS_TYPE" == "Darwin" ]]; then
+    echo "🐳 Docker not found. Please install Docker Desktop for macOS:"
+    echo "   https://docs.docker.com/desktop/install/mac-install/"
+    exit 1
+  fi
+
   echo "🐳 Docker not found — installing..."
 
   sudo apt-get update
@@ -46,30 +54,36 @@ if ! command -v docker &>/dev/null; then
   sudo apt-get update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io \
     docker-buildx-plugin docker-compose-plugin
-  
+
   echo "✅ Docker installed: $(docker --version)"
 else
   echo "✅ Docker already installed: $(docker --version)"
 fi
 
+# ───────────────────────────────────────────────────────────────���───────────────
+# Ensure Docker is accessible (Linux only - macOS uses Docker Desktop)
 # ───────────────────────────────────────────────────────────────────────────────
-# Ensure current user is in the docker group
-# ───────────────────────────────────────────────────────────────────────────────
+if [[ "$OS_TYPE" == "Linux" ]]; then
+  # If running non-root and no docker access, re-exec with sudo
+  if ! groups "$USER" | grep -q '\bdocker\b'; then
+    echo "👤 User '$USER' is not in the 'docker' group — adding now..."
+    sudo usermod -aG docker "$USER"
+    echo "⚠️  You are not yet in the 'docker' group. Re-running with sudo..."
+    exec sudo "$0" "$@"
+  fi
 
-# If running non-root and no docker access, re-exec with sudo
-if ! groups "$USER" | grep -q '\bdocker\b'; then
-  echo "👤 User '$USER' is not in the 'docker' group — adding now..."
-  sudo usermod -aG docker "$USER"
-  echo "⚠️  You are not yet in the 'docker' group. Re-running with sudo..."
-  exec sudo "$0" "$@"
+  # If still not root or not in docker group, fallback check
+  if ! docker info &>/dev/null; then
+    echo "🚫 Still cannot access Docker. Re-running with sudo..."
+    exec sudo "$0" "$@"
+  fi
+else
+  # macOS - just check if Docker daemon is running
+  if ! docker info &>/dev/null; then
+    echo "🚫 Cannot connect to Docker. Please ensure Docker Desktop is running."
+    exit 1
+  fi
 fi
-
-# If still not root or not in docker group, fallback check
-if ! docker info &>/dev/null; then
-  echo "🚫 Still cannot access Docker. Re-running with sudo..."
-  exec sudo "$0" "$@"
-fi
-
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Ensure Cosign is installed
@@ -77,14 +91,27 @@ fi
 if ! command -v cosign &>/dev/null; then
   echo "🔍 Cosign not found — installing..."
 
-  COSIGN_LATEST="$(curl -sSf https://api.github.com/repos/sigstore/cosign/releases/latest \
-    | grep -Po '"tag_name": *"\K[^"]+')"
+  if [[ "$OS_TYPE" == "Darwin" ]]; then
+    # macOS - use Homebrew
+    if command -v brew &>/dev/null; then
+      brew install cosign
+    else
+      echo "❌ Homebrew not found. Please install cosign manually:"
+      echo "   brew install cosign"
+      echo "   Or download from: https://github.com/sigstore/cosign/releases"
+      exit 1
+    fi
+  else
+    # Linux
+    COSIGN_LATEST="$(curl -sSf https://api.github.com/repos/sigstore/cosign/releases/latest \
+      | grep -Po '"tag_name": *"\K[^"]+')"
 
-  curl -fsSL -o cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_LATEST}/cosign-linux-amd64"
-  chmod +x cosign
-  sudo mv cosign /usr/local/bin/
+    curl -fsSL -o cosign "https://github.com/sigstore/cosign/releases/download/${COSIGN_LATEST}/cosign-linux-amd64"
+    chmod +x cosign
+    sudo mv cosign /usr/local/bin/
+  fi
 
-  echo "✅ Cosign ${COSIGN_LATEST} installed."
+  echo "✅ Cosign installed."
 else
   echo "✅ Cosign already installed: $(cosign version)"
 fi

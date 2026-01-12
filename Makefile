@@ -32,14 +32,14 @@ install:
 	fi
 
 	# Create installation directories
-	install -d $(BINDIR)
-	install -d $(SHAREDIR)/scripts
-	install -d $(SHAREDIR)/tools
-	install -d $(SHAREDIR)/workload/config/cvm_agent
-	install -d $(SHAREDIR)/workload/config
-	install -d $(SHAREDIR)/workload/secrets
-	install -d $(SHAREDIR)/secure_boot
-	install -d $(DOCDIR)
+	mkdir -p $(BINDIR)
+	mkdir -p $(SHAREDIR)/scripts
+	mkdir -p $(SHAREDIR)/tools
+	mkdir -p $(SHAREDIR)/workload/config/cvm_agent
+	mkdir -p $(SHAREDIR)/workload/config
+	mkdir -p $(SHAREDIR)/workload/secrets
+	mkdir -p $(SHAREDIR)/secure_boot
+	mkdir -p $(DOCDIR)
 
 	# Install main CLI
 	install -m 0755 cvm-cli $(BINDIR)/cvm-cli

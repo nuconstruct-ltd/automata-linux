@@ -39,6 +39,21 @@ elif [[ -z "$STATUS" ]]; then
   multipass launch jammy --name "$VM_NAME" --disk 10G --memory 4G --cpus 2
 fi
 
+# Step 2b: Wait for VM to be fully ready (network/SSH)
+echo "⏳ Waiting for VM to be ready..."
+MAX_WAIT=30
+for i in $(seq 1 $MAX_WAIT); do
+  if multipass exec "$VM_NAME" -- true 2>/dev/null; then
+    echo "✅ VM is ready"
+    break
+  fi
+  if [[ $i -eq $MAX_WAIT ]]; then
+    echo "❌ VM failed to become ready after ${MAX_WAIT} seconds"
+    exit 1
+  fi
+  sleep 1
+done
+
 # Step 3: Validate disk exists
 if [[ ! -f "$DISK_FILE" ]]; then
   echo "❌ Disk file not found: $DISK_FILE"

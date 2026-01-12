@@ -220,14 +220,17 @@ The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it 
 
 ```bash
 # Option 1. Deploy to GCP
-./cvm-cli deploy-gcp --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+cvm-cli deploy-gcp --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-./cvm-cli deploy-aws --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+cvm-cli deploy-aws --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-./cvm-cli deploy-azure --add-workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+cvm-cli deploy-azure --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 ```
+
+> [!NOTE]
+> The `--workload-dir` option specifies the path to your workload directory. Use an absolute path or a path relative to your current directory. If not specified, it defaults to `./workload` in the current directory.
 
 At the end of the deployment, you should be able to see the name of the deployed CVM in the shell, and the location where the golden measurement of this CVM is stored:
 
