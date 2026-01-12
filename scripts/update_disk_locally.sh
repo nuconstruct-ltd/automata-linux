@@ -38,10 +38,12 @@ populate() {
         echo "ℹ️  Copying workload folder into /MNT/data/workload..."
         mkdir -p /tmp/data
         sudo mount ${LOOP_DEV}p3 /tmp/data
-        WORKLOAD_FOLDER=./workload
+        WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
 
-        sudo cp -r $WORKLOAD_FOLDER /tmp/data/
-        sudo chown -R 1000:1000 /tmp/data/$WORKLOAD_FOLDER
+        # Remove existing workload and copy new one (avoids nested workload/workload issue)
+        sudo rm -rf /tmp/data/workload
+        sudo cp -r "$WORKLOAD_FOLDER" /tmp/data/workload
+        sudo chown -R 1000:1000 /tmp/data/workload
 
         sync
         sudo umount ${LOOP_DEV}p3
@@ -60,10 +62,6 @@ if [ -f $DISK_FILE ]; then
             # Detect package manager and install
             if [ -x "$(command -v apt)" ]; then
                 sudo apt update && sudo apt install -y qemu-utils
-            elif [ -x "$(command -v yum)" ]; then
-                sudo yum install -y qemu-img
-            elif [ -x "$(command -v dnf)" ]; then
-                sudo dnf install -y qemu-img
             elif [ -x "$(command -v pacman)" ]; then
                 sudo pacman -Sy --noconfirm qemu
             else

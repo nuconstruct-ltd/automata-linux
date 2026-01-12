@@ -69,10 +69,6 @@ if [ -f $DISK_FILE ]; then
             # Detect package manager and install
             if [ -x "$(command -v apt)" ]; then
                 sudo apt update && sudo apt install -y qemu-utils
-            elif [ -x "$(command -v yum)" ]; then
-                sudo yum install -y qemu-img
-            elif [ -x "$(command -v dnf)" ]; then
-                sudo dnf install -y qemu-img
             elif [ -x "$(command -v pacman)" ]; then
                 sudo pacman -Sy --noconfirm qemu
             else

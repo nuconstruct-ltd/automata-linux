@@ -2,7 +2,7 @@
 
 # GitHub repository information
 REPO="automata-network/cvm-base-image"
-RELEASE_TAG="${RELEASE_TAG:-latest}"  # Use RELEASE_TAG env var or default to "latest"
+RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 
 # quit when any error occurs
 set -Eeuo pipefail
@@ -11,9 +11,53 @@ echo "⌛ Downloading attestations from GitHub Release..."
 
 # ---------- helpers ----------------------------------------------------------
 
+# Find the latest release that contains attestations (not CLI-only releases)
+find_latest_attestation_release() {
+  local api_url="https://api.github.com/repos/${REPO}/releases?per_page=20"
+  local releases_json
+
+  echo "⌛ Finding latest release with attestations..." >&2
+
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    releases_json=$(curl -sL --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$api_url")
+  else
+    releases_json=$(curl -sL --max-time 30 "$api_url")
+  fi
+
+  # Check if we got a valid response
+  if [[ -z "$releases_json" ]] || echo "$releases_json" | jq -e 'type != "array"' >/dev/null 2>&1; then
+    echo "❌ Error: Failed to fetch releases from GitHub API" >&2
+    echo "   Response: $releases_json" >&2
+    exit 1
+  fi
+
+  # Find the first release that contains attestations.zip
+  local tag
+  tag=$(echo "$releases_json" | jq -r '
+    [.[] | select(.assets[]?.name == "attestations.zip")] | first | .tag_name // empty
+  ' || true)
+
+  if [[ -z "$tag" || "$tag" == "null" ]]; then
+    echo "❌ Error: Could not find any release containing attestations" >&2
+    echo "   Please set RELEASE_TAG environment variable to specify a release" >&2
+    echo "   Available releases:" >&2
+    echo "$releases_json" | jq -r '.[].tag_name' | head -5 | sed 's/^/     /' >&2
+    exit 1
+  fi
+
+  echo "✅ Found attestation release: ${tag}" >&2
+  echo "$tag"
+}
+
 # Download file from GitHub Release
 download_from_github() {
   local filename="$1"
+  local user_specified_tag="${RELEASE_TAG:-}"
+
+  # Auto-detect release tag if not specified
+  if [[ -z "$RELEASE_TAG" ]]; then
+    RELEASE_TAG=$(find_latest_attestation_release)
+  fi
 
   # Determine API endpoint based on release tag
   if [[ "$RELEASE_TAG" == "latest" ]]; then
@@ -55,11 +99,23 @@ download_from_github() {
     ASSET_URL=$(echo "$RELEASE_INFO" | \
       grep -B 3 "\"name\": \"${filename}\"" | \
       grep '"url"' | head -1 | \
-      cut -d'"' -f4)
+      cut -d'"' -f4 || true)
+
+    # If user specified a tag but it doesn't have the attestations, fall back to auto-detect
+    if [[ -z "$ASSET_URL" && -n "$user_specified_tag" ]]; then
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest attestation release..."
+      RELEASE_TAG=$(find_latest_attestation_release)
+      API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
+      RELEASE_INFO=$(curl -sL --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$API_URL")
+      ASSET_URL=$(echo "$RELEASE_INFO" | \
+        grep -B 3 "\"name\": \"${filename}\"" | \
+        grep '"url"' | head -1 | \
+        cut -d'"' -f4 || true)
+    fi
 
     if [[ -z "$ASSET_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
-      echo "❌ This release may not include attestations."
+      echo "❌ No releases with attestations were found."
       exit 1
     fi
 
@@ -75,11 +131,22 @@ download_from_github() {
     # For public repos, use browser_download_url
     DOWNLOAD_URL=$(echo "$RELEASE_INFO" | \
       grep -o "\"browser_download_url\": \"[^\"]*${filename}\"" | \
-      cut -d'"' -f4)
+      cut -d'"' -f4 || true)
+
+    # If user specified a tag but it doesn't have the attestations, fall back to auto-detect
+    if [[ -z "$DOWNLOAD_URL" && -n "$user_specified_tag" ]]; then
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest attestation release..."
+      RELEASE_TAG=$(find_latest_attestation_release)
+      API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
+      RELEASE_INFO=$(curl -sL --max-time 30 "$API_URL")
+      DOWNLOAD_URL=$(echo "$RELEASE_INFO" | \
+        grep -o "\"browser_download_url\": \"[^\"]*${filename}\"" | \
+        cut -d'"' -f4 || true)
+    fi
 
     if [[ -z "$DOWNLOAD_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
-      echo "❌ This release may not include attestations."
+      echo "❌ No releases with attestations were found."
       exit 1
     fi
 

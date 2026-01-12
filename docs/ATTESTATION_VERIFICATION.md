@@ -75,11 +75,11 @@ The easiest way to verify disk images (works with large files >128MB):
 cd cvm-base-image
 
 # Download disk image and attestations
-./cvm-cli get-disk aws
-./cvm-cli get-attestations
+cvm-cli get-disk aws
+cvm-cli get-attestations
 
 # Verify the disk image
-./cvm-cli verify-attestation aws_disk.vmdk
+cvm-cli verify-attestation aws_disk.vmdk
 ```
 
 This method handles large disk images (>128MB) that exceed cosign's size limits by:
@@ -108,27 +108,27 @@ gh attestation verify aws_disk.vmdk \
 
 ```bash
 # Using cvm-cli (recommended)
-./cvm-cli get-disk aws
-./cvm-cli get-attestations
-./cvm-cli verify-attestation aws_disk.vmdk
+cvm-cli get-disk aws
+cvm-cli get-attestations
+cvm-cli verify-attestation aws_disk.vmdk
 ```
 
 ### Azure VHD
 
 ```bash
 # Using cvm-cli (recommended)
-./cvm-cli get-disk azure
-./cvm-cli get-attestations
-./cvm-cli verify-attestation azure_disk.vhd
+cvm-cli get-disk azure
+cvm-cli get-attestations
+cvm-cli verify-attestation azure_disk.vhd
 ```
 
 ### GCP tar.gz
 
 ```bash
 # Using cvm-cli (recommended)
-./cvm-cli get-disk gcp
-./cvm-cli get-attestations
-./cvm-cli verify-attestation gcp_disk.tar.gz
+cvm-cli get-disk gcp
+cvm-cli get-attestations
+cvm-cli verify-attestation gcp_disk.tar.gz
 ```
 
 ## How Verification Works for Large Disk Images
@@ -355,7 +355,7 @@ To verify the chain:
 
 ```bash
 # The verify-attestation command displays the dm-verity root hash
-./cvm-cli verify-attestation aws_disk.vmdk
+cvm-cli verify-attestation aws_disk.vmdk
 
 # Or extract it manually
 DM_VERITY_HASH=$(cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \

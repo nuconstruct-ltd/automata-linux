@@ -55,6 +55,7 @@ fi
 export ARTIFACT_DIR
 export SCRIPT_DIR
 export TOOLS_DIR
+export WORKLOAD_DIR
 
 usage() {
     echo "Usage: $0 <command> [options]"
@@ -86,6 +87,7 @@ usage() {
     echo "  --region <region>           The region where the VM will be deployed. Default: \"East US\""
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
 
@@ -100,6 +102,7 @@ usage() {
     echo "  --ip <ip>                   Static ip to attach to the VM. Default: None"
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
@@ -112,6 +115,7 @@ usage() {
     echo "  --eip <alloc_id>            The allocation ID of an Elastic IP to attach to the VM. Default: None"
     echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
     echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
+    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
     echo "  --attach-disk                The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
@@ -176,9 +180,17 @@ case "$COMMAND" in
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
+                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
+
+        # Convert WORKLOAD_DIR to absolute path if it's relative
+        if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
+            WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
+        fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
@@ -253,9 +265,17 @@ case "$COMMAND" in
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
+                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
+
+        # Convert WORKLOAD_DIR to absolute path if it's relative
+        if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
+            WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
+        fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
@@ -338,11 +358,19 @@ case "$COMMAND" in
                 --storage_account) STORAGE_ACC=$2; shift 2 ;;
                 --gallery_name) GALLERY_NAME=$2; shift 2 ;;
                 --add-workload) ADD_WORKLOAD=true; shift ;;
-                --attach-disk) ATTACH_DISK=$2; shift 2 ;;     # ✅ NEW
-                --disk-size) DISK_SIZE=$2; shift 2 ;;         # ✅ NEW
+                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
+                --attach-disk) ATTACH_DISK=$2; shift 2 ;;
+                --disk-size) DISK_SIZE=$2; shift 2 ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
+
+        # Convert WORKLOAD_DIR to absolute path if it's relative
+        if [[ -n "$WORKLOAD_DIR" && "${WORKLOAD_DIR:0:1}" != "/" ]]; then
+            WORKLOAD_DIR="$(cd "$(dirname "$WORKLOAD_DIR")" && pwd)/$(basename "$WORKLOAD_DIR")"
+        fi
+        # Re-export WORKLOAD_DIR so child scripts see the updated value
+        export WORKLOAD_DIR
 
         set -euo pipefail
         # Check that CSP CLI dependencies are installed
@@ -568,7 +596,7 @@ case "$COMMAND" in
 
     generate-livepatch-keys)
         # Generate livepatch keys
-        "$SCRIPT_DIR/generate_livepatch_keys.sh
+        "$SCRIPT_DIR/generate_livepatch_keys.sh"
         ;;
 
     sign-image)
@@ -577,11 +605,12 @@ case "$COMMAND" in
         COSIGN_PRI="$3"
         COSIGN_PUB="$4"
 
-        shift 2
         if [[ -z "$SOURCE_IMAGE" || -z "$TARGET_IMAGE" || -z "$COSIGN_PRI" || -z "$COSIGN_PUB" ]]; then
-            usage
+            echo "❌ Usage: $0 sign-image <source-image> <target-image> <cosign.key> <cosign.pub>"
+            echo "Example: $0 sign-image alpine:latest docker.io/user/alpine:signed cosign.key cosign.pub"
+            exit 1
         fi
-        "$SCRIPT_DIR/sign-and-verify.sh $SOURCE_IMAGE $TARGET_IMAGE $COSIGN_PRI $COSIGN_PUB
+        "$SCRIPT_DIR/sign-and-verify.sh" "$SOURCE_IMAGE" "$TARGET_IMAGE" "$COSIGN_PRI" "$COSIGN_PUB"
         ;;
 
     *)
