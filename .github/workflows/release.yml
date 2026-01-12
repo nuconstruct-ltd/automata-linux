@@ -21,6 +21,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y debhelper devscripts build-essential
 
+      - name: Update version in changelog
+        run: |
+          # Extract version from git tag (e.g., v0.1.2 -> 0.1.2) or default to 0.1.0
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          else
+            VERSION="0.1.0"
+          fi
+          echo "Building Debian package version: $VERSION"
+          # Update the version in debian/changelog
+          sed -i "s/^cvm-cli ([^)]*)/cvm-cli (${VERSION}-1)/" debian/changelog
+          head -1 debian/changelog
+
       - name: Build Debian package
         run: |
           dpkg-buildpackage -us -uc -b
@@ -49,7 +63,14 @@ jobs:
 
       - name: Create macOS tarball
         run: |
-          VERSION="0.1.0"
+          # Extract version from git tag (e.g., v0.1.2 -> 0.1.2) or default to 0.1.0
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          else
+            VERSION="0.1.0"
+          fi
+          echo "Building macOS package version: $VERSION"
           PKG_NAME="cvm-cli-${VERSION}-macos-arm64"
           mkdir -p "${PKG_NAME}/bin"
           mkdir -p "${PKG_NAME}/share/cvm-cli/scripts"
