@@ -271,8 +271,19 @@ jobs:
 
       - name: Update formula
         run: |
-          sed -i "s/ASSET_ID_PLACEHOLDER/${{ steps.asset-info.outputs.asset_id }}/g" Formula/cvm-cli.rb
-          sed -i "s/SHA256_PLACEHOLDER/${{ steps.asset-info.outputs.sha256 }}/g" Formula/cvm-cli.rb
+          TAG="${{ steps.asset-info.outputs.tag }}"
+          VERSION="${TAG#v}"  # Remove 'v' prefix
+          ASSET_ID="${{ steps.asset-info.outputs.asset_id }}"
+          SHA256="${{ steps.asset-info.outputs.sha256 }}"
+
+          # Update version
+          sed -i "s/version \"[^\"]*\"/version \"${VERSION}\"/" Formula/cvm-cli.rb
+          # Update asset ID in URL
+          sed -i "s|releases/assets/[0-9]*|releases/assets/${ASSET_ID}|" Formula/cvm-cli.rb
+          # Update SHA256
+          sed -i "s/sha256 \"[a-f0-9]*\"/sha256 \"${SHA256}\"/" Formula/cvm-cli.rb
+
+          echo "Updated formula:"
           cat Formula/cvm-cli.rb
 
       - name: Create Pull Request
