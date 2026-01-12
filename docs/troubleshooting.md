@@ -7,7 +7,7 @@
 Q: Help! I got the following error when deploying the CVM on Azure:
 
 ```bash
-$ ./cvm-cli deploy-azure \
+$ cvm-cli deploy-azure \
   --additional_ports "80,443,2222" \
   --vm_name "tdx-cvm-demo" \
   --resource_group "$RG" \
@@ -51,7 +51,7 @@ A: The error is due to network issues. To fix it, delete the resource group on A
 
 Q: Help! I got the following error when deploying the CVM on AWS:
 ```bash
-$ ./cvm-cli deploy-aws 
+$ cvm-cli deploy-aws 
 ℹ️  No bucket provided. Using generated bucket name: cvmtesteq1vv4
 ⌛ Double-checking the VM type and region for CSP...
 ⌛ Checking whether disk image exists...
@@ -96,7 +96,7 @@ aws_secret_access_key = bdea299cb2e013216137e874e99c640c6f002e033adffa227f61c29e
 
 Q: Help! I got the following error when deploying the CVM on GCP:
 ```bash
-$ ./cvm-cli deploy-gcp
+$ cvm-cli deploy-gcp
 ...
 ✅ gcloud cli installed successfully.
 ...

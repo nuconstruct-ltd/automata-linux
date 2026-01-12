@@ -106,22 +106,22 @@ The other settings not mentioned can be left as its default values. If you wish 
 
 ### 5. (Optional) Prepare additional data disk
 
-By default, `cvm-cli` supports the creation of an additional data disk and attaching it to the CVM. Users only need to specify the disk name and size by adding `--attach-disk mydisk --disk-size 20` after `./cvm-cli deploy-<cloud provider name>`. For example:
+By default, `cvm-cli` supports the creation of an additional data disk and attaching it to the CVM. Users only need to specify the disk name and size by adding `--attach-disk mydisk --disk-size 20` after `cvm-cli deploy-<cloud provider name>`. For example:
 
 ```bash
 # Option 1. Deploy to GCP
-./cvm-cli deploy-gcp  --attach-disk mydisk --disk-size 20
+cvm-cli deploy-gcp  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-./cvm-cli deploy-aws --attach-disk mydisk --disk-size 20
+cvm-cli deploy-aws --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-./cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
+cvm-cli deploy-azure --attach-disk mydisk --disk-size 20
 ```
 > [!NOTE]
 >  After the cvm is launched, the cvm will detect the unmounted disk and setup the filesystem if the disk is uninitialized and mount the disk at `/data/datadisk-1`.
 
-If you want to manually create a custom disk, feel free to use the following commands to create your own disk and pass the disk name to the cmd `./cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
+If you want to manually create a custom disk, feel free to use the following commands to create your own disk and pass the disk name to the cmd `cvm-cli deploy-<cloud provider name> --attach-disk <disk-name>`. The script will automatically detect the disk by its name and attach it to the vm.
 
 - AZURE
 ```bash
@@ -134,7 +134,7 @@ az disk create \
   --sku Premium_LRS \
   --encryption-type EncryptionAtRestWithPlatformKey
 
-./cvm-cli deploy-azure  --attach-disk $DATA_DISK
+cvm-cli deploy-azure  --attach-disk $DATA_DISK
 ```
 
 - GCP
@@ -147,7 +147,7 @@ gcloud compute disks create my-data-disk \
   --zone=asia-southeast1-b \
   --project=YOUR_PROJECT_ID
 
- ./cvm-cli deploy-gcp  --attach-disk my-data-disk2
+cvm-cli deploy-gcp  --attach-disk my-data-disk2
 ```
 
 - AWS
@@ -166,7 +166,7 @@ aws ec2 create-volume \
   --volume-type gp3 \
   --tag-specifications 'ResourceType=volume,Tags=[{Key=Name,Value=my-data-disk}]'
 
-./cvm-cli deploy-aws --attach-disk my-data-disk
+cvm-cli deploy-aws --attach-disk my-data-disk
 ```
 > [!NOTE]
 >  Replace `us-east-1a` with the `availability-zone` you plan to use.  Make sure the disk is in the same `availability-zone` as the instance created by the script. Otherwise the disk cannot attach. By default, the script creates vm instance in the first availability-zone of the region. You can use above cmd to get it.
@@ -177,12 +177,12 @@ aws ec2 create-volume \
 > [!Warning]
 > If you wish to enable kernel livepatching, please check the [kernel livepatch guide](livepatching.md) **before** deploying onto a CSP. Minimally, if you are:
 > 
-> - A developer distributing our base disk image with your custom workload: You should at least run `./cvm-cli generate-livepatch-keys` to create a set of asymmetric keys. These keys must be created before the disk is deployed onto a CVM on the cloud. When distributing the modified disk to operators, please also distribute `secure_boot/livepatch.crt`. You are responsible for creating the livepatches, signing them, and distributing them to operators.
+> - A developer distributing our base disk image with your custom workload: You should at least run `cvm-cli generate-livepatch-keys` to create a set of asymmetric keys. These keys must be created before the disk is deployed onto a CVM on the cloud. When distributing the modified disk to operators, please also distribute `secure_boot/livepatch.crt`. You are responsible for creating the livepatches, signing them, and distributing them to operators.
 > - An operator: Make sure you have received a disk image and `secure_boot/livepatch.crt` from the developer.
 
 ### Deploying to Azure
 ```bash
-./cvm-cli deploy-azure --add-workload --vm_name <name> --vm_type "<type>" --region "<region>" --additional_ports "80,443"
+cvm-cli deploy-azure --add-workload --vm_name <name> --vm_type "<type>" --region "<region>" --additional_ports "80,443"
 ```
 
 **If you need to upload your workload onto the disk, please run this command with the `--add-workload` parameter.**
@@ -202,7 +202,7 @@ The following parameters are optional, and default to:
 
 ### Deploying to GCP
 ```bash
-./cvm-cli deploy-gcp --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --project_id <project id> --bucket <bucket_name> --vm_type "<type>" --ip "<ip>"
+cvm-cli deploy-gcp --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --project_id <project id> --bucket <bucket_name> --vm_type "<type>" --ip "<ip>"
 ```
 
 
@@ -222,7 +222,7 @@ The following parameters are optional, and default to:
 
 ### Deploying to AWS
 ```bash
-./cvm-cli deploy-aws --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --bucket <bucket_name> --vm_type "<type>" --eip "<allocation ID>"
+cvm-cli deploy-aws --add-workload --additional_ports "80,443" --vm_name <name> --region "<region>" --bucket <bucket_name> --vm_type "<type>" --eip "<allocation ID>"
 ```
 
 **If you need to upload your workload onto the disk, please run this command with the `--add-workload` parameter.**
@@ -458,7 +458,7 @@ Please refer to [this step](#3-modify-the-workload-folder) for details.
 ### 3. Update the workload
 Run the following command to upload your updated workload to your deployed CVM:
 ```bash
-./cvm-cli update-workload <csp> <vm-name>
+cvm-cli update-workload <csp> <vm-name>
 ```
 
 > [!Note]
@@ -474,19 +474,19 @@ In case you wish to add your workload to a disk image to distribute to others fo
 
 ```bash
 # 1. Download a disk for a CSP if you need
-# ./cvm-cli get-disk <csp>
+# cvm-cli get-disk <csp>
 # <csp> : azure, gcp or aws
-./cvm-cli get-disk azure
+cvm-cli get-disk azure
 
 # 2. (Optional) Generate kernel livepatch keys if you want to enable livepatching.
-./cvm-cli generate-livepatch-keys
+cvm-cli generate-livepatch-keys
 
 # 3. Update the disk to add your workload contents onto it.
 # These are the following disk file names for each CSP:
 # GCP: gcp_disk.tar.gz
 # Azure: azure_disk.vhd
 # AWS: aws_disk.vmdk
-./cvm-cli update-disk azure_disk.vhd
+cvm-cli update-disk azure_disk.vhd
 ```
 
 Now, the updated disk, `azure_dis.vhd` can be distributed to others. If you generated livepatch keys, please also distribute `secure_boot/livepatch.crt` to others to place in their `secure_boot/` folder.
