@@ -275,8 +275,8 @@ Publish the golden measurements for verifiers to reference.
 
 
 - For on-chain:
-  -  Please refer to to [this repo](https://github.com/automata-network/cvm-onchain-verifier) for the contract information. Automata maintains a CVM Registry contract which you can use, but you will have to deploy the application contract to a chain where the CVM Registry contract exists.
-  -  For the application contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol).
+  -  Please refer to to [this repo](https://github.com/automata-network/automata-tee-workload-measurement) for the contract information. Automata maintains a CVM Registry contract which you can use, but you will have to deploy the application auth contract to a chain where the CVM Registry contract exists.
+  -  For the application auth contract, you can modify and deploy the [sample application contract](https://github.com/automata-network/automata-tee-workload-measurement/blob/main/src/mock/MockCVMExample.sol).
   -  Now, you can base64-decode the golden-measurements and abi-encode and upload this measurement to your application contract.
 
 
@@ -321,10 +321,10 @@ When the workload in the CVM starts, it should first retrieve its collaterals fo
 # 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
-  -d '{"report_type": 1}'
+  -d '{"report_type": 1, "chain_id": "11155111"}'
 
 # Response
-# Calldata = abi.encode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, workloadCollaterals)
+# Calldata = abi.encode("registerCvm", cloudType, teeType, teeTTL, teeReportType, teeAttestationReport, cvmIdentity, cvmCertification, workloadCollaterals)
 { "calldata": "<base64-encoded string>" }
 ```
 
@@ -336,7 +336,7 @@ The following example shows how to retrieve a report that uses zkProofs:
 # 3: Risc0 Bonsai zkProof verification: Groth-16 proof is verified by onchain contract
 curl -X POST http://127.0.0.1:7999/onchain/registration-collaterals \
   -H "Content-Type: application/json" \
-  -d '{"report_type": 3, "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
+  -d '{"report_type": 3, "chain_id": "11155111", "zk_config": { "image_id": "<string>", "url": "<api url>", "api_key": "<string>", "version": "<version>" }}'
 ```
 
 > [!Note]
@@ -367,7 +367,7 @@ For the `version`, these are the current versions we use:
 Finally, the workload should base64-decode the calldata and submit a transaction to the on-chain CVM Registry contract with its data set to the base64-decoded calldata.
 
 In case you prefer to construct your own input to submit on chain, please get the offchain collaterals from GET `/offchain/collaterals/` and check out our TEE attestation repositories, which contains the CLI to get zkproofs from both Bonsai and SP1:
-- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk/tree/v2)
+- [Automata SEV-SNP Attestation SDK](https://github.com/automata-network/amd-sev-snp-attestation-sdk)
 - [Automata TDX Attestation SDK](https://github.com/automata-network/tdx-attestation-sdk/tree/DEV-4178)
 
 #### 2. Verification
