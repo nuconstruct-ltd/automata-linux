@@ -4,7 +4,7 @@ This document will host several diagrams that explain different parts of the on-
 
 ## Uploading Golden Measurements
 For the following example given below, we make the following assumptions:
-- The workload uses the [sample application contract](https://github.com/automata-network/cvm-onchain-verifier/blob/main/contracts/src/mock/MockCVMExample.sol) without any modifications to the function `addGoldenMeasurement`.
+- The workload uses the [sample application contract](https://github.com/automata-network/automata-tee-workload-measurement/blob/main/src/mock/MockCVMExample.sol) without any modifications to the function `addGoldenMeasurement`.
 
 ```mermaid
 sequenceDiagram
@@ -39,7 +39,7 @@ sequenceDiagram
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, teeAttestationReport, cvmIdentity, workloadCollaterals)`.
+In the above scenario, `calldata = abiEncode("registerCvm", cloudType, teeType, teeTTL, teeReportType, teeAttestationReport, cvmIdentity, cvmCertification, workloadCollaterals)`.
 
 #### Groth-16 zkProof Verification
 - When report_type = 2, Succinct SP1 zkProver network is used.
@@ -60,12 +60,53 @@ sequenceDiagram
     CVM->>RC: submitTX(calldata)
 ```
 
-In the above scenario, `calldata = abiEncode("attestCvm", cloudType, teeType, teeReportType, zkProof, cvmIdentity, workloadCollaterals)`.
+In the above scenario, `calldata = abiEncode("registerCvm", cloudType, teeType, teeTTL, teeReportType, teeAttestationReport, cvmIdentity, cvmCertification, workloadCollaterals)`.
 
 ### Registration of CVM Identity
 Once all TEE collaterals are verified, a VM-unique public key, which is sent together with the calldata, will be registered on the CVM Registry contract. This key will represent the CVM onchain. This registered public key will also thus be known as the "CVM Identity". After successful registration, any message signed by this CVM's registered VM Identity Key can be considered trusted for a fixed TTL. 
 
-Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again. To reattest, simply perform the registration steps again.
+Once the TTL has expired, the CVM must reattest its TEE collaterals with the Registry contract again. To reattest, please check the next section for the workflow.
+
+## Refreshing CVM Registration
+
+When a CVM's TEE attestation TTL expires, or if the workload wants to renew attestation without changing the CVM identity, the `refreshCvm` contract method can be used. This is similar to registration but does not rotate the CVM identity key. Note that you must perform a registration ONCE before you can successfully run this refreshing workflow.
+
+### Solidity Verification
+
+```mermaid
+sequenceDiagram
+    participant CVM as CVM Workload
+    participant AA as Attestation Agent
+    participant RC as Registry Contract
+
+    CVM->>AA: POST /onchain/refresh-cvm <br/> (report_type: 1, chain_id: 11155111)
+    AA-->>CVM: base64(calldata)
+    CVM->>CVM: base64-decode calldata
+    CVM->>RC: submitTX(calldata)
+```
+
+### Groth-16 zkProof Verification
+- When report_type = 2, Succinct SP1 zkProver network is used.
+- When report_type = 3, Risc0 Bonsai zkProver network is used.
+
+```mermaid
+sequenceDiagram
+    participant CVM as CVM Workload
+    participant AA as Attestation Agent
+    participant PP as Remote ZkProver
+    participant RC as Registry Contract
+
+    CVM->>AA: POST /onchain/refresh-cvm <br/> (report_type: 2/3, chain_id: 11155111, tee_ttl: 0, zk_config: {...})
+    AA->>PP: (TEE report, certs)
+    PP-->>AA: Groth-16 zkProof
+    AA-->>CVM: base64(calldata)
+    CVM->>CVM: base64-decode calldata
+    CVM->>RC: submitTX(calldata)
+```
+
+In the above scenarios, `calldata = abiEncode("refreshCvm", cvmIdentityHash, teeTTL, teeReportType, teeAttestationReport, workloadCollaterals)`.
+
+**Note**: The `tee_ttl` parameter is optional. Setting it to 0 or omitting it means the contract will use its default TTL value.
 
 ## CVM Verification
 
@@ -90,7 +131,7 @@ sequenceDiagram
 
 ## Rotating CVM Identity
 
-There are instances where the workload might want to rotate the key used for signing messages. This is a high level workflow of the steps that need to be taken to rotate the CVM's message signing key:
+There are instances where the workload might want to rotate the key used for signing messages. Note that for this workflow to work, the TEE TTL on the CVMRegistry contract must still be valid. This is a high level workflow of the steps that need to be taken to rotate the CVM's message signing key:
 
 ```mermaid
 sequenceDiagram
@@ -98,67 +139,25 @@ sequenceDiagram
     participant AA as Attestation Agent
     participant RC as Registry Contract
 
-    rect rgb(255,226,226)
-        Note over CVM,RC: 1. Get nonce
-        CVM->>AA: GET /current-cvm-identity-hash
-        AA-->>CVM: base64(cvmIdentityHash)
-        CVM->>CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
-        CVM->>RC: submitTX(calldata)
-        RC-->>CVM: abiEncode(nonce)
-        CVM->>CVM: nonce = abiDecode(abiEncode(nonce))
-    end
-
     rect rgb(229,255,204)
-        Note over CVM,RC: 2. Request new cvm-identity
-        CVM->>AA: POST /onchain/new-cvm-identity<br/>(nonce, chainId, contractAddress)
+        Note over CVM,RC: 1. Request new cvm-identity
+        CVM->>AA: GET /onchain/new-cvm-identity
         AA-->>CVM: base64(calldata)
     end
 
     rect rgb(255,226,226)
-        Note over CVM,RC: 3. Register new identity on-chain
+        Note over CVM,RC: 2. Register new identity on-chain
         CVM->>CVM: base64-decode calldata
         CVM->>RC: submitTX(calldata)
         RC-->>CVM: Success
     end
 
     rect rgb(229,255,204)
-        Note over CVM, RC: 4. Sign message with new key
+        Note over CVM, RC: 3. Sign message with new key
         CVM->>AA: POST /sign-message <br/>(message, purge_old_keys=true)
         AA-->>CVM: {base64(cvmIdentityHash), base64(signature)}
     end
 
 ```
 
-In the above diagram, for Step 3, `calldata = abiEncode("reattestCvmWithTpm", cvmIdentityHash, signature, updateCvmIdentity, workloadCollaterals)`.
-
-## Updating TTL of CVM Measurements
-By default, the TTL of TEE reports is 30days and the TTL of TPM Quotes is set to 60 days on the CVM Registry Contract. If you wish to make the TTL longer or shorter, they can be changed by following this workflow:
-
-```mermaid
-sequenceDiagram
-    participant CVM as CVM Workload
-    participant AA as Attestation Agent
-    participant RC as Registry Contract
-
-
-    rect rgb(255,226,226)
-        Note over CVM,RC: 1. Get nonce
-        CVM->>AA: GET /current-cvm-identity-hash
-        AA-->>CVM: base64(cvmIdentityHash)
-        CVM->>CVM: base64-decode <br/> calldata = abiEncode("nonces", cvmIdentityHash)
-        CVM->>RC: submitTX(calldata)
-        RC-->>CVM: abiEncode(nonce)
-        CVM->>CVM: nonce = abiDecode(abiEncode(nonce))
-    end
-
-    rect rgb(229,255,204)
-        Note over CVM,RC: 2. Update TTL
-        CVM->>AA: POST /onchain/update-ttl <br/>(nonce, chainID, contract_addr, tee_ttl, tpm_ttl)
-        AA-->>CVM: base64(calldata)
-        CVM->>CVM: base64-decode calldata
-        CVM->>RC: submitTX(calldata)
-    end
-
-```
-
-In the above diagram, for Step 2, `calldata = abiEncode("setCollateralTTL", cvmIdentityHash, teeTTL, tpmTTL, signature)`.
+In the above diagram, for Step 3, `calldata = abiEncode("rotateCvmIdentityKey", cvmIdentityHash, newCvmIdentity, newCvmCertification)`.
