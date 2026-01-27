@@ -22,24 +22,24 @@ if [[ ! -f "$DISK_FILE" ]]; then
 fi
 
 if [[ ! -f "$BUNDLE_FILE" ]]; then
-  echo "❌ Error: Attestation bundle not found: $BUNDLE_FILE"
+  echo "❌ Error: Build provenance bundle not found: $BUNDLE_FILE"
   echo ""
   echo "💡 Hint: Download build provenance first with:"
   echo "   atakit download-build-provenance"
   echo ""
-  echo "   Attestation bundles are saved alongside disk images."
+  echo "   Build provenance bundles are saved alongside disk images."
   exit 1
 fi
 
-echo "🔐 Verifying attestation for: $DISK_FILE"
+echo "🔐 Verifying build provenance for: $DISK_FILE"
 echo ""
 
 # Step 1: Extract expected hash from attestation
-echo "📋 Step 1: Extracting hash from attestation bundle..."
+echo "📋 Step 1: Extracting hash from build provenance bundle..."
 EXPECTED_HASH=$(cat "$BUNDLE_FILE" | jq -r '.base64Signature' | base64 -d | jq -r '.payload' | base64 -d | jq -r '.subject[0].digest.sha256')
 
 if [[ -z "$EXPECTED_HASH" || "$EXPECTED_HASH" == "null" ]]; then
-  echo "❌ Error: Could not extract hash from attestation bundle"
+  echo "❌ Error: Could not extract hash from build provenance bundle"
   exit 1
 fi
 

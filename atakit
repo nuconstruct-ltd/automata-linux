@@ -124,7 +124,7 @@ usage() {
     echo "  update-disk              Update the workload on a specified disk file."
     echo "  get-logs                 Retrieve logs from a deployed CVM."
     echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
-    echo "  cleanup-local            Remove all locally downloaded disk images, attestations, and artifacts."
+    echo "  cleanup-local            Remove all locally downloaded disk images, build provenance, and artifacts."
     echo "  sign-image               Sign and verify a container image using Cosign."
     echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
     echo "  sign-livepatch           Sign a livepatch file."
@@ -177,7 +177,7 @@ usage() {
     echo ""
     echo "Arguments for 'verify-build-provenance' command:"
     echo "  <DISK_FILE>    Path to disk image (e.g., aws_disk.vmdk, azure_disk.vhd, gcp_disk.tar.gz)"
-    echo "  [BUNDLE_FILE]  Optional: Path to attestation bundle (defaults to <DISK_FILE>.bundle)"
+    echo "  [BUNDLE_FILE]  Optional: Path to build provenance bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
     echo "  <DISK PATH>    The path to your disk image."
@@ -603,7 +603,7 @@ case "$COMMAND" in
             fi
         done
 
-        # Clean attestation bundles
+        # Clean build provenance bundles
         for disk in "${DISK_FILES[@]}"; do
             if [[ -f "$DISK_DIR/${disk}.bundle" ]]; then
                 rm -f "$DISK_DIR/${disk}.bundle"

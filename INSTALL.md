@@ -7,11 +7,13 @@ This guide provides instructions for installing `atakit` on various operating sy
 ### Ubuntu / Debian
 
 ```bash
-# Download the latest .deb package
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
+# Get the latest release tag and download
+LATEST=$(curl -s https://api.github.com/repos/automata-network/automata-linux/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+VERSION=${LATEST#v}
+wget "https://github.com/automata-network/automata-linux/releases/download/${LATEST}/atakit_${VERSION}-1_all.deb"
 
 # Install the package
-sudo dpkg -i atakit_0.1.0-1_all.deb
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 
 # Install dependencies (if any are missing)
 sudo apt-get install -f
@@ -156,8 +158,9 @@ rm -rf ~/.atakit
 
 ### Ubuntu / Debian
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_VERSION_all.deb
-sudo dpkg -i atakit_VERSION_all.deb
+# Replace VERSION with the version number (e.g., 0.1.3)
+wget https://github.com/automata-network/automata-linux/releases/download/v${VERSION}/atakit_${VERSION}-1_all.deb
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 ```
 
 ### macOS

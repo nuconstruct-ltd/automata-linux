@@ -7,7 +7,7 @@ RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 # quit when any error occurs
 set -Eeuo pipefail
 
-echo "⌛ Downloading attestations from GitHub Release..."
+echo "⌛ Downloading build provenance from GitHub Release..."
 
 # ---------- helpers ----------------------------------------------------------
 
@@ -16,7 +16,7 @@ find_latest_attestation_release() {
   local api_url="https://api.github.com/repos/${REPO}/releases?per_page=20"
   local releases_json
 
-  echo "⌛ Finding latest release with attestations..." >&2
+  echo "⌛ Finding latest release with build provenance..." >&2
 
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     releases_json=$(curl -sL --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$api_url")
@@ -38,14 +38,14 @@ find_latest_attestation_release() {
   ' || true)
 
   if [[ -z "$tag" || "$tag" == "null" ]]; then
-    echo "❌ Error: Could not find any release containing attestations" >&2
+    echo "❌ Error: Could not find any release containing build provenance" >&2
     echo "   Please set RELEASE_TAG environment variable to specify a release" >&2
     echo "   Available releases:" >&2
     echo "$releases_json" | jq -r '.[].tag_name' | head -5 | sed 's/^/     /' >&2
     exit 1
   fi
 
-  echo "✅ Found attestation release: ${tag}" >&2
+  echo "✅ Found build provenance release: ${tag}" >&2
   echo "$tag"
 }
 
@@ -70,7 +70,7 @@ download_from_github() {
   echo "   API URL: ${API_URL}"
 
   # Fetch release info and extract asset ID and URL for the specific file
-  # Use authentication if GITHUB_TOKEN is set (optional, helps with rate limits)
+  # Use authentication if GITHUB_TOKEN is set (required for private repos, optional for public)
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     RELEASE_INFO=$(curl -sL --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$API_URL")
   else
@@ -93,7 +93,7 @@ download_from_github() {
     exit 1
   fi
 
-  # If GITHUB_TOKEN is set, use the API asset URL for authenticated download
+  # If GITHUB_TOKEN is set, use authenticated API download (required for private repos)
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     # Extract the asset URL from the API response
     ASSET_URL=$(echo "$RELEASE_INFO" | \
@@ -101,9 +101,9 @@ download_from_github() {
       grep '"url"' | head -1 | \
       cut -d'"' -f4 || true)
 
-    # If user specified a tag but it doesn't have the attestations, fall back to auto-detect
+    # If user specified a tag but it doesn't have the build provenance, fall back to auto-detect
     if [[ -z "$ASSET_URL" && -n "$user_specified_tag" ]]; then
-      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest attestation release..."
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest build provenance release..."
       RELEASE_TAG=$(find_latest_attestation_release)
       API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
       RELEASE_INFO=$(curl -sL --max-time 30 -H "Authorization: Bearer ${GITHUB_TOKEN}" "$API_URL")
@@ -115,7 +115,7 @@ download_from_github() {
 
     if [[ -z "$ASSET_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
-      echo "❌ No releases with attestations were found."
+      echo "❌ No releases with build provenance were found."
       exit 1
     fi
 
@@ -133,9 +133,9 @@ download_from_github() {
       grep -o "\"browser_download_url\": \"[^\"]*${filename}\"" | \
       cut -d'"' -f4 || true)
 
-    # If user specified a tag but it doesn't have the attestations, fall back to auto-detect
+    # If user specified a tag but it doesn't have the build provenance, fall back to auto-detect
     if [[ -z "$DOWNLOAD_URL" && -n "$user_specified_tag" ]]; then
-      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest attestation release..."
+      echo "⚠️  Release ${RELEASE_TAG} does not contain ${filename}, searching for latest build provenance release..."
       RELEASE_TAG=$(find_latest_attestation_release)
       API_URL="https://api.github.com/repos/${REPO}/releases/tags/${RELEASE_TAG}"
       RELEASE_INFO=$(curl -sL --max-time 30 "$API_URL")
@@ -146,7 +146,7 @@ download_from_github() {
 
     if [[ -z "$DOWNLOAD_URL" ]]; then
       echo "❌ Error: Could not find ${filename} in GitHub release ${RELEASE_TAG}"
-      echo "❌ No releases with attestations were found."
+      echo "❌ No releases with build provenance were found."
       exit 1
     fi
 
@@ -168,7 +168,7 @@ download_from_github() {
 
 FILE="attestations.zip"
 
-# Download attestations bundle
+# Download build provenance bundle
 if [[ ! -f "$FILE" ]]; then
   download_from_github "$FILE"
 else
@@ -176,14 +176,14 @@ else
   exit 0
 fi
 
-# Extract attestations
-echo "⌛ Extracting attestations..."
+# Extract build provenance
+echo "⌛ Extracting build provenance..."
 unzip -o "$FILE"
 
 if [[ -d "attestations" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
-  echo "✅ Attestations extracted successfully!"
+  echo "✅ Build provenance extracted successfully!"
   echo ""
-  echo "📋 Available attestation files:"
+  echo "📋 Available build provenance files:"
   ls -lh *.bundle 2>/dev/null || ls -lh attestations/*.bundle 2>/dev/null || true
   echo ""
   echo "🔐 To verify build provenance:"
@@ -192,7 +192,7 @@ if [[ -d "attestations" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
   echo "📖 For detailed documentation, see:"
   echo "   docs/ATTESTATION_VERIFICATION.md"
 else
-  echo "⚠️  Warning: Attestation files not found after extraction."
+  echo "⚠️  Warning: Build provenance files not found after extraction."
   exit 1
 fi
 

@@ -29,8 +29,11 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 **Ubuntu/Debian:**
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
-sudo dpkg -i atakit_0.1.0-1_all.deb
+# Get the latest release tag and download
+LATEST=$(curl -s https://api.github.com/repos/automata-network/automata-linux/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+VERSION=${LATEST#v}
+wget "https://github.com/automata-network/automata-linux/releases/download/${LATEST}/atakit_${VERSION}-1_all.deb"
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 sudo apt-get install -f
 ```
 
@@ -227,7 +230,7 @@ atakit cleanup gcp cvm-test
 ```
 
 #### Cleaning Up Local Artifacts <!-- omit in toc -->
-Use this command to remove all locally downloaded disk images, attestations, and other artifacts.
+Use this command to remove all locally downloaded disk images, build provenance, and other artifacts.
 
 ```bash
 atakit cleanup-local

@@ -156,12 +156,13 @@ jobs:
 
             **Ubuntu/Debian:**
             ```bash
-            # Set the release tag
+            # Set the release tag and extract version
             export RELEASE_TAG=${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+            export VERSION=${RELEASE_TAG#v}  # Remove leading 'v'
 
             # Download and install
-            curl -LO "https://github.com/automata-network/automata-linux/releases/download/${RELEASE_TAG}/atakit_${RELEASE_TAG}_amd64.deb"
-            sudo dpkg -i atakit_*.deb
+            curl -LO "https://github.com/automata-network/automata-linux/releases/download/${RELEASE_TAG}/atakit_${VERSION}-1_all.deb"
+            sudo dpkg -i atakit_${VERSION}-1_all.deb
             sudo apt-get install -f
             ```
 

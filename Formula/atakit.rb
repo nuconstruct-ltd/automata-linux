@@ -6,7 +6,7 @@ class Atakit < Formula
 
   depends_on arch: :arm64
 
-  url "https://github.com/automata-network/automata-linux/releases/download/v#{version}/atakit_v#{version}_macos-arm64.tar.gz"
+  url "https://github.com/automata-network/automata-linux/releases/download/v#{version}/atakit-#{version}-macos-arm64.tar.gz"
   sha256 "a527e02564e46d2ff2ea5fe960f0d134caab599540ad6ac3a4e769e91484a686"
 
   depends_on "jq"

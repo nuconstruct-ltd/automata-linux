@@ -74,7 +74,7 @@ The easiest way to verify disk images (works with large files >128MB):
 # Using the automata-linux repository
 cd automata-linux
 
-# Download disk image and attestations
+# Download disk image and build provenance
 atakit get-disk aws
 atakit download-build-provenance
 
