@@ -1,6 +1,6 @@
-# Installation Guide for cvm-cli
+# Installation Guide for atakit
 
-This guide provides instructions for installing `cvm-cli` on various operating systems.
+This guide provides instructions for installing `atakit` on various operating systems.
 
 ## Quick Install
 
@@ -8,10 +8,10 @@ This guide provides instructions for installing `cvm-cli` on various operating s
 
 ```bash
 # Download the latest .deb package
-wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_0.1.0-1_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
 
 # Install the package
-sudo dpkg -i cvm-cli_0.1.0-1_all.deb
+sudo dpkg -i atakit_0.1.0-1_all.deb
 
 # Install dependencies (if any are missing)
 sudo apt-get install -f
@@ -20,11 +20,11 @@ sudo apt-get install -f
 ### macOS (Homebrew)
 
 ```bash
-# Add the cvm-cli tap
-brew tap automata-network/cvm-cli https://github.com/automata-network/automata-linux
+# Add the atakit tap
+brew tap automata-network/atakit https://github.com/automata-network/automata-linux
 
-# Install cvm-cli
-brew install cvm-cli
+# Install atakit
+brew install atakit
 ```
 
 ### From Source (All Platforms)
@@ -43,7 +43,7 @@ make install PREFIX=$HOME/.local
 
 ## Post-Installation
 
-After installing `cvm-cli`, you need to set up credentials for the cloud providers you plan to use:
+After installing `atakit`, you need to set up credentials for the cloud providers you plan to use:
 
 ### AWS Setup
 
@@ -102,22 +102,22 @@ az login
 
 ## Verification
 
-Verify that `cvm-cli` is installed correctly:
+Verify that `atakit` is installed correctly:
 
 ```bash
 # Check installation
-cvm-cli --help
+atakit --help
 
 # Should work from any directory (like git!)
 cd /tmp
-cvm-cli --help
+atakit --help
 ```
 
 ## User Data Location
 
-When installed via package manager, `cvm-cli` stores user data in:
+When installed via package manager, `atakit` stores user data in:
 ```
-~/.cvm-cli/
+~/.atakit/
   ├── artifacts/     # VM metadata and artifacts
   └── disks/         # Downloaded disk images
 ```
@@ -126,13 +126,13 @@ When installed via package manager, `cvm-cli` stores user data in:
 
 ### Ubuntu / Debian
 ```bash
-sudo apt-get remove cvm-cli
+sudo apt-get remove atakit
 ```
 
 ### macOS
 ```bash
-brew uninstall cvm-cli
-brew untap automata-network/cvm-cli
+brew uninstall atakit
+brew untap automata-network/atakit
 ```
 
 ### From Source
@@ -141,34 +141,34 @@ cd automata-linux
 sudo make uninstall
 ```
 
-**Note:** User data in `~/.cvm-cli/` is preserved during uninstallation. To remove it:
+**Note:** User data in `~/.atakit/` is preserved during uninstallation. To remove it:
 ```bash
-rm -rf ~/.cvm-cli
+rm -rf ~/.atakit
 ```
 
 ## Upgrading
 
 ### Ubuntu / Debian
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_VERSION_all.deb
-sudo dpkg -i cvm-cli_VERSION_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_VERSION_all.deb
+sudo dpkg -i atakit_VERSION_all.deb
 ```
 
 ### macOS
 ```bash
 brew update
-brew upgrade cvm-cli
+brew upgrade atakit
 ```
 
 ## Troubleshooting
 
 ### Command not found
 
-If `cvm-cli` is not found after installation:
+If `atakit` is not found after installation:
 
 1. **Check if it's installed:**
    ```bash
-   which cvm-cli
+   which atakit
    ```
 
 2. **Check your PATH:**
@@ -179,7 +179,7 @@ If `cvm-cli` is not found after installation:
 
 3. **Try with full path:**
    ```bash
-   /usr/local/bin/cvm-cli --help
+   /usr/local/bin/atakit --help
    ```
 
 ### Permission denied
@@ -188,10 +188,10 @@ If you get permission errors:
 
 ```bash
 # Check file permissions
-ls -l /usr/local/bin/cvm-cli
+ls -l /usr/local/bin/atakit
 
 # Should be executable (755)
-sudo chmod +x /usr/local/bin/cvm-cli
+sudo chmod +x /usr/local/bin/atakit
 ```
 
 ### Missing dependencies

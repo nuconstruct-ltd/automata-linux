@@ -30,15 +30,15 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 **Ubuntu/Debian:**
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_0.1.0-1_all.deb
-sudo dpkg -i cvm-cli_0.1.0-1_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
+sudo dpkg -i atakit_0.1.0-1_all.deb
 sudo apt-get install -f
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew tap automata-network/cvm-cli https://github.com/automata-network/automata-linux
-brew install cvm-cli
+brew tap automata-network/atakit https://github.com/automata-network/automata-linux
+brew install atakit
 ```
 
 📖 **For detailed installation instructions, see [INSTALL.md](INSTALL.md)**
@@ -49,9 +49,9 @@ brew install cvm-cli
 
 ### For Package Installation
 
-If you installed `cvm-cli` via a package manager (recommended), it's already available system-wide. Just run:
+If you installed `atakit` via a package manager (recommended), it's already available system-wide. Just run:
 ```bash
-cvm-cli --help
+atakit --help
 ```
 
 ### For Development/Source Installation
@@ -85,7 +85,7 @@ export RELEASE_TAG=v1.0.0  # or any specific tag like manual-20251218-211704-3f4
 # For private repos with a specific version
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx
 export RELEASE_TAG=v1.0.0
-cvm-cli deploy-gcp
+atakit deploy-gcp
 ```
 
 > [!Note]
@@ -101,11 +101,11 @@ All disk images built through the CI pipeline include **SLSA Build Level 2** pro
 
 ```bash
 # Download disk image and attestations
-cvm-cli get-disk aws
-cvm-cli get-attestations
+atakit get-disk aws
+atakit get-attestations
 
 # Verify AWS VMDK attestation
-cvm-cli verify-attestation aws_disk.vmdk
+atakit verify-attestation aws_disk.vmdk
 ```
 
 > [!Note]
@@ -130,13 +130,13 @@ To quickly deploy the CVM with the **default** workload, you can run the followi
 
 ```bash
 # Option 1. Deploy to GCP
-cvm-cli deploy-gcp
+atakit deploy-gcp
 
 # Option 2. Deploy to AWS
-cvm-cli deploy-aws
+atakit deploy-aws
 
 # Option 3. Deploy to Azure
-cvm-cli deploy-azure
+atakit deploy-azure
 ```
 
 > [!Note]
@@ -160,17 +160,17 @@ At the end of the previous step, you should have the following output:
 Using the provided VM name, you can retrieve logs from the VM like this:
 
 ```bash
-# cvm-cli get-logs <cloud-provider> <vm-name>
+# atakit get-logs <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli get-logs gcp cvm-test
+atakit get-logs gcp cvm-test
 ```
 
 ### 3. Destroy the VM <!-- omit in toc -->
 Finally, when you're ready to delete the VM and remove all the components that are deployed with it, you can run the following command:
 ```bash
-# cvm-cli cleanup <cloud-provider> <vm-name>
+# atakit cleanup <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli cleanup gcp cvm-test
+atakit cleanup gcp cvm-test
 ```
 
 ## Deploying the CVM with your Workload
@@ -214,13 +214,13 @@ The `--attach-disk mydisk` flag instructs cvm‑cli to attach (or create, if it 
 
 ```bash
 # Option 1. Deploy to GCP
-cvm-cli deploy-gcp --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+atakit deploy-gcp --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 2. Deploy to AWS
-cvm-cli deploy-aws --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+atakit deploy-aws --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 
 # Option 3. Deploy to Azure
-cvm-cli deploy-azure --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
+atakit deploy-azure --add-workload --workload-dir /path/to/your/workload --additional_ports "30000"  --attach-disk mydisk --disk-size 20
 ```
 
 > [!NOTE]
@@ -247,17 +247,17 @@ We've scripted some convenience commands that you can run to manage your CVM.
 Use this command to get all logs from all running containers in the CVM.
 
 ```bash
-# cvm-cli get-logs <vm-name>
-cvm-cli get-logs cvm-test
+# atakit get-logs <vm-name>
+atakit get-logs cvm-test
 ```
 
 #### Update the workload <!-- omit in toc -->
 In the scenario where you have updated the your app version and made a new container image for it, you can update your workload in the `workload/` folder, and upload this folder onto the existing CVM using this command:
 
 ```bash
-# cvm-cli update-workload <cloud-provider> <vm-name>
+# atakit update-workload <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli update-workload gcp cvm-test
+atakit update-workload gcp cvm-test
 ```
 
 When the script is finished, the golden measurements will be automatically regenerated for you.
@@ -269,25 +269,25 @@ When the script is finished, the golden measurements will be automatically regen
 Use this command to delete the VM once you no longer need it.
 
 ```bash
-# cvm-cli cleanup <cloud-provider> <vm-name>
+# atakit cleanup <cloud-provider> <vm-name>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli cleanup gcp cvm-test
+atakit cleanup gcp cvm-test
 ```
 
 #### Cleaning Up Local Artifacts <!-- omit in toc -->
 Use this command to remove all locally downloaded disk images, attestations, and other artifacts.
 
 ```bash
-cvm-cli cleanup-local
+atakit cleanup-local
 ```
 
 #### (Advanced) Kernel Livepatching <!-- omit in toc -->
 Use this command to deploy a livepatch onto the CVM. Please checkout our [kernel livepatch guide](./docs/livepatching.md) for more details.
 
 ```bash
-# cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+# atakit livepatch <cloud-provider> <vm-name> <path-to-livepatch>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli livepatch gcp cvm-test /path/to/livepatch.ko
+atakit livepatch gcp cvm-test /path/to/livepatch.ko
 ```
 
 ## Live Demo
@@ -305,13 +305,13 @@ cat workload/docker-compose.yml
 
 cat workload/config/cvm_agent/cvm_agent_policy.json
 
-cvm-cli deploy-azure --add-workload --additional_ports "30000"
+atakit deploy-azure --add-workload --additional_ports "30000"
 
-cvm-cli get-logs azure cvm-test
+atakit get-logs azure cvm-test
 
-cvm-cli update-workload azure cvm-test
+atakit update-workload azure cvm-test
 
-cvm-cli cleanup azure cvm-test
+atakit cleanup azure cvm-test
 
 ```
 
@@ -340,11 +340,11 @@ Each disk image includes a signed attestation containing:
 ```bash
 # Download disk image and attestations from latest release
 # For private repos: export GITHUB_TOKEN=your_token
-cvm-cli get-disk aws
-cvm-cli get-attestations
+atakit get-disk aws
+atakit get-attestations
 
 # Verify the disk image attestation
-cvm-cli verify-attestation aws_disk.vmdk
+atakit verify-attestation aws_disk.vmdk
 ```
 
 ### Why Verify Attestations?

@@ -32,7 +32,7 @@ jobs:
           fi
           echo "Building Debian package version: $VERSION"
           # Update the version in debian/changelog
-          sed -i "s/^cvm-cli ([^)]*)/cvm-cli (${VERSION}-1)/" debian/changelog
+          sed -i "s/^atakit ([^)]*)/atakit (${VERSION}-1)/" debian/changelog
           head -1 debian/changelog
 
       - name: Build Debian package
@@ -42,9 +42,9 @@ jobs:
       - name: Move artifacts
         run: |
           mkdir -p dist
-          mv ../cvm-cli_*.deb dist/
-          mv ../cvm-cli_*.buildinfo dist/
-          mv ../cvm-cli_*.changes dist/
+          mv ../atakit_*.deb dist/
+          mv ../atakit_*.buildinfo dist/
+          mv ../atakit_*.changes dist/
 
       - name: Upload Debian package
         uses: actions/upload-artifact@v4
@@ -71,20 +71,20 @@ jobs:
             VERSION="0.1.0"
           fi
           echo "Building macOS package version: $VERSION"
-          PKG_NAME="cvm-cli-${VERSION}-macos-arm64"
+          PKG_NAME="atakit-${VERSION}-macos-arm64"
           mkdir -p "${PKG_NAME}/bin"
-          mkdir -p "${PKG_NAME}/share/cvm-cli/scripts"
-          mkdir -p "${PKG_NAME}/share/cvm-cli/tools"
-          mkdir -p "${PKG_NAME}/share/cvm-cli/workload/config/cvm_agent"
+          mkdir -p "${PKG_NAME}/share/atakit/scripts"
+          mkdir -p "${PKG_NAME}/share/atakit/tools"
+          mkdir -p "${PKG_NAME}/share/atakit/workload/config/cvm_agent"
 
           # Copy files
-          cp cvm-cli "${PKG_NAME}/bin/"
-          cp scripts/*.sh "${PKG_NAME}/share/cvm-cli/scripts/"
-          cp tools/json_sig_tool.py "${PKG_NAME}/share/cvm-cli/tools/"
-          cp workload/docker-compose.yml "${PKG_NAME}/share/cvm-cli/workload/"
-          cp workload/config/cvm_agent/*.json "${PKG_NAME}/share/cvm-cli/workload/config/cvm_agent/"
-          cp workload/config/*.yml "${PKG_NAME}/share/cvm-cli/workload/config/"
-          cp workload/config/*.conf "${PKG_NAME}/share/cvm-cli/workload/config/"
+          cp atakit "${PKG_NAME}/bin/"
+          cp scripts/*.sh "${PKG_NAME}/share/atakit/scripts/"
+          cp tools/json_sig_tool.py "${PKG_NAME}/share/atakit/tools/"
+          cp workload/docker-compose.yml "${PKG_NAME}/share/atakit/workload/"
+          cp workload/config/cvm_agent/*.json "${PKG_NAME}/share/atakit/workload/config/cvm_agent/"
+          cp workload/config/*.yml "${PKG_NAME}/share/atakit/workload/config/"
+          cp workload/config/*.conf "${PKG_NAME}/share/atakit/workload/config/"
           cp README.md LICENSE "${PKG_NAME}/"
 
           # Create install script
@@ -93,9 +93,9 @@ jobs:
           set -e
           PREFIX="${PREFIX:-/usr/local}"
           cp -r bin/* "${PREFIX}/bin/"
-          mkdir -p "${PREFIX}/share/cvm-cli"
-          cp -r share/cvm-cli/* "${PREFIX}/share/cvm-cli/"
-          echo "✅ cvm-cli installed to ${PREFIX}"
+          mkdir -p "${PREFIX}/share/atakit"
+          cp -r share/atakit/* "${PREFIX}/share/atakit/"
+          echo "✅ atakit installed to ${PREFIX}"
           INSTALL_EOF
           chmod +x "${PKG_NAME}/install.sh"
 
@@ -147,7 +147,7 @@ jobs:
             dist/*.tar.gz
             dist/SHA256SUMS
           body: |
-            ## cvm-cli ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
+            ## atakit ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
             This release contains the **CLI packages only** (`.deb` and `.tar.gz`).
             Disk images are released separately - the CLI will automatically find and download them.
@@ -181,7 +181,7 @@ jobs:
             **Alternative: Using GitHub CLI**
             ```bash
             gh release download ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }} --repo automata-network/automata-linux --pattern "*.deb"
-            sudo dpkg -i cvm-cli_*.deb
+            sudo dpkg -i atakit_*.deb
             sudo apt-get install -f
             ```
 
@@ -192,7 +192,7 @@ jobs:
 
             # Tap and install
             brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux
-            brew install cvm-cli
+            brew install atakit
             ```
 
             > **Tip:** If you use GitHub CLI, you can get your token with: `export HOMEBREW_GITHUB_API_TOKEN=$(gh auth token)`
@@ -202,15 +202,15 @@ jobs:
             After installation, set your GitHub token and run:
             ```bash
             export GITHUB_TOKEN=your_github_token_here
-            cvm-cli deploy-gcp    # Deploy to GCP
-            cvm-cli deploy-aws    # Deploy to AWS
-            cvm-cli deploy-azure  # Deploy to Azure
+            atakit deploy-gcp    # Deploy to GCP
+            atakit deploy-aws    # Deploy to AWS
+            atakit deploy-azure  # Deploy to Azure
             ```
 
             The CLI will automatically find and download the latest disk image from image releases.
 
             ### What's New
-            - Initial release of cvm-cli
+            - Initial release of atakit
             - Support for AWS, GCP, and Azure deployments
             - SLSA attestation verification
             - Automatic detection of latest image release
@@ -277,14 +277,14 @@ jobs:
           SHA256="${{ steps.asset-info.outputs.sha256 }}"
 
           # Update version
-          sed -i "s/version \"[^\"]*\"/version \"${VERSION}\"/" Formula/cvm-cli.rb
+          sed -i "s/version \"[^\"]*\"/version \"${VERSION}\"/" Formula/atakit.rb
           # Update asset ID in URL
-          sed -i "s|releases/assets/[0-9]*|releases/assets/${ASSET_ID}|" Formula/cvm-cli.rb
+          sed -i "s|releases/assets/[0-9]*|releases/assets/${ASSET_ID}|" Formula/atakit.rb
           # Update SHA256
-          sed -i "s/sha256 \"[a-f0-9]*\"/sha256 \"${SHA256}\"/" Formula/cvm-cli.rb
+          sed -i "s/sha256 \"[a-f0-9]*\"/sha256 \"${SHA256}\"/" Formula/atakit.rb
 
           echo "Updated formula:"
-          cat Formula/cvm-cli.rb
+          cat Formula/atakit.rb
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5

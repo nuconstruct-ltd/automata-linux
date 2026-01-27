@@ -7,7 +7,7 @@ GALLERY_NAME="$6"
 REGION="$7"
 DATA_DISK="$8"        # NEW: Optional disk name
 DISK_SIZE_GB="$9"     # NEW: Optional disk size (for new disk)
-ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from cvm-cli)
+ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from atakit)
 
 VHD=azure_disk.vhd
 IMAGE_DEF="${VM_NAME}-def"

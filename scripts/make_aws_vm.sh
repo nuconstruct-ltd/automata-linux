@@ -6,7 +6,7 @@ ADDITIONAL_PORTS=$5
 EIP_AID=$6
 DATA_DISK="$7"       # Optional EBS volume name
 DISK_SIZE_GB="$8"    # Optional disk size (for new disk)
-ARTIFACT_DIR="${9:-_artifacts}"  # Artifact directory (passed from cvm-cli)
+ARTIFACT_DIR="${9:-_artifacts}"  # Artifact directory (passed from atakit)
 
 # Use SCRIPT_DIR from environment, or detect from this script's location
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
