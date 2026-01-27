@@ -1,7 +1,7 @@
 class Atakit < Formula
   desc "CLI tool for managing Confidential VMs across AWS, GCP, and Azure"
   homepage "https://github.com/automata-network/automata-linux"
-  version "0.1.3"
+  version "0.1.4"
   license "Apache-2.0"
 
   depends_on arch: :arm64
