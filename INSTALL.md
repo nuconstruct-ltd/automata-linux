@@ -47,25 +47,31 @@ After installing `atakit`, you need to set up credentials for the cloud provider
 
 ### AWS Setup
 
+Install AWS CLI v2 if not already installed:
+
+**Linux (x86_64):**
 ```bash
-# Install AWS CLI v2 (if not already installed)
-# Linux (x86_64):
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
+```
 
-# Linux (ARM):
+**Linux (ARM):**
+```bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
+```
 
-# Or using snap (Ubuntu):
-sudo snap install aws-cli --classic
+**macOS:**
+```bash
+# Download and run the official installer
+curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+sudo installer -pkg AWSCLIV2.pkg -target /
+```
 
-# macOS:
-brew install awscli
-
-# Configure AWS credentials
+**Configure AWS credentials:**
+```bash
 aws configure
 ```
 
