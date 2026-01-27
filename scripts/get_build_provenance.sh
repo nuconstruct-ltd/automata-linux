@@ -31,10 +31,10 @@ find_latest_attestation_release() {
     exit 1
   fi
 
-  # Find the first release that contains attestations.zip
+  # Find the first release that contains build-provenance.zip
   local tag
   tag=$(echo "$releases_json" | jq -r '
-    [.[] | select(.assets[]?.name == "attestations.zip")] | first | .tag_name // empty
+    [.[] | select(.assets[]?.name == "build-provenance.zip")] | first | .tag_name // empty
   ' || true)
 
   if [[ -z "$tag" || "$tag" == "null" ]]; then
@@ -166,7 +166,7 @@ download_from_github() {
 
 # ---------- main logic -------------------------------------------------------
 
-FILE="attestations.zip"
+FILE="build-provenance.zip"
 
 # Download build provenance bundle
 if [[ ! -f "$FILE" ]]; then
@@ -180,11 +180,11 @@ fi
 echo "⌛ Extracting build provenance..."
 unzip -o "$FILE"
 
-if [[ -d "attestations" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
+if [[ -d "build-provenance" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
   echo "✅ Build provenance extracted successfully!"
   echo ""
   echo "📋 Available build provenance files:"
-  ls -lh *.bundle 2>/dev/null || ls -lh attestations/*.bundle 2>/dev/null || true
+  ls -lh *.bundle 2>/dev/null || ls -lh build-provenance/*.bundle 2>/dev/null || true
   echo ""
   echo "🔐 To verify build provenance:"
   echo "   ./atakit verify-build-provenance aws_disk.vmdk"

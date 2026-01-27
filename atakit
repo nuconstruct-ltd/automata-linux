@@ -527,7 +527,7 @@ case "$COMMAND" in
     download-build-provenance)
         echo "📦 Downloading SLSA build provenance..."
         cd "$DISK_DIR"
-        "$SCRIPT_DIR/get_attestations.sh"
+        "$SCRIPT_DIR/get_build_provenance.sh"
         ;;
 
     verify-build-provenance)
@@ -539,9 +539,9 @@ case "$COMMAND" in
             exit 1
         fi
         if [[ -n "$BUNDLE_FILE" ]]; then
-            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE" "$BUNDLE_FILE"
+            "$SCRIPT_DIR/verify_build_provenance.sh" "$DISK_FILE" "$BUNDLE_FILE"
         else
-            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE"
+            "$SCRIPT_DIR/verify_build_provenance.sh" "$DISK_FILE"
         fi
         ;;
 
