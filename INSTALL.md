@@ -7,21 +7,22 @@ This guide provides instructions for installing `atakit` on various operating sy
 ### Ubuntu / Debian
 
 ```bash
-# Download the latest .deb package
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
+# Get the latest release tag (requires jq: sudo apt-get install jq)
+LATEST=$(curl -sL https://api.github.com/repos/automata-network/automata-linux/releases/latest | jq -r .tag_name)
+if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then echo "Failed to fetch latest release"; exit 1; fi
+VERSION=${LATEST#v}
 
-# Install the package
-sudo dpkg -i atakit_0.1.0-1_all.deb
-
-# Install dependencies (if any are missing)
+# Download and install
+wget "https://github.com/automata-network/automata-linux/releases/download/${LATEST}/atakit_${VERSION}-1_all.deb"
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 sudo apt-get install -f
 ```
 
 ### macOS (Homebrew)
 
 ```bash
-# Add the atakit tap
-brew tap automata-network/atakit https://github.com/automata-network/automata-linux
+# Add the tap
+brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux.git
 
 # Install atakit
 brew install atakit
@@ -47,25 +48,31 @@ After installing `atakit`, you need to set up credentials for the cloud provider
 
 ### AWS Setup
 
+Install AWS CLI v2 if not already installed:
+
+**Linux (x86_64):**
 ```bash
-# Install AWS CLI v2 (if not already installed)
-# Linux (x86_64):
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
+```
 
-# Linux (ARM):
+**Linux (ARM):**
+```bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
+```
 
-# Or using snap (Ubuntu):
-sudo snap install aws-cli --classic
+**macOS:**
+```bash
+# Download and run the official installer
+curl "https://awscli.amazonaws.com/AWSCLIV2.pkg" -o "AWSCLIV2.pkg"
+sudo installer -pkg AWSCLIV2.pkg -target /
+```
 
-# macOS:
-brew install awscli
-
-# Configure AWS credentials
+**Configure AWS credentials:**
+```bash
 aws configure
 ```
 
@@ -132,7 +139,7 @@ sudo apt-get remove atakit
 ### macOS
 ```bash
 brew uninstall atakit
-brew untap automata-network/atakit
+brew untap automata-network/automata-linux
 ```
 
 ### From Source
@@ -150,8 +157,10 @@ rm -rf ~/.atakit
 
 ### Ubuntu / Debian
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_VERSION_all.deb
-sudo dpkg -i atakit_VERSION_all.deb
+# Set VERSION to the desired version (e.g., 0.1.4)
+VERSION=0.1.4
+wget https://github.com/automata-network/automata-linux/releases/download/v${VERSION}/atakit_${VERSION}-1_all.deb
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 ```
 
 ### macOS

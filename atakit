@@ -119,12 +119,12 @@ usage() {
     echo "  deploy-gcp               Deploy a VM onto GCP using gcp_disk.tar.gz."
     echo "  update-workload          Update the workload on a deployed CVM."
     echo "  get-disk                 Get the disk image for a specific Cloud Provider."
-    echo "  get-attestations         Download SLSA provenance attestations from GitHub Release."
-    echo "  verify-attestation       Verify SLSA provenance attestation for a disk image."
+    echo "  download-build-provenance  Download SLSA build provenance from GitHub Release."
+    echo "  verify-build-provenance    Verify SLSA build provenance for a disk image."
     echo "  update-disk              Update the workload on a specified disk file."
     echo "  get-logs                 Retrieve logs from a deployed CVM."
     echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
-    echo "  cleanup-local            Remove all locally downloaded disk images, attestations, and artifacts."
+    echo "  cleanup-local            Remove all locally downloaded disk images, build provenance, and artifacts."
     echo "  sign-image               Sign and verify a container image using Cosign."
     echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
     echo "  sign-livepatch           Sign a livepatch file."
@@ -175,9 +175,9 @@ usage() {
     echo "Arguments for the 'get-disk' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
     echo ""
-    echo "Arguments for 'verify-attestation' command:"
+    echo "Arguments for 'verify-build-provenance' command:"
     echo "  <DISK_FILE>    Path to disk image (e.g., aws_disk.vmdk, azure_disk.vhd, gcp_disk.tar.gz)"
-    echo "  [BUNDLE_FILE]  Optional: Path to attestation bundle (defaults to <DISK_FILE>.bundle)"
+    echo "  [BUNDLE_FILE]  Optional: Path to build provenance bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
     echo "  <DISK PATH>    The path to your disk image."
@@ -524,24 +524,24 @@ case "$COMMAND" in
         "$SCRIPT_DIR/get_disk_image.sh" "$CSP"
         ;;
 
-    get-attestations)
-        echo "📦 Downloading SLSA provenance attestations..."
+    download-build-provenance)
+        echo "📦 Downloading SLSA build provenance..."
         cd "$DISK_DIR"
-        "$SCRIPT_DIR/get_attestations.sh"
+        "$SCRIPT_DIR/get_build_provenance.sh"
         ;;
 
-    verify-attestation)
+    verify-build-provenance)
         DISK_FILE=$1; shift 1
         BUNDLE_FILE="${1:-}"
         if [[ -z "$DISK_FILE" ]]; then
             echo "❌ Please provide the disk file to verify"
-            echo "❌ Usage: $0 verify-attestation <DISK_FILE> [BUNDLE_FILE]"
+            echo "❌ Usage: $0 verify-build-provenance <DISK_FILE> [BUNDLE_FILE]"
             exit 1
         fi
         if [[ -n "$BUNDLE_FILE" ]]; then
-            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE" "$BUNDLE_FILE"
+            "$SCRIPT_DIR/verify_build_provenance.sh" "$DISK_FILE" "$BUNDLE_FILE"
         else
-            "$SCRIPT_DIR/verify_attestation.sh" "$DISK_FILE"
+            "$SCRIPT_DIR/verify_build_provenance.sh" "$DISK_FILE"
         fi
         ;;
 
@@ -603,7 +603,7 @@ case "$COMMAND" in
             fi
         done
 
-        # Clean attestation bundles
+        # Clean build provenance bundles
         for disk in "${DISK_FILES[@]}"; do
             if [[ -f "$DISK_DIR/${disk}.bundle" ]]; then
                 rm -f "$DISK_DIR/${disk}.bundle"

@@ -22,7 +22,6 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 - [Live Demo](#live-demo)
 - [Detailed Walkthrough](#detailed-walkthrough)
 - [Architecture](#architecture)
-- [Security & Attestations](#security--attestations)
 - [Troubleshooting](#troubleshooting)
 
 
@@ -30,14 +29,20 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 **Ubuntu/Debian:**
 ```bash
-wget https://github.com/automata-network/automata-linux/releases/latest/download/atakit_0.1.0-1_all.deb
-sudo dpkg -i atakit_0.1.0-1_all.deb
+# Get the latest release tag (requires jq: sudo apt-get install jq)
+LATEST=$(curl -sL https://api.github.com/repos/automata-network/automata-linux/releases/latest | jq -r .tag_name)
+if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then echo "Failed to fetch latest release"; exit 1; fi
+VERSION=${LATEST#v}
+
+# Download and install
+wget "https://github.com/automata-network/automata-linux/releases/download/${LATEST}/atakit_${VERSION}-1_all.deb"
+sudo dpkg -i atakit_${VERSION}-1_all.deb
 sudo apt-get install -f
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew tap automata-network/atakit https://github.com/automata-network/automata-linux
+brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux.git
 brew install atakit
 ```
 
@@ -62,66 +67,19 @@ cd automata-linux
 sudo make install
 ```
 
-### Downloading Disk Images <!-- omit in toc -->
+### Downloading and Verifying Disk Images <!-- omit in toc -->
 
-The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/automata-linux/releases). By default, the latest release is used.
+The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/automata-linux/releases). By default, the latest release is used. To use a specific release, set `RELEASE_TAG` (e.g., `export RELEASE_TAG=v1.0.0`).
 
-**For Private Repositories:**
-If the repository is private, you need to set a GitHub token:
-
-```bash
-export GITHUB_TOKEN=your_github_token_here
-```
-
-**To use a specific release version:**
+All disk images include **SLSA Build Level 2** provenance attestations. To verify:
 
 ```bash
-export RELEASE_TAG=v1.0.0  # or any specific tag like manual-20251218-211704-3f4bc00
-```
-
-**Example with both environment variables:**
-
-```bash
-# For private repos with a specific version
-export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx
-export RELEASE_TAG=v1.0.0
-atakit deploy-gcp
-```
-
-> [!Note]
-> If these environment variables are not set:
-> - `RELEASE_TAG` defaults to `latest`
-> - `GITHUB_TOKEN` is only required for private repositories
-
-### Verifying Disk Image Attestations <!-- omit in toc -->
-
-All disk images built through the CI pipeline include **SLSA Build Level 2** provenance attestations that cryptographically verify the build process. These attestations provide transparency into what was built, when, and by whom.
-
-**Quick Verification:**
-
-```bash
-# Download disk image and attestations
 atakit get-disk aws
-atakit get-attestations
-
-# Verify AWS VMDK attestation
-atakit verify-attestation aws_disk.vmdk
+atakit download-build-provenance
+atakit verify-build-provenance aws_disk.vmdk
 ```
 
-> [!Note]
-> - For private repositories, set `GITHUB_TOKEN` environment variable before running commands
-> - To use a specific release, set `RELEASE_TAG` (e.g., `export RELEASE_TAG=v1.0.0`)
-> - You must download the disk image first before verifying its attestation
-
-**What's Attested:**
-- Source commit SHA and repository
-- Binary checksums (cvm-agent, kernel, libraries)
-- Secure boot key fingerprints
-- dm-verity root hash for rootfs integrity
-- Build tool versions and environment
-- Build timestamp and builder identity
-
-For complete verification instructions and security details, see [docs/ATTESTATION_VERIFICATION.md](docs/ATTESTATION_VERIFICATION.md).
+For complete verification instructions, see [docs/ATTESTATION_VERIFICATION.md](docs/ATTESTATION_VERIFICATION.md).
 
 ## Quickstart
 
@@ -275,7 +233,7 @@ atakit cleanup gcp cvm-test
 ```
 
 #### Cleaning Up Local Artifacts <!-- omit in toc -->
-Use this command to remove all locally downloaded disk images, attestations, and other artifacts.
+Use this command to remove all locally downloaded disk images, build provenance, and other artifacts.
 
 ```bash
 atakit cleanup-local
@@ -320,41 +278,6 @@ A detailed walkthrough of what can be customized and any other features availabl
 
 ## Architecture
 Details of our CVM trust chain and attestation architecture can be found in [this doc](docs/architecture.md).
-
-## Security & Attestations
-
-All disk images released through this repository include cryptographically signed **SLSA Build Level 2** provenance attestations. These attestations provide verifiable proof of the build process and contents.
-
-### What's Attested
-
-Each disk image includes a signed attestation containing:
-
-- **Build Provenance**: Exact source commit, submodule versions, and repository
-- **Binary Integrity**: SHA256 checksums of all binaries (cvm-agent, kernel, libraries)
-- **Security Configuration**: Secure boot key fingerprints and dm-verity root hashes
-- **Build Environment**: Complete build tool versions and parameters
-- **Builder Identity**: GitHub Actions runner and workflow information
-
-### Verifying Attestations
-
-```bash
-# Download disk image and attestations from latest release
-# For private repos: export GITHUB_TOKEN=your_token
-atakit get-disk aws
-atakit get-attestations
-
-# Verify the disk image attestation
-atakit verify-attestation aws_disk.vmdk
-```
-
-### Why Verify Attestations?
-
-- **Supply Chain Security**: Ensure disk images haven't been tampered with
-- **Compliance**: Meet regulatory requirements for software provenance
-- **Transparency**: Understand exactly what's included in each disk image
-- **Reproducibility**: Verify builds match the claimed source code
-
-For detailed verification instructions, security considerations, and troubleshooting, see [docs/ATTESTATION_VERIFICATION.md](docs/ATTESTATION_VERIFICATION.md).
 
 ## Troubleshooting
 Running into trouble deploying the CVM? We have some common Q&A in [this doc](docs/troubleshooting.md).

@@ -6,11 +6,8 @@ class Atakit < Formula
 
   depends_on arch: :arm64
 
-  # For private repos, use HOMEBREW_GITHUB_API_TOKEN
-  # Usage: export HOMEBREW_GITHUB_API_TOKEN=your_token && brew install atakit
-  url "https://api.github.com/repos/automata-network/automata-linux/releases/assets/346788817",
-      headers: ["Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", "")}", "Accept: application/octet-stream"]
-  sha256 "e290bc2f7532b28c014169c7a16589326f22c094b71ce861b7e3a09805e3e8cf"
+  url "https://github.com/automata-network/automata-linux/releases/download/v#{version}/atakit-#{version}-macos-arm64.tar.gz"
+  sha256 "a527e02564e46d2ff2ea5fe960f0d134caab599540ad6ac3a4e769e91484a686"
 
   depends_on "jq"
   depends_on "curl"
@@ -19,8 +16,11 @@ class Atakit < Formula
   depends_on "python@3.9" => :recommended
 
   def install
-    bin.install "bin/atakit"
-    (share/"atakit").install Dir["share/atakit/*"]
+    # The tarball extracts to atakit-#{version}-macos-arm64/
+    cd "atakit-#{version}-macos-arm64" do
+      bin.install "bin/atakit"
+      (share/"atakit").install Dir["share/atakit/*"]
+    end
   end
 
   test do
