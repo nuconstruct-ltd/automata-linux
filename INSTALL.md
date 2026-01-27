@@ -22,8 +22,8 @@ sudo apt-get install -f
 ### macOS (Homebrew)
 
 ```bash
-# Add the atakit tap
-brew tap automata-network/atakit https://github.com/automata-network/automata-linux
+# Add the tap
+brew tap automata-network/automata-linux
 
 # Install atakit
 brew install atakit
@@ -140,7 +140,7 @@ sudo apt-get remove atakit
 ### macOS
 ```bash
 brew uninstall atakit
-brew untap automata-network/atakit
+brew untap automata-network/automata-linux
 ```
 
 ### From Source
