@@ -16,8 +16,11 @@ class Atakit < Formula
   depends_on "python@3.9" => :recommended
 
   def install
-    bin.install "bin/atakit"
-    (share/"atakit").install Dir["share/atakit/*"]
+    # The tarball extracts to atakit-#{version}-macos-arm64/
+    cd "atakit-#{version}-macos-arm64" do
+      bin.install "bin/atakit"
+      (share/"atakit").install Dir["share/atakit/*"]
+    end
   end
 
   test do
