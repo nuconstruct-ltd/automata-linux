@@ -6,9 +6,9 @@
   </picture>
 </div>
 
-# cvm-base-image
+# automata-linux
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![GitHub Release](https://img.shields.io/github/v/release/automata-network/cvm-base-image)](https://github.com/automata-network/cvm-base-image/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/automata-network/automata-linux)](https://github.com/automata-network/automata-linux/releases)
 
 A command-line tool for deploying and managing Confidential Virtual Machines (CVMs) across AWS, GCP, and Azure.
 
@@ -30,14 +30,14 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 **Ubuntu/Debian:**
 ```bash
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli_0.1.0-1_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_0.1.0-1_all.deb
 sudo dpkg -i cvm-cli_0.1.0-1_all.deb
 sudo apt-get install -f
 ```
 
 **macOS (Homebrew):**
 ```bash
-brew tap automata-network/cvm-cli https://github.com/automata-network/cvm-base-image
+brew tap automata-network/cvm-cli https://github.com/automata-network/automata-linux
 brew install cvm-cli
 ```
 
@@ -57,14 +57,14 @@ cvm-cli --help
 ### For Development/Source Installation
 
 ```bash
-git clone --recurse-submodules https://github.com/automata-network/cvm-base-image
-cd cvm-base-image
+git clone --recurse-submodules https://github.com/automata-network/automata-linux
+cd automata-linux
 sudo make install
 ```
 
 ### Downloading Disk Images <!-- omit in toc -->
 
-The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/cvm-base-image/releases). By default, the latest release is used.
+The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/automata-linux/releases). By default, the latest release is used.
 
 **For Private Repositories:**
 If the repository is private, you need to set a GitHub token:
@@ -140,7 +140,7 @@ cvm-cli deploy-azure
 ```
 
 > [!Note]
-> The script will automatically download the latest disk image from [GitHub Releases](https://github.com/automata-network/cvm-base-image/releases). <br/>
+> The script will automatically download the latest disk image from [GitHub Releases](https://github.com/automata-network/automata-linux/releases). <br/>
 > If you want to use a specific release version, set the `RELEASE_TAG` environment variable (see [Prerequisites](#prerequisites)). <br/>
 > If another developer has given you a custom disk, you can use it instead by:
 > - Placing the custom disk file in the root of this folder.
@@ -297,9 +297,9 @@ Here is a short demo video showing how to deploy workload using our cvm-image on
 
 Instructions to recreate the demo setup in your own environment are available here:
 ```bash
-git clone https://github.com/automata-network/cvm-base-image.git
+git clone https://github.com/automata-network/automata-linux.git
 
-cd cvm-base-image
+cd automata-linux
 
 cat workload/docker-compose.yml
 

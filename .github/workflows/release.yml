@@ -164,13 +164,13 @@ jobs:
 
             # Get release info and download .deb package
             RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/automata-network/cvm-base-image/releases/tags/$RELEASE_TAG")
+              "https://api.github.com/repos/automata-network/automata-linux/releases/tags/$RELEASE_TAG")
             ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | endswith(".deb")) | .id')
             DEB_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".deb")) | .name')
 
             curl -L -H "Authorization: token $GITHUB_TOKEN" \
               -H "Accept: application/octet-stream" \
-              "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/$ASSET_ID" \
+              "https://api.github.com/repos/automata-network/automata-linux/releases/assets/$ASSET_ID" \
               -o "$DEB_NAME"
 
             # Install
@@ -180,7 +180,7 @@ jobs:
 
             **Alternative: Using GitHub CLI**
             ```bash
-            gh release download ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }} --repo automata-network/cvm-base-image --pattern "*.deb"
+            gh release download ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }} --repo automata-network/automata-linux --pattern "*.deb"
             sudo dpkg -i cvm-cli_*.deb
             sudo apt-get install -f
             ```
@@ -191,7 +191,7 @@ jobs:
             export HOMEBREW_GITHUB_API_TOKEN=your_github_token_here
 
             # Tap and install
-            brew tap automata-network/cvm-base-image https://github.com/automata-network/cvm-base-image
+            brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux
             brew install cvm-cli
             ```
 

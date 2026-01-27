@@ -1,6 +1,6 @@
 class CvmCli < Formula
   desc "CLI tool for managing Confidential VMs across AWS, GCP, and Azure"
-  homepage "https://github.com/automata-network/cvm-base-image"
+  homepage "https://github.com/automata-network/automata-linux"
   version "0.1.3"
   license "Apache-2.0"
 
@@ -8,7 +8,7 @@ class CvmCli < Formula
 
   # For private repos, use HOMEBREW_GITHUB_API_TOKEN
   # Usage: export HOMEBREW_GITHUB_API_TOKEN=your_token && brew install cvm-cli
-  url "https://api.github.com/repos/automata-network/cvm-base-image/releases/assets/339530902",
+  url "https://api.github.com/repos/automata-network/automata-linux/releases/assets/339530902",
       headers: ["Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", "")}", "Accept: application/octet-stream"]
   sha256 "a527e02564e46d2ff2ea5fe960f0d134caab599540ad6ac3a4e769e91484a686"
 

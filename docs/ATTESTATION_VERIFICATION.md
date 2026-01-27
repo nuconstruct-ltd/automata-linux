@@ -71,8 +71,8 @@ brew install sigstore/tap/cosign  # macOS
 The easiest way to verify disk images (works with large files >128MB):
 
 ```bash
-# Using the cvm-base-image repository
-cd cvm-base-image
+# Using the automata-linux repository
+cd automata-linux
 
 # Download disk image and attestations
 cvm-cli get-disk aws
@@ -92,12 +92,12 @@ This method handles large disk images (>128MB) that exceed cosign's size limits 
 
 ```bash
 # Download disk image from release
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/aws_disk.vmdk
+wget https://github.com/automata-network/automata-linux/releases/download/v1.0.0/aws_disk.vmdk
 
 # Verify using GitHub Attestations API
 gh attestation verify aws_disk.vmdk \
   --owner automata-network \
-  --repo cvm-base-image
+  --repo automata-linux
 ```
 
 **Note:** GitHub CLI verification requires the repository to be public or GitHub Enterprise Cloud with repo access. Bundle-based verification is recommended for all scenarios.

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # GitHub repository information
-REPO="automata-network/cvm-base-image"
+REPO="automata-network/automata-linux"
 RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 
 # quit when any error occurs

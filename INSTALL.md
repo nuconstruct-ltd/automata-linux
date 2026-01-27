@@ -8,7 +8,7 @@ This guide provides instructions for installing `cvm-cli` on various operating s
 
 ```bash
 # Download the latest .deb package
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli_0.1.0-1_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_0.1.0-1_all.deb
 
 # Install the package
 sudo dpkg -i cvm-cli_0.1.0-1_all.deb
@@ -21,7 +21,7 @@ sudo apt-get install -f
 
 ```bash
 # Add the cvm-cli tap
-brew tap automata-network/cvm-cli https://github.com/automata-network/cvm-base-image
+brew tap automata-network/cvm-cli https://github.com/automata-network/automata-linux
 
 # Install cvm-cli
 brew install cvm-cli
@@ -31,8 +31,8 @@ brew install cvm-cli
 
 ```bash
 # Clone the repository
-git clone --recurse-submodules https://github.com/automata-network/cvm-base-image.git
-cd cvm-base-image
+git clone --recurse-submodules https://github.com/automata-network/automata-linux.git
+cd automata-linux
 
 # Install to /usr/local (requires sudo)
 sudo make install
@@ -137,7 +137,7 @@ brew untap automata-network/cvm-cli
 
 ### From Source
 ```bash
-cd cvm-base-image
+cd automata-linux
 sudo make uninstall
 ```
 
@@ -150,7 +150,7 @@ rm -rf ~/.cvm-cli
 
 ### Ubuntu / Debian
 ```bash
-wget https://github.com/automata-network/cvm-base-image/releases/latest/download/cvm-cli_VERSION_all.deb
+wget https://github.com/automata-network/automata-linux/releases/latest/download/cvm-cli_VERSION_all.deb
 sudo dpkg -i cvm-cli_VERSION_all.deb
 ```
 
@@ -211,5 +211,5 @@ brew install jq curl openssl qemu python3
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/automata-network/cvm-base-image/issues
-- Documentation: https://github.com/automata-network/cvm-base-image#readme
+- GitHub Issues: https://github.com/automata-network/automata-linux/issues
+- Documentation: https://github.com/automata-network/automata-linux#readme

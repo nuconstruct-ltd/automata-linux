@@ -3,7 +3,7 @@
 CSP="$1"
 
 # GitHub repository information
-REPO="automata-network/cvm-base-image"
+REPO="automata-network/automata-linux"
 RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 
 # Track whether we downloaded a new disk image
