@@ -10,10 +10,10 @@ Our image supports kernel livepatching via the use of kpatch.
 - The current image uses **linux kernel 6.15.2, and was compiled with gcc-12 on Ubuntu 22.04**. Please build your patches against this kernel version.
 
 ## High-Level Overview of Livepatching Process
-1. First, users will use our `cvm-cli` to create a set of asymmetric keys. These asymmetric keys will be placed in the [secure_boot/](../secure_boot/) folder as `secure_boot/livepatch.key` and `secure_boot/livepatch.crt`. This key will be used in Step 3. to sign a livepatch.
-2. When users deploy a CVM to a cloud provider using our cli (eg. `cvm-cli deploy-gcp`), our scripts check whether `secure_boot/livepatch.crt` exists. If it does, it will be included as part of the Secure Boot Signature Database (DB) when the scripts create an image on the cloud provider.
-3. Users create a livepatch, and sign it using `cvm-cli sign-livepatch patch.ko` (assuming the patch module is called patch.ko).
-4. Users deploy the livepatch using `cvm-cli <csp> <vm-name>`. This script is a convenience function that uploads the livepatch into the CVM using the attestation agent API exposed on port 8000 of the VM. When the attestation agent receives the livepatch, it first calls `kpatch unload --all` to remove all older livepatches. Then it calls `kpatch load patch.ko`. The kernel checks whether patch.ko has been signed by a key that has been either built into the kernel, or exists in the Platform Trusted Keyring (Secure Boot Signature DB is part of this keyring). If the signature check passes, the patch will be loaded. Otherwise, it will be rejected, and the API will return an error.
+1. First, users will use our `atakit` to create a set of asymmetric keys. These asymmetric keys will be placed in the [secure_boot/](../secure_boot/) folder as `secure_boot/livepatch.key` and `secure_boot/livepatch.crt`. This key will be used in Step 3. to sign a livepatch.
+2. When users deploy a CVM to a cloud provider using our cli (eg. `atakit deploy-gcp`), our scripts check whether `secure_boot/livepatch.crt` exists. If it does, it will be included as part of the Secure Boot Signature Database (DB) when the scripts create an image on the cloud provider.
+3. Users create a livepatch, and sign it using `atakit sign-livepatch patch.ko` (assuming the patch module is called patch.ko).
+4. Users deploy the livepatch using `atakit <csp> <vm-name>`. This script is a convenience function that uploads the livepatch into the CVM using the attestation agent API exposed on port 8000 of the VM. When the attestation agent receives the livepatch, it first calls `kpatch unload --all` to remove all older livepatches. Then it calls `kpatch load patch.ko`. The kernel checks whether patch.ko has been signed by a key that has been either built into the kernel, or exists in the Platform Trusted Keyring (Secure Boot Signature DB is part of this keyring). If the signature check passes, the patch will be loaded. Otherwise, it will be rejected, and the API will return an error.
 
 In the following sections, we cover more details on Step 1, Step 3, and Step 4.
 
@@ -24,7 +24,7 @@ In the following sections, we cover more details on Step 1, Step 3, and Step 4.
 
 Use our CLI to generate keys that will be used at a later step to sign and verify the livepatches.
 ```bash
-cvm-cli generate-livepatch-keys
+atakit generate-livepatch-keys
 ```
 
 ## Step 3. Creating a Livepatch
@@ -138,13 +138,13 @@ cvm-cli generate-livepatch-keys
 5. Sign the livepatch:
 
   ```bash
-  cvm-cli sign-livepatch /path/to/livepatch.ko
+  atakit sign-livepatch /path/to/livepatch.ko
   ```
 
 ## Step 4: Deploy the Livepatch
 Use our CLI tool to deploy the livepatch to your CVM:
 ```bash
-# cvm-cli livepatch <cloud-provider> <vm-name> <path-to-livepatch>
+# atakit livepatch <cloud-provider> <vm-name> <path-to-livepatch>
 # <cloud-provider> = "aws" or "gcp" or "azure"
-cvm-cli livepatch gcp my-cvm-name /path/to/livepatch.ko
+atakit livepatch gcp my-cvm-name /path/to/livepatch.ko
 ```

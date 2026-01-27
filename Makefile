@@ -1,29 +1,29 @@
-# Makefile for cvm-cli installation
+# Makefile for atakit installation
 # Supports installation on Linux and macOS
 
 DESTDIR ?=
 PREFIX ?= /usr/local
 BINDIR = $(DESTDIR)$(PREFIX)/bin
-SHAREDIR = $(DESTDIR)$(PREFIX)/share/cvm-cli
-DOCDIR = $(DESTDIR)$(PREFIX)/share/doc/cvm-cli
+SHAREDIR = $(DESTDIR)$(PREFIX)/share/atakit
+DOCDIR = $(DESTDIR)$(PREFIX)/share/doc/atakit
 
 VERSION = 0.1.0
 
 .PHONY: all install uninstall clean test help
 
 all:
-	@echo "Run 'make install' to install cvm-cli"
-	@echo "Run 'make uninstall' to remove cvm-cli"
+	@echo "Run 'make install' to install atakit"
+	@echo "Run 'make uninstall' to remove atakit"
 
 help:
 	@echo "Available targets:"
-	@echo "  install    - Install cvm-cli to $(PREFIX)"
-	@echo "  uninstall  - Remove cvm-cli from $(PREFIX)"
+	@echo "  install    - Install atakit to $(PREFIX)"
+	@echo "  uninstall  - Remove atakit from $(PREFIX)"
 	@echo "  clean      - Remove build artifacts and downloaded images"
 	@echo "  test       - Run syntax validation on all scripts"
 
 install:
-	@echo "Installing cvm-cli $(VERSION) to $(PREFIX)..."
+	@echo "Installing atakit $(VERSION) to $(PREFIX)..."
 
 	# Initialize git submodules if needed
 	@if [ -d .git ] && [ -z "$$(ls -A tools/python-uefivars 2>/dev/null)" ]; then \
@@ -42,7 +42,7 @@ install:
 	mkdir -p $(DOCDIR)
 
 	# Install main CLI
-	install -m 0755 cvm-cli $(BINDIR)/cvm-cli
+	install -m 0755 atakit $(BINDIR)/atakit
 
 	# Install scripts
 	install -m 0755 scripts/*.sh $(SHAREDIR)/scripts/
@@ -79,7 +79,7 @@ install:
 
 	@echo ""
 	@echo "✅ Installation complete!"
-	@echo "Run 'cvm-cli' to get started."
+	@echo "Run 'atakit' to get started."
 	@echo ""
 	@echo "First-time setup:"
 	@echo "  - AWS: Run 'aws configure' to set up credentials"
@@ -87,14 +87,14 @@ install:
 	@echo "  - Azure: Run 'az login' to set up credentials"
 
 uninstall:
-	@echo "Uninstalling cvm-cli..."
-	rm -f $(BINDIR)/cvm-cli
+	@echo "Uninstalling atakit..."
+	rm -f $(BINDIR)/atakit
 	rm -rf $(SHAREDIR)
 	rm -rf $(DOCDIR)
 	@echo "✅ Uninstall complete!"
 	@echo ""
-	@echo "Note: User data in ~/.cvm-cli was preserved."
-	@echo "To remove it: rm -rf ~/.cvm-cli"
+	@echo "Note: User data in ~/.atakit was preserved."
+	@echo "To remove it: rm -rf ~/.atakit"
 
 clean:
 	@echo "Cleaning build artifacts..."
@@ -106,7 +106,7 @@ clean:
 
 test:
 	@echo "Running syntax validation..."
-	@bash -n cvm-cli && echo "✓ cvm-cli syntax OK" || (echo "✗ cvm-cli syntax error" && exit 1)
+	@bash -n atakit && echo "✓ atakit syntax OK" || (echo "✗ atakit syntax error" && exit 1)
 	@for script in scripts/*.sh; do \
 		bash -n $$script && echo "✓ $$script syntax OK" || (echo "✗ $$script syntax error" && exit 1); \
 	done

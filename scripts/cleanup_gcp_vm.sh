@@ -1,6 +1,6 @@
 #!/bin/bash
 VM_NAME=$1
-ARTIFACT_DIR="${2:-_artifacts}"  # Artifact directory (passed from cvm-cli)
+ARTIFACT_DIR="${2:-_artifacts}"  # Artifact directory (passed from atakit)
 
 # quit when any error occurs
 set -Eeuo pipefail

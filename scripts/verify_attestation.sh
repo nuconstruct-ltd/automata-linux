@@ -14,10 +14,10 @@ if [[ ! -f "$DISK_FILE" ]]; then
   echo "❌ Error: Disk file not found: $DISK_FILE"
   echo ""
   echo "💡 Hint: Disk images are downloaded to:"
-  echo "   - Installed mode: ~/.cvm-cli/disks/"
+  echo "   - Installed mode: ~/.atakit/disks/"
   echo "   - Development mode: ./ (project root)"
   echo ""
-  echo "   Try: cvm-cli verify-attestation ~/.cvm-cli/disks/$(basename "$DISK_FILE")"
+  echo "   Try: atakit verify-attestation ~/.atakit/disks/$(basename "$DISK_FILE")"
   exit 1
 fi
 
@@ -25,7 +25,7 @@ if [[ ! -f "$BUNDLE_FILE" ]]; then
   echo "❌ Error: Attestation bundle not found: $BUNDLE_FILE"
   echo ""
   echo "💡 Hint: Download attestations first with:"
-  echo "   cvm-cli get-attestations"
+  echo "   atakit get-attestations"
   echo ""
   echo "   Attestation bundles are saved alongside disk images."
   exit 1

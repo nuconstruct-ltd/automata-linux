@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # GitHub repository information
-REPO="automata-network/cvm-base-image"
+REPO="automata-network/automata-linux"
 RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
 
 # quit when any error occurs
@@ -187,7 +187,7 @@ if [[ -d "attestations" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
   ls -lh *.bundle 2>/dev/null || ls -lh attestations/*.bundle 2>/dev/null || true
   echo ""
   echo "🔐 To verify an attestation:"
-  echo "   ./cvm-cli verify-attestation aws_disk.vmdk"
+  echo "   ./atakit verify-attestation aws_disk.vmdk"
   echo ""
   echo "📖 For detailed documentation, see:"
   echo "   docs/ATTESTATION_VERIFICATION.md"

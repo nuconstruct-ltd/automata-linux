@@ -8,7 +8,7 @@ This guide explains how to verify the cryptographic build provenance attestation
 - [Why Verify Attestations?](#why-verify-attestations)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
-  - [Recommended: Verification Using cvm-cli](#recommended-verification-using-cvm-cli)
+  - [Recommended: Verification Using atakit](#recommended-verification-using-atakit)
   - [Alternative: GitHub CLI (Public Repos Only)](#alternative-github-cli-public-repos-only---not-supported-yet)
 - [Verification for All Cloud Providers](#verification-for-all-cloud-providers)
   - [AWS VMDK](#aws-vmdk)
@@ -66,20 +66,20 @@ openssl version
 brew install sigstore/tap/cosign  # macOS
 ```
 
-### Recommended: Verification Using cvm-cli
+### Recommended: Verification Using atakit
 
 The easiest way to verify disk images (works with large files >128MB):
 
 ```bash
-# Using the cvm-base-image repository
-cd cvm-base-image
+# Using the automata-linux repository
+cd automata-linux
 
 # Download disk image and attestations
-cvm-cli get-disk aws
-cvm-cli get-attestations
+atakit get-disk aws
+atakit get-attestations
 
 # Verify the disk image
-cvm-cli verify-attestation aws_disk.vmdk
+atakit verify-attestation aws_disk.vmdk
 ```
 
 This method handles large disk images (>128MB) that exceed cosign's size limits by:
@@ -92,12 +92,12 @@ This method handles large disk images (>128MB) that exceed cosign's size limits 
 
 ```bash
 # Download disk image from release
-wget https://github.com/automata-network/cvm-base-image/releases/download/v1.0.0/aws_disk.vmdk
+wget https://github.com/automata-network/automata-linux/releases/download/v1.0.0/aws_disk.vmdk
 
 # Verify using GitHub Attestations API
 gh attestation verify aws_disk.vmdk \
   --owner automata-network \
-  --repo cvm-base-image
+  --repo automata-linux
 ```
 
 **Note:** GitHub CLI verification requires the repository to be public or GitHub Enterprise Cloud with repo access. Bundle-based verification is recommended for all scenarios.
@@ -107,28 +107,28 @@ gh attestation verify aws_disk.vmdk \
 ### AWS VMDK
 
 ```bash
-# Using cvm-cli (recommended)
-cvm-cli get-disk aws
-cvm-cli get-attestations
-cvm-cli verify-attestation aws_disk.vmdk
+# Using atakit (recommended)
+atakit get-disk aws
+atakit get-attestations
+atakit verify-attestation aws_disk.vmdk
 ```
 
 ### Azure VHD
 
 ```bash
-# Using cvm-cli (recommended)
-cvm-cli get-disk azure
-cvm-cli get-attestations
-cvm-cli verify-attestation azure_disk.vhd
+# Using atakit (recommended)
+atakit get-disk azure
+atakit get-attestations
+atakit verify-attestation azure_disk.vhd
 ```
 
 ### GCP tar.gz
 
 ```bash
-# Using cvm-cli (recommended)
-cvm-cli get-disk gcp
-cvm-cli get-attestations
-cvm-cli verify-attestation gcp_disk.tar.gz
+# Using atakit (recommended)
+atakit get-disk gcp
+atakit get-attestations
+atakit verify-attestation gcp_disk.tar.gz
 ```
 
 ## How Verification Works for Large Disk Images
@@ -355,7 +355,7 @@ To verify the chain:
 
 ```bash
 # The verify-attestation command displays the dm-verity root hash
-cvm-cli verify-attestation aws_disk.vmdk
+atakit verify-attestation aws_disk.vmdk
 
 # Or extract it manually
 DM_VERITY_HASH=$(cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \

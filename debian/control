@@ -1,15 +1,15 @@
-Source: cvm-cli
+Source: atakit
 Section: utils
 Priority: optional
 Maintainer: Yaoxin Jin <yaoxin.j@ata.network>
 Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.6.2
-Homepage: https://github.com/automata-network/cvm-base-image
-Vcs-Browser: https://github.com/automata-network/cvm-base-image
-Vcs-Git: https://github.com/automata-network/cvm-base-image.git
+Homepage: https://github.com/automata-network/automata-linux
+Vcs-Browser: https://github.com/automata-network/automata-linux
+Vcs-Git: https://github.com/automata-network/automata-linux.git
 Rules-Requires-Root: no
 
-Package: cvm-cli
+Package: atakit
 Architecture: all
 Depends: ${misc:Depends},
          bash (>= 4.0),
@@ -23,7 +23,7 @@ Suggests: awscli,
           azure-cli,
           docker.io | podman
 Description: CLI tool for managing Confidential VMs
- cvm-cli is a command-line interface for deploying and managing
+ atakit is a command-line interface for deploying and managing
  Confidential Virtual Machines (CVMs) across multiple cloud platforms
  including AWS, Google Cloud Platform (GCP), and Microsoft Azure.
  .

@@ -73,10 +73,10 @@ This rule ensures that:
 
 ## How to sign a image using cosign:
 
-User can use our cvm-cli tool to sign the image and push it to the remote repo. Note that 
+User can use our atakit tool to sign the image and push it to the remote repo. Note that 
 
 ```bash
-cvm-cli sign-image  <source-image-name> <target-image-name> <cosign-private-key> <cosign-public-key>
+atakit sign-image  <source-image-name> <target-image-name> <cosign-private-key> <cosign-public-key>
 ```
 > [!Note]
 > The image signature is stored with the image in the remote repo. The cvm-agent will pull the image signature at runtime automaticly

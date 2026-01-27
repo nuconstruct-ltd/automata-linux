@@ -16,7 +16,7 @@ LIVEPATCH_PRIV_KEY="secure_boot/livepatch.key"
 LIVEPATCH_PUB_KEY="secure_boot/livepatch.crt"
 if [[ ! -f "$LIVEPATCH_PRIV_KEY" || ! -f "$LIVEPATCH_PUB_KEY" ]]; then
   echo "❌ Error: Livepatch keys not found! (sign_livepatch_locally.sh)"
-  echo "❌ Please run `./cvm-cli generate-livepatch-keys` and re-deploy any existing CVM so that livepatch keys will be loaded with secure boot."
+  echo "❌ Please run `./atakit generate-livepatch-keys` and re-deploy any existing CVM so that livepatch keys will be loaded with secure boot."
   exit 1
 fi
 

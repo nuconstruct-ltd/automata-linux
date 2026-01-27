@@ -6,22 +6,22 @@
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check if installed via package manager (highest priority)
-if [ -d "/usr/local/share/cvm-cli/scripts" ]; then
-    INSTALL_DIR="/usr/local/share/cvm-cli"
+if [ -d "/usr/local/share/atakit/scripts" ]; then
+    INSTALL_DIR="/usr/local/share/atakit"
     SCRIPT_DIR="$INSTALL_DIR/scripts"
     WORKLOAD_DIR="$INSTALL_DIR/workload"
     TOOLS_DIR="$INSTALL_DIR/tools"
     IS_INSTALLED=true
-elif [ -d "/usr/share/cvm-cli/scripts" ]; then
+elif [ -d "/usr/share/atakit/scripts" ]; then
     # Alternative system installation path
-    INSTALL_DIR="/usr/share/cvm-cli"
+    INSTALL_DIR="/usr/share/atakit"
     SCRIPT_DIR="$INSTALL_DIR/scripts"
     WORKLOAD_DIR="$INSTALL_DIR/workload"
     TOOLS_DIR="$INSTALL_DIR/tools"
     IS_INSTALLED=true
-elif [ -d "/opt/homebrew/share/cvm-cli/scripts" ]; then
+elif [ -d "/opt/homebrew/share/atakit/scripts" ]; then
     # Homebrew on Apple Silicon
-    INSTALL_DIR="/opt/homebrew/share/cvm-cli"
+    INSTALL_DIR="/opt/homebrew/share/atakit"
     SCRIPT_DIR="$INSTALL_DIR/scripts"
     WORKLOAD_DIR="$INSTALL_DIR/workload"
     TOOLS_DIR="$INSTALL_DIR/tools"
@@ -33,15 +33,15 @@ elif [ -d "$SCRIPT_PATH/scripts" ]; then
     TOOLS_DIR="$SCRIPT_PATH/tools"
     IS_INSTALLED=false
 else
-    echo "❌ Error: Cannot locate cvm-cli installation"
+    echo "❌ Error: Cannot locate atakit installation"
     exit 1
 fi
 
 # Create working directory for artifacts and disk images
-# When installed: use ~/.cvm-cli for user data
+# When installed: use ~/.atakit for user data
 # When in dev mode: use ./_artifacts in repo
 if [ "$IS_INSTALLED" = true ]; then
-    CVM_HOME="$HOME/.cvm-cli"
+    CVM_HOME="$HOME/.atakit"
     ARTIFACT_DIR="$CVM_HOME/artifacts"
     DISK_DIR="$CVM_HOME/disks"
     mkdir -p "$ARTIFACT_DIR" "$DISK_DIR"
@@ -56,6 +56,59 @@ export ARTIFACT_DIR
 export SCRIPT_DIR
 export TOOLS_DIR
 export WORKLOAD_DIR
+
+# ============================================================================
+# Dependency Checking and Auto-Installation
+# ============================================================================
+check_and_install_dependencies() {
+    local missing=()
+    local deps=("curl" "jq" "unzip" "openssl")
+
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" &> /dev/null; then
+            missing+=("$dep")
+        fi
+    done
+
+    # Check for sha256sum or shasum (macOS uses shasum)
+    if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
+        missing+=("coreutils")  # provides sha256sum
+    fi
+
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "⚠️  Missing dependencies: ${missing[*]}"
+        echo "⌛ Attempting to install..."
+
+        if [[ "$(uname)" == "Darwin" ]]; then
+            # macOS - use Homebrew
+            if command -v brew &> /dev/null; then
+                brew install "${missing[@]}" || {
+                    echo "❌ Failed to install dependencies via Homebrew"
+                    exit 1
+                }
+            else
+                echo "❌ Homebrew not found. Please install dependencies manually:"
+                echo "  brew install ${missing[*]}"
+                exit 1
+            fi
+        elif command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            sudo apt-get update -qq && sudo apt-get install -y "${missing[@]}" || {
+                echo "❌ Failed to install dependencies via apt-get"
+                exit 1
+            }
+        else
+            echo "❌ Could not detect package manager. Please install manually:"
+            echo "  ${missing[*]}"
+            exit 1
+        fi
+
+        echo "✅ Dependencies installed successfully"
+    fi
+}
+
+# Run dependency check early
+check_and_install_dependencies
 
 usage() {
     echo "Usage: $0 <command> [options]"

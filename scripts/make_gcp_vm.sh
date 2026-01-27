@@ -7,7 +7,7 @@ ADDITIONAL_PORTS=$6
 IP=$7
 DATA_DISK="$8"          # Optional disk name
 DISK_SIZE_GB="$9"       # Optional disk size (for new disk)
-ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from cvm-cli)
+ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from atakit)
 
 
 
