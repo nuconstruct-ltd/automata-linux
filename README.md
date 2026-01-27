@@ -42,7 +42,7 @@ sudo apt-get install -f
 
 **macOS (Homebrew):**
 ```bash
-brew tap automata-network/automata-linux
+brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux.git
 brew install atakit
 ```
 

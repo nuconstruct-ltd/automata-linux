@@ -22,7 +22,7 @@ sudo apt-get install -f
 
 ```bash
 # Add the tap
-brew tap automata-network/automata-linux
+brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux.git
 
 # Install atakit
 brew install atakit
