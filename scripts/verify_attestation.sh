@@ -17,15 +17,15 @@ if [[ ! -f "$DISK_FILE" ]]; then
   echo "   - Installed mode: ~/.atakit/disks/"
   echo "   - Development mode: ./ (project root)"
   echo ""
-  echo "   Try: atakit verify-attestation ~/.atakit/disks/$(basename "$DISK_FILE")"
+  echo "   Try: atakit verify-build-provenance ~/.atakit/disks/$(basename "$DISK_FILE")"
   exit 1
 fi
 
 if [[ ! -f "$BUNDLE_FILE" ]]; then
   echo "❌ Error: Attestation bundle not found: $BUNDLE_FILE"
   echo ""
-  echo "💡 Hint: Download attestations first with:"
-  echo "   atakit get-attestations"
+  echo "💡 Hint: Download build provenance first with:"
+  echo "   atakit download-build-provenance"
   echo ""
   echo "   Attestation bundles are saved alongside disk images."
   exit 1

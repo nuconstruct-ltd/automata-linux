@@ -76,10 +76,10 @@ cd automata-linux
 
 # Download disk image and attestations
 atakit get-disk aws
-atakit get-attestations
+atakit download-build-provenance
 
 # Verify the disk image
-atakit verify-attestation aws_disk.vmdk
+atakit verify-build-provenance aws_disk.vmdk
 ```
 
 This method handles large disk images (>128MB) that exceed cosign's size limits by:
@@ -109,8 +109,8 @@ gh attestation verify aws_disk.vmdk \
 ```bash
 # Using atakit (recommended)
 atakit get-disk aws
-atakit get-attestations
-atakit verify-attestation aws_disk.vmdk
+atakit download-build-provenance
+atakit verify-build-provenance aws_disk.vmdk
 ```
 
 ### Azure VHD
@@ -118,8 +118,8 @@ atakit verify-attestation aws_disk.vmdk
 ```bash
 # Using atakit (recommended)
 atakit get-disk azure
-atakit get-attestations
-atakit verify-attestation azure_disk.vhd
+atakit download-build-provenance
+atakit verify-build-provenance azure_disk.vhd
 ```
 
 ### GCP tar.gz
@@ -127,8 +127,8 @@ atakit verify-attestation azure_disk.vhd
 ```bash
 # Using atakit (recommended)
 atakit get-disk gcp
-atakit get-attestations
-atakit verify-attestation gcp_disk.tar.gz
+atakit download-build-provenance
+atakit verify-build-provenance gcp_disk.tar.gz
 ```
 
 ## How Verification Works for Large Disk Images
@@ -252,7 +252,7 @@ These checksums can be cross-referenced with official builds from [cvm-component
 
 ### View Full Build Metadata
 
-The `verify-attestation` command automatically displays key build metadata. To view the complete metadata:
+The `verify-build-provenance` command automatically displays key build metadata. To view the complete metadata:
 
 ```bash
 # Extract full build metadata from bundle
@@ -354,8 +354,8 @@ To verify the chain:
 4. **Verify root hash in PCR** matches attestation
 
 ```bash
-# The verify-attestation command displays the dm-verity root hash
-atakit verify-attestation aws_disk.vmdk
+# The verify-build-provenance command displays the dm-verity root hash
+atakit verify-build-provenance aws_disk.vmdk
 
 # Or extract it manually
 DM_VERITY_HASH=$(cat aws_disk.vmdk.bundle | jq -r '.base64Signature' | base64 -d | \

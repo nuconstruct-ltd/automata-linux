@@ -102,10 +102,10 @@ All disk images built through the CI pipeline include **SLSA Build Level 2** pro
 ```bash
 # Download disk image and attestations
 atakit get-disk aws
-atakit get-attestations
+atakit download-build-provenance
 
 # Verify AWS VMDK attestation
-atakit verify-attestation aws_disk.vmdk
+atakit verify-build-provenance aws_disk.vmdk
 ```
 
 > [!Note]
@@ -341,10 +341,10 @@ Each disk image includes a signed attestation containing:
 # Download disk image and attestations from latest release
 # For private repos: export GITHUB_TOKEN=your_token
 atakit get-disk aws
-atakit get-attestations
+atakit download-build-provenance
 
 # Verify the disk image attestation
-atakit verify-attestation aws_disk.vmdk
+atakit verify-build-provenance aws_disk.vmdk
 ```
 
 ### Why Verify Attestations?

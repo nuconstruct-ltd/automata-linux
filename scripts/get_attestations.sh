@@ -186,8 +186,8 @@ if [[ -d "attestations" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
   echo "📋 Available attestation files:"
   ls -lh *.bundle 2>/dev/null || ls -lh attestations/*.bundle 2>/dev/null || true
   echo ""
-  echo "🔐 To verify an attestation:"
-  echo "   ./atakit verify-attestation aws_disk.vmdk"
+  echo "🔐 To verify build provenance:"
+  echo "   ./atakit verify-build-provenance aws_disk.vmdk"
   echo ""
   echo "📖 For detailed documentation, see:"
   echo "   docs/ATTESTATION_VERIFICATION.md"
