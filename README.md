@@ -29,9 +29,12 @@ A command-line tool for deploying and managing Confidential Virtual Machines (CV
 
 **Ubuntu/Debian:**
 ```bash
-# Get the latest release tag and download
-LATEST=$(curl -s https://api.github.com/repos/automata-network/automata-linux/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+# Get the latest release tag (requires jq: sudo apt-get install jq)
+LATEST=$(curl -sL https://api.github.com/repos/automata-network/automata-linux/releases/latest | jq -r .tag_name)
+if [[ -z "$LATEST" || "$LATEST" == "null" ]]; then echo "Failed to fetch latest release"; exit 1; fi
 VERSION=${LATEST#v}
+
+# Download and install
 wget "https://github.com/automata-network/automata-linux/releases/download/${LATEST}/atakit_${VERSION}-1_all.deb"
 sudo dpkg -i atakit_${VERSION}-1_all.deb
 sudo apt-get install -f
