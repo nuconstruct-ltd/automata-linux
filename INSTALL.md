@@ -158,7 +158,8 @@ rm -rf ~/.atakit
 
 ### Ubuntu / Debian
 ```bash
-# Replace VERSION with the version number (e.g., 0.1.3)
+# Set VERSION to the desired version (e.g., 0.1.4)
+VERSION=0.1.4
 wget https://github.com/automata-network/automata-linux/releases/download/v${VERSION}/atakit_${VERSION}-1_all.deb
 sudo dpkg -i atakit_${VERSION}-1_all.deb
 ```
