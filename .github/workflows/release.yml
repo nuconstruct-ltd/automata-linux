@@ -152,56 +152,29 @@ jobs:
             This release contains the **CLI packages only** (`.deb` and `.tar.gz`).
             Disk images are released separately - the CLI will automatically find and download them.
 
-            ### Installation (Private Repository)
-
-            This is a private repository. You need a GitHub personal access token with `repo` scope.
+            ### Installation
 
             **Ubuntu/Debian:**
             ```bash
-            # Set your GitHub token and release tag
-            export GITHUB_TOKEN=your_github_token_here
+            # Set the release tag
             export RELEASE_TAG=${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
-            # Get release info and download .deb package
-            RELEASE_INFO=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-              "https://api.github.com/repos/automata-network/automata-linux/releases/tags/$RELEASE_TAG")
-            ASSET_ID=$(echo "$RELEASE_INFO" | jq '.assets[] | select(.name | endswith(".deb")) | .id')
-            DEB_NAME=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name | endswith(".deb")) | .name')
-
-            curl -L -H "Authorization: token $GITHUB_TOKEN" \
-              -H "Accept: application/octet-stream" \
-              "https://api.github.com/repos/automata-network/automata-linux/releases/assets/$ASSET_ID" \
-              -o "$DEB_NAME"
-
-            # Install
-            sudo dpkg -i "$DEB_NAME"
-            sudo apt-get install -f
-            ```
-
-            **Alternative: Using GitHub CLI**
-            ```bash
-            gh release download ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }} --repo automata-network/automata-linux --pattern "*.deb"
+            # Download and install
+            curl -LO "https://github.com/automata-network/automata-linux/releases/download/${RELEASE_TAG}/atakit_${RELEASE_TAG}_amd64.deb"
             sudo dpkg -i atakit_*.deb
             sudo apt-get install -f
             ```
 
             **macOS (ARM64 only via Homebrew):**
             ```bash
-            # Set your GitHub token (requires repo scope)
-            export HOMEBREW_GITHUB_API_TOKEN=your_github_token_here
-
-            # Tap and install
-            brew tap automata-network/automata-linux https://github.com/automata-network/automata-linux
+            brew tap automata-network/automata-linux
             brew install atakit
             ```
 
-            > **Tip:** If you use GitHub CLI, you can get your token with: `export HOMEBREW_GITHUB_API_TOKEN=$(gh auth token)`
-
             ### Usage
 
-            After installation, set your GitHub token and run:
+            After installation, run:
             ```bash
-            export GITHUB_TOKEN=your_github_token_here
             atakit deploy-gcp    # Deploy to GCP
             atakit deploy-aws    # Deploy to AWS
             atakit deploy-azure  # Deploy to Azure
@@ -273,13 +246,10 @@ jobs:
         run: |
           TAG="${{ steps.asset-info.outputs.tag }}"
           VERSION="${TAG#v}"  # Remove 'v' prefix
-          ASSET_ID="${{ steps.asset-info.outputs.asset_id }}"
           SHA256="${{ steps.asset-info.outputs.sha256 }}"
 
-          # Update version
+          # Update version (URL uses #{version} interpolation so only version needs updating)
           sed -i "s/version \"[^\"]*\"/version \"${VERSION}\"/" Formula/atakit.rb
-          # Update asset ID in URL
-          sed -i "s|releases/assets/[0-9]*|releases/assets/${ASSET_ID}|" Formula/atakit.rb
           # Update SHA256
           sed -i "s/sha256 \"[a-f0-9]*\"/sha256 \"${SHA256}\"/" Formula/atakit.rb
 
@@ -293,9 +263,8 @@ jobs:
           commit-message: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
           title: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
           body: |
-            Automated PR to update the Homebrew formula with the correct asset ID and SHA256 for release ${{ steps.asset-info.outputs.tag }}.
+            Automated PR to update the Homebrew formula for release ${{ steps.asset-info.outputs.tag }}.
 
-            - Asset ID: `${{ steps.asset-info.outputs.asset_id }}`
             - SHA256: `${{ steps.asset-info.outputs.sha256 }}`
           branch: update-homebrew-formula-${{ steps.asset-info.outputs.tag }}
           base: main

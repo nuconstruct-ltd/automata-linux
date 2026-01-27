@@ -6,10 +6,7 @@ class Atakit < Formula
 
   depends_on arch: :arm64
 
-  # For private repos, use HOMEBREW_GITHUB_API_TOKEN
-  # Usage: export HOMEBREW_GITHUB_API_TOKEN=your_token && brew install atakit
-  url "https://api.github.com/repos/automata-network/automata-linux/releases/assets/339530902",
-      headers: ["Authorization: token #{ENV.fetch("HOMEBREW_GITHUB_API_TOKEN", "")}", "Accept: application/octet-stream"]
+  url "https://github.com/automata-network/automata-linux/releases/download/v#{version}/atakit_v#{version}_macos-arm64.tar.gz"
   sha256 "a527e02564e46d2ff2ea5fe960f0d134caab599540ad6ac3a4e769e91484a686"
 
   depends_on "jq"

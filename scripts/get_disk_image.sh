@@ -80,7 +80,7 @@ download_from_github() {
   echo "⌛ Fetching release information from GitHub..."
 
   # Fetch release info and extract asset ID and URL for the specific file
-  # Use authentication if GITHUB_TOKEN is set (required for private repos)
+  # Use authentication if GITHUB_TOKEN is set (optional, helps with rate limits)
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     RELEASE_INFO=$(curl -sL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$API_URL")
   else
@@ -98,7 +98,7 @@ download_from_github() {
     exit 1
   fi
 
-  # For private repos, we need to use the API asset URL, not browser_download_url
+  # If GITHUB_TOKEN is set, use the API asset URL for authenticated download
   if [[ -n "${GITHUB_TOKEN:-}" ]]; then
     # Extract the asset URL from the API response
     ASSET_URL=$(echo "$RELEASE_INFO" | \

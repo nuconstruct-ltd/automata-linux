@@ -66,32 +66,15 @@ sudo make install
 
 The deployment scripts automatically download pre-built disk images from [GitHub Releases](https://github.com/automata-network/automata-linux/releases). By default, the latest release is used.
 
-**For Private Repositories:**
-If the repository is private, you need to set a GitHub token:
-
-```bash
-export GITHUB_TOKEN=your_github_token_here
-```
-
 **To use a specific release version:**
 
 ```bash
 export RELEASE_TAG=v1.0.0  # or any specific tag like manual-20251218-211704-3f4bc00
-```
-
-**Example with both environment variables:**
-
-```bash
-# For private repos with a specific version
-export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx
-export RELEASE_TAG=v1.0.0
 atakit deploy-gcp
 ```
 
 > [!Note]
-> If these environment variables are not set:
-> - `RELEASE_TAG` defaults to `latest`
-> - `GITHUB_TOKEN` is only required for private repositories
+> If `RELEASE_TAG` is not set, it defaults to `latest`.
 
 ### Verifying Disk Image Attestations <!-- omit in toc -->
 
@@ -109,7 +92,6 @@ atakit verify-build-provenance aws_disk.vmdk
 ```
 
 > [!Note]
-> - For private repositories, set `GITHUB_TOKEN` environment variable before running commands
 > - To use a specific release, set `RELEASE_TAG` (e.g., `export RELEASE_TAG=v1.0.0`)
 > - You must download the disk image first before verifying its attestation
 
@@ -339,7 +321,6 @@ Each disk image includes a signed attestation containing:
 
 ```bash
 # Download disk image and attestations from latest release
-# For private repos: export GITHUB_TOKEN=your_token
 atakit get-disk aws
 atakit download-build-provenance
 
