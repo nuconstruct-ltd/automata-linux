@@ -16,11 +16,9 @@ class Atakit < Formula
   depends_on "python@3.9" => :recommended
 
   def install
-    # The tarball extracts to atakit-#{version}-macos-arm64/
-    cd "atakit-#{version}-macos-arm64" do
-      bin.install "bin/atakit"
-      (share/"atakit").install Dir["share/atakit/*"]
-    end
+    # Homebrew automatically extracts and cds into the tarball's root directory
+    bin.install "bin/atakit"
+    (share/"atakit").install Dir["share/atakit/*"]
   end
 
   test do

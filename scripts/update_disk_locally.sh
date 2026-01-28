@@ -35,20 +35,27 @@ populate() {
     PART_COUNT=$(lsblk -l $LOOP_DEV | grep -E "^\s*$(basename "$LOOP_DEV")p[0-9]+" | wc -l)
     if [ "$PART_COUNT" -eq 3 ]; then
         # Reload workload
-        echo "ℹ️  Copying workload folder into /MNT/data/workload..."
+        WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
+        echo "⌛ Mounting disk partition..."
         mkdir -p /tmp/data
         sudo mount ${LOOP_DEV}p3 /tmp/data
-        WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
 
         # Remove existing workload and copy new one (avoids nested workload/workload issue)
+        echo "⌛ Copying workload to disk..."
+        echo "   Source: $WORKLOAD_FOLDER"
+        echo "   Target: /data/workload (on disk)"
         sudo rm -rf /tmp/data/workload
         sudo cp -r "$WORKLOAD_FOLDER" /tmp/data/workload
         sudo chown -R 1000:1000 /tmp/data/workload
 
+        # Show what was copied
+        echo "📋 Workload contents:"
+        ls -la /tmp/data/workload | sed 's/^/   /'
+
         sync
         sudo umount ${LOOP_DEV}p3
 
-        echo "✅ Done! Workload data has been added to disk!"
+        echo "✅ Workload copied successfully!"
     else
         echo "❌ Disk does not have the right partitioning scheme!"
     fi

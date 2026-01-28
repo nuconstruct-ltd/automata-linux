@@ -138,9 +138,7 @@ usage() {
     echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"Standard_DC2es_v6\""
     echo "  --region <region>           The region where the VM will be deployed. Default: \"East US\""
-    echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
-    echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
-    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
+    echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
 
@@ -153,9 +151,7 @@ usage() {
     echo "  --region <region>           The region where the VM will be deployed. Default: \"asia-southeast1-b\""
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"c3-standard-4\""
     echo "  --ip <ip>                   Static ip to attach to the VM. Default: None"
-    echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
-    echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
-    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
+    echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
@@ -166,9 +162,7 @@ usage() {
     echo "  --region <region>           The region where the VM will be deployed. Default: \"us-east-2\""
     echo "  --vm_type <type>            The type of VM to be deployed. Default: \"m6a.large\""
     echo "  --eip <alloc_id>            The allocation ID of an Elastic IP to attach to the VM. Default: None"
-    echo "  --add-workload              Update the workload on the disk before deploying. Just pass this flag without a value."
-    echo "                              If flag is not passed, the script will not update the workload onto the existing disk."
-    echo "  --workload-dir <path>       Path to the workload directory. Default: current directory's workload/"
+    echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk                The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
@@ -180,7 +174,8 @@ usage() {
     echo "  [BUNDLE_FILE]  Optional: Path to build provenance bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
-    echo "  <DISK PATH>    The path to your disk image."
+    echo "  <DISK_PATH>              The path to your disk image."
+    echo "  <WORKLOAD_PATH>          Path to the workload directory to copy into the disk."
     echo ""
     echo "Arguments for the 'update-workload/get-logs/cleanup' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
@@ -218,7 +213,6 @@ case "$COMMAND" in
         VM_TYPE="m6a.large"
         ADDITIONAL_PORTS=""
         EIP_AID=""
-        ADD_WORKLOAD=false
         ATTACH_DISK=""
         DISK_SIZE=""
 
@@ -232,8 +226,21 @@ case "$COMMAND" in
                 --eip) EIP_AID=$2; shift 2 ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
-                --add-workload) ADD_WORKLOAD=true; shift ;;
-                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
+                --add-workload)
+                    # If next arg is another flag or missing, use default ./workload
+                    if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
+                        WORKLOAD_DIR="./workload"
+                        shift 1
+                    else
+                        WORKLOAD_DIR="$2"
+                        shift 2
+                    fi
+                    # Validate workload directory exists
+                    if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                        echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                        exit 1
+                    fi
+                    ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
@@ -268,7 +275,12 @@ case "$COMMAND" in
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "aws"
         # Update the disk image with the latest workload
-        if [ "$ADD_WORKLOAD" = true ]; then
+        if [[ -n "$WORKLOAD_DIR" ]]; then
+            if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                exit 1
+            fi
+            echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "aws_disk.vmdk"
         fi
         # Check that CSP CLI dependencies are installed
@@ -302,7 +314,6 @@ case "$COMMAND" in
         # eg. "80,443"
         ADDITIONAL_PORTS=""
         IP=""
-        ADD_WORKLOAD=false
         ATTACH_DISK=""
         DISK_SIZE=""
 
@@ -317,8 +328,21 @@ case "$COMMAND" in
                 --ip) IP=$2; shift 2 ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
-                --add-workload) ADD_WORKLOAD=true; shift ;;
-                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
+                --add-workload)
+                    # If next arg is another flag or missing, use default ./workload
+                    if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
+                        WORKLOAD_DIR="./workload"
+                        shift 1
+                    else
+                        WORKLOAD_DIR="$2"
+                        shift 2
+                    fi
+                    # Validate workload directory exists
+                    if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                        echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                        exit 1
+                    fi
+                    ;;
                 *) echo "Unknown argument: $1"; usage ;;
             esac
         done
@@ -353,7 +377,12 @@ case "$COMMAND" in
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "gcp"
         # Update the disk image with the latest workload
-        if [ "$ADD_WORKLOAD" = true ]; then
+        if [[ -n "$WORKLOAD_DIR" ]]; then
+            if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                exit 1
+            fi
+            echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "gcp_disk.tar.gz"
         fi
         # Check that CSP CLI dependencies are installed
@@ -397,7 +426,6 @@ case "$COMMAND" in
         STORAGE_ACC=""
         GALLERY_NAME=""
         ADDITIONAL_PORTS=""
-        ADD_WORKLOAD=false
         ATTACH_DISK=""
         DISK_SIZE=""
 
@@ -410,8 +438,21 @@ case "$COMMAND" in
                 --resource_group) RESOURCE_GROUP=$2; shift 2;;
                 --storage_account) STORAGE_ACC=$2; shift 2 ;;
                 --gallery_name) GALLERY_NAME=$2; shift 2 ;;
-                --add-workload) ADD_WORKLOAD=true; shift ;;
-                --workload-dir) WORKLOAD_DIR=$2; shift 2 ;;
+                --add-workload)
+                    # If next arg is another flag or missing, use default ./workload
+                    if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
+                        WORKLOAD_DIR="./workload"
+                        shift 1
+                    else
+                        WORKLOAD_DIR="$2"
+                        shift 2
+                    fi
+                    # Validate workload directory exists
+                    if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                        echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                        exit 1
+                    fi
+                    ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
                 *) echo "Unknown argument: $1"; usage ;;
@@ -475,7 +516,12 @@ case "$COMMAND" in
         # Ensure the disk image exists
         "$SCRIPT_DIR/get_disk_image.sh" "azure"
         # Update the disk image with the latest workload
-        if [ "$ADD_WORKLOAD" = true ]; then
+        if [[ -n "$WORKLOAD_DIR" ]]; then
+            if [[ ! -d "$WORKLOAD_DIR" ]]; then
+                echo "❌ Workload directory not found: $WORKLOAD_DIR"
+                exit 1
+            fi
+            echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "azure_disk.vhd"
         fi
         # Generate API token for disk
@@ -546,13 +592,20 @@ case "$COMMAND" in
         ;;
 
     update-disk)
-        DISK_FILE=$1; shift 1
-        if [[ -z "$DISK_FILE" ]]; then
-            echo "❌ Please provide the disk file (e.g., azure_disk.vhd)"
-            echo "❌ Usage: $0 update-workload <DISK_FILE>"
+        DISK_FILE="${1:-}"; shift 1 || true
+        WORKLOAD_PATH="${1:-}"; shift 1 || true
+        if [[ -z "$DISK_FILE" || -z "$WORKLOAD_PATH" ]]; then
+            echo "❌ Please provide both the disk file and workload path."
+            echo "❌ Usage: $0 update-disk <DISK_PATH> <WORKLOAD_PATH>"
             exit 1
         fi
-        echo "Updating workload on disk: $DISK_FILE"
+        if [[ ! -d "$WORKLOAD_PATH" ]]; then
+            echo "❌ Workload directory not found: $WORKLOAD_PATH"
+            exit 1
+        fi
+        export WORKLOAD_DIR="$WORKLOAD_PATH"
+        echo "📀 Updating disk: $DISK_FILE"
+        echo "📁 Workload source: $WORKLOAD_PATH"
         cd "$DISK_DIR"
         "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
         ;;
