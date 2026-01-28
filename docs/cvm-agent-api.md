@@ -91,56 +91,50 @@ The server will broadcast on 2 ports:
     }
     ```
 
-- `/onchain/new-cvm-identity` [POST]
+- `/onchain/new-cvm-identity` [GET]
     - Port Availability: 7999
-    - Generate a new p256 keypair for the CVM.
+    - Generate a new p256 keypair for the CVM and return calldata for the `rotateCvmIdentityKey` contract method.
     - **Note**: The key is not immediately rotated on the CVM. CVM-Agent will continue to sign messages using the old key until users explicitly specify that they would like to sign a message using the new key (using `/sign-message` API). Afterwhich, the old key will be purged, and only the new key can be used.
-    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload. 
-    - Content-Type: application/json
-    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/new-cvm-identity -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC"}'`
-    - Request Body:
-    ```json
-    {
-        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
-        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
-        "contract_address": "<string prefixed with 0x>"
-    }
-    ```
+    - Example Request: `curl http://127.0.0.1:7999/onchain/new-cvm-identity`
     - Response:
     ```json
     {
         // abi-encoded data for:
-        // reattestCvmWithTpm(bytes32 cvmIdentityHash, bytes calldata signature, WorkloadCollaterals calldata wc)
+        // rotateCvmIdentityKey(bytes32 cvmIdentityHash, CVMIdentity newCvmIdentity, CVMIdentityCertification newCvmCertification)
         // can be placed directly into tx.data after base64-decoding
         "calldata": <base64 encoded bytes>
     }
     ```
 
-- `/onchain/update-ttl` [POST]
+- `/onchain/refresh-cvm` [POST]
     - Port Availability: 7999
-    - Update the TTL of the TEE and/or TPM collaterals.
-    - **Note**: Nonce should be queried from the CVM Registry Contract by the workload.
-    - **NOTE**: Set "purge_old_keys" to true in the request if you wish to use the new key generated in the API `/onchain/new-cvm-identity`. Make sure you have previously registered the new identity on-chain.
+    - Generates calldata for the `refreshCvm` contract method (renew TEE attestation without changing vm identity).
+    - **Note: For TDX, all verification types are supported (Solidity/SP1 zkProof).**
+    - **Note: For SEV-SNP, only SP1 zkProof is supported at the moment.**
     - Content-Type: application/json
-    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/update-ttl -H "Content-Type: application/json" -d '{"nonce": "0", "chain_id": "31337", "contract_address": "0x3cd4E8a3644ddc8b16954A9f50Fd0Dc0185161aC", "tee_ttl": 806400, "tpm_ttl": 806400 }'`
+    - Example Request: `curl -X POST http://127.0.0.1:7999/onchain/refresh-cvm -H "Content-Type: application/json" -d '{"report_type":1}'`
     - Request Body:
     ```json
     {
-        "nonce": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
-        "chain_id": "<string>", // prefix with 0x for hex, otherwise it is treated as decimal.
-        "contract_address": "<string prefixed with 0x>",
-        "tee_ttl": uint64,
-        "tpm_ttl": uint64,
-        "purge_old_keys": true/false
+        "report_type": <integer>, // 1: Solidity verification, 2: SP1 zkProof, 3: Risc0 zkProof
+        "chain_id": <string>, // Chain ID of the Network. 1398243 for ATA Testnet, 11155111 for Sepolia.
+        "tee_ttl": <uint64>, // Optional. TTL for the TEE attestation. 0 or omitted means default (contract decides).
+        "zk_config": {
+            // Optional ZK proof configuration, omit if using Solidity verification
+            "image_id": <string>,
+            "url": <string>,
+            "api_key": <string>,
+            "version": <string>
+        }
     }
     ```
     - Response:
     ```json
     {
         // abi-encoded data for:
-        // setCollateralTTL(bytes32 cvmIdentityHash, uint64 teeTTL, uint64 tpmTTL, bytes signature)
+        // refreshCvm(bytes32 cvmIdentityHash, uint64 teeTTL, TeeReportType teeReportType, bytes teeAttestationReport, WorkloadCollaterals wc)
         // can be placed directly into tx.data after base64-decoding
-        "calldata": <base64 encoded bytes>
+        "calldata": <base64 encoded string>
     }
     ```
 
