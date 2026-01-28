@@ -149,8 +149,13 @@ jobs:
           body: |
             ## atakit ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0' }}
 
-            This release contains the **CLI packages only** (`.deb` and `.tar.gz`).
-            Disk images are released separately - the CLI will automatically find and download them.
+            This release contains the **atakit CLI** and **CVM disk images** for deploying Confidential VMs.
+
+            ### 📦 Contents
+            - **CLI Packages**: `.deb` (Ubuntu/Debian) and `.tar.gz` (macOS ARM64)
+            - **Disk Images**: AWS (`.vmdk`), Azure (`.vhd.xz`), GCP (`.tar.gz`)
+            - **Build Provenance**: `build-provenance.zip` (SLSA v1.0)
+            - **Secure Boot Certs**: `secure-boot-certs.zip`
 
             ### Installation
 
@@ -174,24 +179,24 @@ jobs:
 
             ### Usage
 
-            After installation, run:
+            After installation:
             ```bash
-            atakit deploy-gcp    # Deploy to GCP
-            atakit deploy-aws    # Deploy to AWS
-            atakit deploy-azure  # Deploy to Azure
+            # Download disk image
+            atakit get-disk aws       # or gcp, azure
+
+            # Deploy to cloud
+            atakit deploy-aws         # Deploy to AWS
+            atakit deploy-gcp         # Deploy to GCP
+            atakit deploy-azure       # Deploy to Azure
+
+            # Verify build provenance (optional)
+            atakit download-build-provenance
+            atakit verify-build-provenance aws_disk.vmdk
             ```
-
-            The CLI will automatically find and download the latest disk image from image releases.
-
-            ### What's New
-            - Initial release of atakit
-            - Support for AWS, GCP, and Azure deployments
-            - SLSA attestation verification
-            - Automatic detection of latest image release
 
             ### Verify Downloads
             ```bash
-            sha256sum -c SHA256SUMS
+            sha256sum -c SHA256SUMS.txt
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
