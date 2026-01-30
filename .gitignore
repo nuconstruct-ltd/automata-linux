@@ -10,3 +10,7 @@ _artifacts/*
 *.json
 *.key
 *.pub
+
+# Package artifacts (downloaded by CI, not committed)
+*.deb
+macos-arm64.tar.gz

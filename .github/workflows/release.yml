@@ -234,13 +234,15 @@ jobs:
             exit 1
           fi
 
-          # Download the asset to compute SHA256
+          # Download the asset to compute SHA256 (to /tmp to avoid committing to repo)
+          TEMP_DIR=$(mktemp -d)
           curl -L -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/octet-stream" \
             "https://api.github.com/repos/${{ github.repository }}/releases/assets/$ASSET_ID" \
-            -o macos-arm64.tar.gz
+            -o "$TEMP_DIR/macos-arm64.tar.gz"
 
-          SHA256=$(sha256sum macos-arm64.tar.gz | awk '{print $1}')
+          SHA256=$(sha256sum "$TEMP_DIR/macos-arm64.tar.gz" | awk '{print $1}')
+          rm -rf "$TEMP_DIR"
 
           echo "asset_id=$ASSET_ID" >> $GITHUB_OUTPUT
           echo "sha256=$SHA256" >> $GITHUB_OUTPUT
