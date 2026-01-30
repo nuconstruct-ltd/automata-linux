@@ -265,14 +265,39 @@ jobs:
           cat Formula/atakit.rb
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
-          title: "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
-          body: |
-            Automated PR to update the Homebrew formula for release ${{ steps.asset-info.outputs.tag }}.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/atakit.rb
 
-            - SHA256: `${{ steps.asset-info.outputs.sha256 }}`
-          branch: update-homebrew-formula-${{ steps.asset-info.outputs.tag }}
-          base: main
+          # Check if there are changes to commit (handles re-runs where formula hasn't changed)
+          if git diff --staged --quiet; then
+            echo "No changes to commit. Formula already up to date."
+            exit 0
+          fi
+
+          git commit -m "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}"
+
+          # Create branch and push (force push to handle re-runs)
+          BRANCH="update-homebrew-formula-${{ steps.asset-info.outputs.tag }}"
+          git checkout -b "$BRANCH"
+          git push --force origin "$BRANCH"
+
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --base main --json number -q '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            # Update existing PR
+            gh pr edit "$EXISTING_PR" \
+              --body "Automated PR to update the Homebrew formula for release ${{ steps.asset-info.outputs.tag }}.\n\n- SHA256: \`${{ steps.asset-info.outputs.sha256 }}\`"
+            echo "Updated existing PR #$EXISTING_PR"
+          else
+            # Create new PR
+            gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: update Homebrew formula for ${{ steps.asset-info.outputs.tag }}" \
+              --body "Automated PR to update the Homebrew formula for release ${{ steps.asset-info.outputs.tag }}.\n\n- SHA256: \`${{ steps.asset-info.outputs.sha256 }}\`"
+          fi
