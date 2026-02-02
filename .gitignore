@@ -1,31 +1,37 @@
+# Disk images
 azure_disk.vhd
 aws_disk.vmdk
 gcp_disk.tar.gz
-
-# Symlink
-workload
-workload/*
-
 aws-uefi-blob.bin
-livepatch.crt
 
-_artifacts/*
+# Secrets & keys
 *.pem
 *.key
 *.pub
-
+livepatch.crt
 **/secrets/*
 
-# Package artifacts (downloaded by CI, not committed)
+# Workload directories (contain secrets, tars, configs)
+workload-*/
+workload
+
+# Build
+target/
+controller/target
+
+# Package artifacts
 *.deb
-macos-arm64.tar.gz
 *.tar
-.env
 *.raw
 *.zip
+macos-arm64.tar.gz
 secure_boot
+.env
+
+# Legacy artifacts
+_artifacts/
 _artifacts
-authorized_keys
-controller/target
-**.DS_Store
+
+# IDE / tooling
 .claude
+**.DS_Store
