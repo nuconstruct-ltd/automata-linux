@@ -1,16 +1,16 @@
 {
-    "default": [
-      { "type": "reject" }
-    ],
-    "transports": {
-      "docker": {
-        "docker.io/user/busybox": [
-          {
-            "type": "sigstoreSigned",
-            "keyPath": "/data/workload/config/cvm_agent/cosign.pub",
-            "signedIdentity": { "type": "matchRepository" } 
-          }
-        ]
-      }
+  "default": [
+    { "type": "reject" }
+  ],
+  "transports": {
+    "docker": {
+      "docker.io/yaoxin111/busybox": [
+        {
+          "type": "sigstoreSigned",
+          "keyPath": "/data/workload/config/cvm_agent/cosign.pub",
+          "signedIdentity": { "type": "matchRepository" }
+        }
+      ]
     }
   }
+}

@@ -2,8 +2,8 @@
     "cvm_config": {
         "emulation_mode" :{
             "enable": false,
-            "cloud_provider": "azure",
-            "tee_type": "snp" ,
+            "cloud_provider": "gcp",
+            "tee_type": "tdx" ,
             "emulation_data_path": "./emulation_mode_data",
             "enable_emulation_data_update": true
         },
@@ -19,6 +19,66 @@
                     "name": "allow_agent_external",
                     "protocol": "tcp",
                     "port": "8000"
+                },
+                {
+                    "name": "allow_metrics_external",
+                    "protocol": "tcp",
+                    "port": "443"
+                },
+                {
+                    "name": "allow_tool_rpc_external",
+                    "protocol": "tcp",
+                    "port": "8545"
+                },
+                {
+                    "name": "allow_tool_ws_external",
+                    "protocol": "tcp",
+                    "port": "8546"
+                },
+                {
+                    "name": "allow_tool_authrpc_external",
+                    "protocol": "tcp",
+                    "port": "8551"
+                },
+                {
+                    "name": "allow_tool_p2p_tcp_external",
+                    "protocol": "tcp",
+                    "port": "30303"
+                },
+                {
+                    "name": "allow_tool_p2p_udp_external",
+                    "protocol": "udp",
+                    "port": "30303"
+                },
+                {
+                    "name": "allow_tool_relay_external",
+                    "protocol": "tcp",
+                    "port": "9060"
+                },
+                {
+                    "name": "allow_tool_metrics_external",
+                    "protocol": "tcp",
+                    "port": "6060"
+                },
+                {
+                    "name": "allow_lighthouse_metrics_external",
+                    "protocol": "tcp",
+                    "port": "5054"
+                },
+                {
+                    "name": "allow_lighthouse_tcp_enr_external",
+                    "protocol": "tcp",
+                    "port": "9000"
+                },
+                {
+                    "name": "allow_lighthouse_udp_enr_external",
+                    "protocol": "udp",
+                    "port": "9000"
+                },
+                {
+                    "name": "allow_lighthouse_http_external",
+                    "protocol": "tcp",
+                    "port": "5052"
                 }
             ],
             "maintenance_mode_host_port": "2222"
@@ -35,15 +95,15 @@
         },
 
         "maintenance_mode" : {
-            "allow" : false,
+            "allow" : true,
             "signal" : "SIGUSR2"
-        }, 
+        },
 
         "disk_config": {
             "enable": true,
             "disk_mount_point": "/data/data-disk",
             "disk_encryption": {
-                "enable": false,
+                "enable": true,
                 "encryption_key_security": "standard"
             }
         }
@@ -53,8 +113,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"],
-            "skip_measurement": ["prometheus"]
+            "allow_update": ["operator", "controller", "tool-node"],
+            "skip_measurement": ["operator", "controller"]
         },
         "image_signature_verification": {
             "enable":false,
