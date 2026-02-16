@@ -180,3 +180,29 @@ services:
       - controller
     volumes:
       - /data/workload/config:/config
+
+  caddy:
+    image: ${CADDY_IMAGE:-docker.io/library/caddy:latest}
+    container_name: caddy
+    restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.caddy
+        fluentd-async: "true"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - node_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  caddy_data:
+  caddy_config:

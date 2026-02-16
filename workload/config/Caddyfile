@@ -1,0 +1,11 @@
+rpc.tool.limo {
+	reverse_proxy tool-node:8545
+}
+
+cvm.tool.limo {
+	reverse_proxy host.docker.internal:8000 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
