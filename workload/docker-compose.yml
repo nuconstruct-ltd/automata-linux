@@ -30,7 +30,6 @@ services:
       - 6060:6060/tcp
     volumes:
       - /data/data-disk/node:/node
-      - ./secrets/nodekey:/node/nodekey:ro
     networks:
       monitoring: {}
       node_net:
@@ -38,7 +37,6 @@ services:
     command: >-
       --hoodi
       --datadir=/node
-      --nodekey=/node/nodekey
       --authrpc.jwtsecret=/node/jwtsecret
       --http.api=engine,eth,web3,net,tool,admin
       --ws.api=engine,eth,web3,net
