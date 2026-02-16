@@ -107,7 +107,7 @@ fi
 
 ADDITIONAL_ARGS=""
 if [[ -n "$IP" ]]; then
-  ADDITIONAL_ARGS="--address=$IP --network-tier=STANDARD "
+  ADDITIONAL_ARGS="--address=$IP "
 fi
 
 # Check if disk exists and create or attach
@@ -158,7 +158,7 @@ if [[ -n "$DATA_DISK" ]]; then
   fi
 
   # Final attach args (either original or converted disk)
-  ADDITIONAL_ARGS="--disk=name=$DATA_DISK,auto-delete=no,boot=no"
+  ADDITIONAL_ARGS+="--disk=name=$DATA_DISK,auto-delete=no,boot=no"
 fi
 # create the vm
 gcloud compute instances create $VM_NAME \

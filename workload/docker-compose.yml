@@ -11,9 +11,15 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:tool-dns
+    image: ${TOOL_NODE_IMAGE:-gcr.io/constellation-458212/tool-node:tool-dns}
     container_name: tool-node
     restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.tool-node
+        fluentd-async: "true"
     ports:
       - 8545:8545/tcp
       - 8546:8546/tcp
@@ -40,18 +46,24 @@ services:
       --metrics.addr=0.0.0.0
       --metrics.port=6060
       --config=default
-      --discovery.tool-dns=enrtree://AO7WHA56ZB2MZZZ2IAM5NIX7FUMAIHYQXYY33HUZ2K4BMCKBZWZAQ@tool.hoodi.sdoba.vip
+      --discovery.tool-dns=${TOOL_DNS_ENDPOINT:-enrtree://AO7WHA56ZB2MZZZ2IAM5NIX7FUMAIHYQXYY33HUZ2K4BMCKBZWZAQ@tool.hoodi.sdoba.vip}
       --relay.beacon-endpoints=http://lighthouse:5052
-      --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
+      --relay.secret-key-hex=${RELAY_SECRET_KEY:-28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0}
       --public-sync
-      --tee-verifier=0xd177e09fB4Db2379F55E177047F38f5a7F44AEAe
-      --history.blocks=512
-      --history.chain=all
+      --tee-verifier=${TEE_VERIFIER_ADDRESS:-0xd177e09fB4Db2379F55E177047F38f5a7F44AEAe}
+      --history.blocks=${HISTORY_BLOCKS:-512}
+      --history.chain=${HISTORY_CHAIN:-all}
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:latest
+    image: ${LIGHTHOUSE_IMAGE:-docker.io/sigp/lighthouse:latest}
     container_name: lighthouse
     restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.lighthouse
+        fluentd-async: "true"
     ports:
       - 9000:9000/tcp
       - 9000:9000/udp
@@ -79,16 +91,22 @@ services:
       --metrics
       --metrics-address=0.0.0.0
       --metrics-port=5054
-      --checkpoint-sync-url=https://checkpoint-sync.hoodi.ethpandaops.io
-      --network=hoodi
+      --checkpoint-sync-url=${CHECKPOINT_SYNC_URL:-https://checkpoint-sync.hoodi.ethpandaops.io}
+      --network=${LIGHTHOUSE_NETWORK:-hoodi}
       --always-prepare-payload
       --prepare-payload-lookahead=12000
-      --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
+      --suggested-fee-recipient=${FEE_RECIPIENT:-0x00000000000000000000000000000000DeaDBeef}
 
   node-exporter:
-    image: docker.io/prom/node-exporter:v1.9.1
+    image: ${NODE_EXPORTER_IMAGE:-docker.io/prom/node-exporter:v1.9.1}
     container_name: node-exporter
     restart: unless-stopped
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.node-exporter
+        fluentd-async: "true"
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -103,10 +121,37 @@ services:
     networks:
       - monitoring
 
+  fluent-bit:
+    image: ${FLUENT_BIT_IMAGE:-docker.io/fluent/fluent-bit:latest}
+    container_name: fluent-bit
+    restart: unless-stopped
+    volumes:
+      - ./config/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - /var/log:/var/log:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    environment:
+      - HOSTNAME=${HOSTNAME}
+      - VM_NAME=${VM_NAME:-cvm}
+      - LOKI_HOST=${LOKI_HOST:-loki.example.com}
+      - LOKI_PORT=${LOKI_PORT:-3100}
+      - LOKI_TLS=${LOKI_TLS:-Off}
+    ports:
+      - 24224:24224/tcp
+      - 24224:24224/udp
+    networks:
+      - monitoring
+
   controller:
-    image: gcr.io/constellation-458212/controller:latest
+    image: ${CONTROLLER_IMAGE:-gcr.io/constellation-458212/controller:latest}
     pull_policy: never
     container_name: controller
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.controller
+        fluentd-async: "true"
     cap_add:
       - NET_ADMIN
     ports:
@@ -121,9 +166,15 @@ services:
         ipv4_address: 172.20.0.20
 
   operator:
-    image: gcr.io/constellation-458212/operator:latest
+    image: ${OPERATOR_IMAGE:-gcr.io/constellation-458212/operator:latest}
     pull_policy: never
     container_name: operator
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: container.operator
+        fluentd-async: "true"
     network_mode: "service:controller"
     depends_on:
       - controller

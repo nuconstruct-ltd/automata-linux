@@ -56,6 +56,9 @@ install:
 
 	# Install workload templates
 	install -m 0644 workload/docker-compose.yml $(SHAREDIR)/workload/
+	@if [ -f workload/.env.example ]; then \
+		install -m 0644 workload/.env.example $(SHAREDIR)/workload/; \
+	fi
 	install -m 0644 workload/config/cvm_agent/*.json $(SHAREDIR)/workload/config/cvm_agent/
 	install -m 0644 workload/config/*.yml $(SHAREDIR)/workload/config/
 	install -m 0644 workload/config/*.conf $(SHAREDIR)/workload/config/

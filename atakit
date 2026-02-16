@@ -129,6 +129,7 @@ usage() {
     echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
     echo "  sign-livepatch           Sign a livepatch file."
     echo "  livepatch                Deploy a kernel livepatch to a deployed CVM."
+    echo "  maintenance              Enable or disable maintenance mode (SSH access) on a deployed CVM."
     echo ""
     echo "Optional arguments for 'deploy-azure' command:"
     echo "  --resource_group <group>    The resource group for the deployment. Default: randomly generated"
@@ -141,6 +142,7 @@ usage() {
     echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
+    echo "  --create-ip <name>          Auto-create a static IP with this name (idempotent). Default: None"
 
     echo ""
     echo "Optional arguments for 'deploy-gcp' command:"
@@ -154,6 +156,7 @@ usage() {
     echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk               The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
+    echo "  --create-ip <name>          Auto-create a static IP with this name (idempotent). Default: None"
     echo ""
     echo "Optional arguments for 'deploy-aws' command:"
     echo "  --bucket <name>             The name of an AWS bucket to store the vm image to. Default: randomly generated"
@@ -165,6 +168,7 @@ usage() {
     echo "  --add-workload [path]       Update the workload on the disk before deploying. Default: ./workload"
     echo "  --attach-disk                The data disk name, if the disk with the provided name is not provided, it will be created by the script"
     echo "  --disk-size                 The data disk size. Default: 10 GB"
+    echo "  --create-ip <name>          Auto-create an Elastic IP with this name (idempotent). Default: None"
     echo ""
     echo "Arguments for the 'get-disk' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
@@ -195,6 +199,12 @@ usage() {
     echo "  <VM_NAME>            The name of the virtual machine"
     echo "  <PATH_TO_LIVEPATCH>  The path to the livepatch file (e.g., /path/to/livepatch.ko)"
     echo ""
+    echo "Arguments for 'maintenance' command:"
+    echo "  <CSP>                The cloud provider (aws, gcp, azure)"
+    echo "  <VM_NAME>            The name of the virtual machine"
+    echo "  <ACTION>             'enable' or 'disable'"
+    echo "  [DELAY_SECONDS]      Optional delay in seconds before action takes effect (default: 0)"
+    echo ""
     exit 1
 }
 
@@ -215,6 +225,7 @@ case "$COMMAND" in
         EIP_AID=""
         ATTACH_DISK=""
         DISK_SIZE=""
+        CREATE_IP_NAME=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -226,6 +237,7 @@ case "$COMMAND" in
                 --eip) EIP_AID=$2; shift 2 ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
+                --create-ip) CREATE_IP_NAME=$2; shift 2 ;;
                 --add-workload)
                     # If next arg is another flag or missing, use default ./workload
                     if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
@@ -265,6 +277,13 @@ case "$COMMAND" in
                 BUCKET="${SANITIZED_VM_NAME:-cvm}${RANDOM_SUFFIX}"
                 echo "ℹ️  No bucket provided. Using generated bucket name: $BUCKET"
             fi
+        fi
+
+        # === Auto-create Elastic IP if requested ===
+        if [[ -n "$CREATE_IP_NAME" ]]; then
+            echo "🔧 Creating/reusing Elastic IP '$CREATE_IP_NAME'..."
+            EIP_AID=$("$SCRIPT_DIR/create_static_ip_aws.sh" "$CREATE_IP_NAME" "$REGION" "$VM_NAME" "$ARTIFACT_DIR" | tail -1)
+            echo "ℹ️  Using Elastic IP allocation: $EIP_AID"
         fi
 
         set -euo pipefail
@@ -316,6 +335,7 @@ case "$COMMAND" in
         IP=""
         ATTACH_DISK=""
         DISK_SIZE=""
+        CREATE_IP_NAME=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -328,6 +348,7 @@ case "$COMMAND" in
                 --ip) IP=$2; shift 2 ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
+                --create-ip) CREATE_IP_NAME=$2; shift 2 ;;
                 --add-workload)
                     # If next arg is another flag or missing, use default ./workload
                     if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
@@ -399,6 +420,13 @@ case "$COMMAND" in
             echo "ℹ️  Using default gcloud project: $PROJECT_ID"
         fi
 
+        # === Auto-create static IP if requested ===
+        if [[ -n "$CREATE_IP_NAME" ]]; then
+            echo "🔧 Creating/reusing static IP '$CREATE_IP_NAME'..."
+            IP=$("$SCRIPT_DIR/create_static_ip_gcp.sh" "$CREATE_IP_NAME" "$REGION" "$PROJECT_ID" "$VM_NAME" "$ARTIFACT_DIR" | tail -1)
+            echo "ℹ️  Using static IP: $IP"
+        fi
+
         # Generate API token for disk
         "$SCRIPT_DIR/generate_api_token.sh" "gcp_disk.tar.gz" "gcp" "$VM_NAME"
         # Deploy the VM
@@ -428,6 +456,7 @@ case "$COMMAND" in
         ADDITIONAL_PORTS=""
         ATTACH_DISK=""
         DISK_SIZE=""
+        CREATE_IP_NAME=""
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -438,6 +467,7 @@ case "$COMMAND" in
                 --resource_group) RESOURCE_GROUP=$2; shift 2;;
                 --storage_account) STORAGE_ACC=$2; shift 2 ;;
                 --gallery_name) GALLERY_NAME=$2; shift 2 ;;
+                --create-ip) CREATE_IP_NAME=$2; shift 2 ;;
                 --add-workload)
                     # If next arg is another flag or missing, use default ./workload
                     if [[ -z "${2:-}" || "${2:0:2}" == "--" ]]; then
@@ -509,6 +539,14 @@ case "$COMMAND" in
             fi
         fi
 
+        # === Auto-create static IP if requested ===
+        STATIC_IP_NAME=""
+        if [[ -n "$CREATE_IP_NAME" ]]; then
+            echo "🔧 Creating/reusing static IP '$CREATE_IP_NAME'..."
+            STATIC_IP_NAME=$("$SCRIPT_DIR/create_static_ip_azure.sh" "$CREATE_IP_NAME" "$RESOURCE_GROUP" "$REGION" "$VM_NAME" "$ARTIFACT_DIR" | tail -1)
+            echo "ℹ️  Using static IP resource: $STATIC_IP_NAME"
+        fi
+
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "azure" "$VM_TYPE" "$REGION"
         # Change to disk directory for disk operations
@@ -538,7 +576,7 @@ case "$COMMAND" in
         echo "🔹Disk Size: ${DISK_SIZE:-default}"
 
         "$SCRIPT_DIR/make_azure_vm.sh" "$VM_NAME" "$RESOURCE_GROUP" "$VM_TYPE" "$ADDITIONAL_PORTS"  \
-                        "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE" "$ARTIFACT_DIR"
+                        "$STORAGE_ACC" "$GALLERY_NAME" "$REGION" "$ATTACH_DISK" "$DISK_SIZE" "$ARTIFACT_DIR" "$STATIC_IP_NAME"
         "$SCRIPT_DIR/get_golden_measurements.sh" "azure" "$VM_NAME"
         echo "✨ Deployment complete! Your VM Name: $VM_NAME"
         set +e
@@ -717,6 +755,21 @@ case "$COMMAND" in
             exit 1
         fi
         "$SCRIPT_DIR/sign-and-verify.sh" "$SOURCE_IMAGE" "$TARGET_IMAGE" "$COSIGN_PRI" "$COSIGN_PUB"
+        ;;
+
+    maintenance)
+        CSP=$1; shift 1
+        VM_NAME=$1; shift 1
+        ACTION=$1; shift 1
+        DELAY="${1:-0}"; shift 1 2>/dev/null || true
+        if [[ -z "$CSP" || -z "$VM_NAME" || -z "$ACTION" ]]; then
+            echo "❌ Please provide CSP, VM name, and action (enable/disable)."
+            echo "❌ Usage: $0 maintenance <CSP> <VM_NAME> <enable|disable> [DELAY_SECONDS]"
+            exit 1
+        fi
+        set -euo pipefail
+        "$SCRIPT_DIR/maintenance_mode.sh" "$CSP" "$VM_NAME" "$ACTION" "$DELAY"
+        set +e
         ;;
 
     *)

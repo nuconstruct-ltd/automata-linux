@@ -42,13 +42,22 @@ ZONE=$(<"$ZONE_FILE")
 PROJECT_ID=$(<"$PROJECT_FILE")
 
 # Delete the VM
-gcloud compute instances delete $VM_NAME --zone="$ZONE" --project="$PROJECT_ID" --delete-disks=all --quiet
+gcloud compute instances delete $VM_NAME --zone="$ZONE" --project="$PROJECT_ID" --delete-disks=all --quiet || true
 # Delete the ingress
-gcloud compute firewall-rules delete "${VM_NAME}-ingress" --project="$PROJECT_ID" --quiet
+gcloud compute firewall-rules delete "${VM_NAME}-ingress" --project="$PROJECT_ID" --quiet || true
 # Delete the image
-gcloud compute images delete "${VM_NAME}-image" --project="$PROJECT_ID" --quiet
+gcloud compute images delete "${VM_NAME}-image" --project="$PROJECT_ID" --quiet || true
 # Delete the bucket
-gsutil -m rm -r gs://$BUCKET
+gsutil -m rm -r gs://$BUCKET || true
+
+# Release static IP if artifact exists
+if [[ -f "$ARTIFACT_DIR/gcp_${VM_NAME}_static_ip_name" ]]; then
+    STATIC_IP_NAME=$(<"$ARTIFACT_DIR/gcp_${VM_NAME}_static_ip_name")
+    GCP_REGION=$(echo "$ZONE" | sed 's/-[a-z]$//')
+    echo "🔧 Releasing static IP: $STATIC_IP_NAME"
+    gcloud compute addresses delete "$STATIC_IP_NAME" \
+        --region="$GCP_REGION" --project="$PROJECT_ID" --quiet || true
+fi
 
 # Remove the artifacts related to this GCP VM
 echo "ℹ️  Removing artifacts for GCP VM '$VM_NAME'..."

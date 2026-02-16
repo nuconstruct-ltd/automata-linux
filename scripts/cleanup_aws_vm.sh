@@ -67,6 +67,13 @@ done
 # Delete S3 bucket
 aws s3 rb s3://$BUCKET --force
 
+# Release Elastic IP if artifact exists
+if [[ -f "$ARTIFACT_DIR/aws_${VM_NAME}_eip_alloc_id" ]]; then
+    EIP_ALLOC_ID=$(<"$ARTIFACT_DIR/aws_${VM_NAME}_eip_alloc_id")
+    echo "🔧 Releasing Elastic IP: $EIP_ALLOC_ID"
+    aws ec2 release-address --allocation-id "$EIP_ALLOC_ID" --region "$REGION" || true
+fi
+
 # Remove the artifacts related to this AWS VM
 echo "ℹ️  Removing artifacts for AWS VM '$VM_NAME'..."
 rm -f "$ARTIFACT_DIR/aws_${VM_NAME}_"*

@@ -8,6 +8,7 @@ REGION="$7"
 DATA_DISK="$8"        # NEW: Optional disk name
 DISK_SIZE_GB="$9"     # NEW: Optional disk size (for new disk)
 ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from atakit)
+STATIC_IP_NAME="${11:-}"         # Optional: pre-created static IP resource name
 
 VHD=azure_disk.vhd
 IMAGE_DEF="${VM_NAME}-def"
@@ -220,7 +221,6 @@ VM_CREATE_ARGS=(
   --enable-vtpm true
   --enable-secure-boot true
   --image "$galleryImageId"
-  --public-ip-sku Standard
   --nsg "$VM_NAME"
   --security-type ConfidentialVM
   --os-disk-security-encryption-type VMGuestStateOnly
@@ -228,6 +228,13 @@ VM_CREATE_ARGS=(
   --admin-username dummyuser
   --admin-password DummyPassword123
 )
+
+# Use pre-created static IP if provided, otherwise let Azure assign one
+if [[ -n "$STATIC_IP_NAME" ]]; then
+    VM_CREATE_ARGS+=(--public-ip-address "$STATIC_IP_NAME")
+else
+    VM_CREATE_ARGS+=(--public-ip-sku Standard)
+fi
 
 # Add disk creation/attachment options
 if [[ -n "$DATA_DISK" ]]; then
