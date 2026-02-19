@@ -141,7 +141,7 @@ services:
       - monitoring
 
   controller:
-    image: ${CONTROLLER_IMAGE:-gcr.io/constellation-458212/controller:latest}
+    image: ${CONTROLLER_IMAGE:-ghcr.io/nuconstruct-ltd/controller:latest}
     pull_policy: never
     container_name: controller
     logging:
@@ -155,16 +155,21 @@ services:
     ports:
       - "8080:8080"
       - "2222:22"
+    volumes:
+      - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
     environment:
       - TOOL_NODE_IP=172.20.0.10
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
+      - CONTROLLER_API_KEY=${CONTROLLER_API_KEY:-}
+      - AUTHRPC_URL=http://172.20.0.10:8551
+      - JWT_SECRET_PATH=/node/jwtsecret
     networks:
       node_net:
         ipv4_address: 172.20.0.20
 
   operator:
-    image: ${OPERATOR_IMAGE:-gcr.io/constellation-458212/operator:latest}
+    image: ${OPERATOR_IMAGE:-ghcr.io/nuconstruct-ltd/operator:latest}
     pull_policy: never
     container_name: operator
     logging:

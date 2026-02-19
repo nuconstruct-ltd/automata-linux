@@ -1,8 +1,8 @@
-rpc.tool.limo {
+RPC_DOMAIN {
 	reverse_proxy tool-node:8545
 }
 
-cvm.tool.limo {
+CVM_AGENT_DOMAIN {
 	reverse_proxy host.docker.internal:8000 {
 		transport http {
 			tls_insecure_skip_verify
@@ -10,6 +10,6 @@ cvm.tool.limo {
 	}
 }
 
-controller.tool.limo {
+CONTROLLER_DOMAIN {
 	reverse_proxy controller:8080
 }

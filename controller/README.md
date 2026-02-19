@@ -20,12 +20,12 @@ The controller shares its network namespace with the operator container using Do
 3. The operator can reach the controller API on `localhost:8080`
 4. SSH port 22 in the operator is exposed via the controller's port mapping (2222:22)
 
-### Mode Switching via SIGUSR2
+### Mode Switching
 
-Mode switching is controlled by the CVM agent's maintenance mode feature. When maintenance mode is toggled, the CVM agent sends a `SIGUSR2` signal to the controller container, which toggles between modes:
+Mode switching is controlled via the `POST /maintenance` API endpoint. When the mode changes, the controller also notifies the tool-node via authenticated JSON-RPC calls (`maintenance_stopAPIFeed` / `maintenance_startAPIFeed`) over the authrpc port (8551) using JWT authentication.
 
-- **Maintenance ENABLED** → Internet mode (WAN access, no tool-node, SSH allowed)
-- **Maintenance DISABLED** → Tool-node mode (tool-node access, no WAN, SSH blocked)
+- **Maintenance ENABLED** → Internet mode (WAN access, no tool-node, SSH allowed, API feed stopped)
+- **Maintenance DISABLED** → Tool-node mode (tool-node access, no WAN, SSH blocked, API feed started)
 
 This design ensures that SSH debugging access is only available when the operator is disconnected from the tool-node, maintaining security isolation.
 
@@ -61,14 +61,13 @@ This design ensures that SSH debugging access is only available when the operato
        └──────────────────► Tool Node (blocked)
 ```
 
-## API Endpoints (Read-Only)
+## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/mode` | GET | Returns current mode as string (`internet` or `tool-node`) |
 | `/status` | GET | Returns current mode as JSON |
-
-> **Note**: Mode switching is no longer done via API. Use the CVM agent maintenance mode instead (see below).
+| `/maintenance` | POST | Enable/disable maintenance mode (requires `CONTROLLER_API_KEY`) |
 
 ### Example Usage
 
@@ -78,6 +77,20 @@ curl http://localhost:8080/mode
 
 # Check status
 curl http://localhost:8080/status
+
+# Enable maintenance mode (switch to internet mode)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"enable"}' \
+  https://controller.tool.limo/maintenance
+
+# Disable maintenance mode (switch to tool-node mode)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"disable"}' \
+  https://controller.tool.limo/maintenance
 ```
 
 ## Environment Variables
@@ -87,6 +100,9 @@ curl http://localhost:8080/status
 | `TOOL_NODE_IP` | `172.20.0.10` | IP address of the Tool Node to allow/block |
 | `NODE_NET_SUBNET` | `172.20.0.0/24` | Subnet of the internal node network |
 | `PORT` | `8080` | Port the controller API listens on |
+| `CONTROLLER_API_KEY` | *(none)* | Bearer token for `POST /maintenance`. If unset, the endpoint rejects all requests. |
+| `AUTHRPC_URL` | `http://172.20.0.10:8551` | Tool-node authenticated RPC endpoint |
+| `JWT_SECRET_PATH` | `/node/jwtsecret` | Path to shared JWT secret file (Engine API format, 32-byte hex) |
 
 ## nftables Rules
 
@@ -190,7 +206,7 @@ Use `cvm-cli` to retrieve container logs from the deployed CVM:
 
 ### Switching Modes with Maintenance Mode
 
-The CVM agent's maintenance mode controls the network isolation mode. When you enable/disable maintenance mode, the CVM agent sends `SIGUSR2` to the controller container, toggling the network mode.
+The controller API or the CVM agent's maintenance mode controls the network isolation mode.
 
 ```bash
 # Get the VM IP and token
@@ -231,7 +247,7 @@ curl -k -X POST \
 
 2. **SSH Isolation**: SSH access to the operator is only available in Internet mode (maintenance enabled). When in Tool-node mode, inbound SSH is blocked at the nftables level.
 
-3. **No API Mode Switching**: Mode changes can only be triggered via SIGUSR2 from the CVM agent, not via HTTP API. This prevents the operator from changing its own network isolation.
+3. **Authenticated API Mode Switching**: The `POST /maintenance` endpoint requires a Bearer token (`CONTROLLER_API_KEY`). If no key is configured, the endpoint rejects all requests (fail-closed). On mode switch, the controller notifies tool-node via JWT-authenticated JSON-RPC.
 
 4. **Atomic Rules**: Mode switches use atomic nftables transactions to prevent brief windows where both WAN and Tool Node might be accessible.
 
@@ -245,9 +261,9 @@ curl -k -X POST \
 Ensure the localhost exception rule is present. The operator uses `127.0.0.1:8080` to reach the controller when they share a network namespace.
 
 ### Mode doesn't switch when toggling maintenance
-Check controller logs for signal handling:
+Check controller logs for RPC calls:
 ```bash
-./cvm-cli get-logs gcp <vm-name> | grep "SIGUSR2"
+./cvm-cli get-logs gcp <vm-name> | grep "RPC\|maintenance"
 ```
 
 ### Operator can access both WAN and Tool Node

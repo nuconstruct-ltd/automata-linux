@@ -130,6 +130,7 @@ usage() {
     echo "  sign-livepatch           Sign a livepatch file."
     echo "  livepatch                Deploy a kernel livepatch to a deployed CVM."
     echo "  maintenance              Enable or disable maintenance mode (SSH access) on a deployed CVM."
+    echo "  network-mode             Switch network mode directly via the controller API (signals tool-node & operator)."
     echo ""
     echo "Optional arguments for 'deploy-azure' command:"
     echo "  --resource_group <group>    The resource group for the deployment. Default: randomly generated"
@@ -205,6 +206,11 @@ usage() {
     echo "  <ACTION>             'enable' or 'disable'"
     echo "  [DELAY_SECONDS]      Optional delay in seconds before action takes effect (default: 0)"
     echo ""
+    echo "Arguments for 'network-mode' command:"
+    echo "  <CSP>                The cloud provider (aws, gcp, azure)"
+    echo "  <VM_NAME>            The name of the virtual machine"
+    echo "  <ACTION>             'enable' (internet mode, SIGUSR1) or 'disable' (tool-node mode, SIGUSR2)"
+    echo ""
     exit 1
 }
 
@@ -217,15 +223,20 @@ fi
 
 case "$COMMAND" in
     deploy-aws)
-        VM_NAME="cvm-test"
-        BUCKET=""
-        REGION="us-east-2"
-        VM_TYPE="m6a.large"
-        ADDITIONAL_PORTS=""
+        # Load .env defaults early so CLI flags can override them
+        if [[ -f "$WORKLOAD_DIR/.env" ]]; then
+            set -a; source "$WORKLOAD_DIR/.env"; set +a
+        fi
+
+        VM_NAME="${VM_NAME_DEPLOY:-cvm-test}"
+        BUCKET="${BUCKET:-}"
+        REGION="${REGION:-us-east-2}"
+        VM_TYPE="${VM_TYPE:-m6a.large}"
+        ADDITIONAL_PORTS="${ADDITIONAL_PORTS:-}"
         EIP_AID=""
-        ATTACH_DISK=""
-        DISK_SIZE=""
-        CREATE_IP_NAME=""
+        ATTACH_DISK="${ATTACH_DISK:-}"
+        DISK_SIZE="${DISK_SIZE:-}"
+        CREATE_IP_NAME="${CREATE_IP_NAME:-}"
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -299,6 +310,7 @@ case "$COMMAND" in
                 echo "❌ Workload directory not found: $WORKLOAD_DIR"
                 exit 1
             fi
+            "$SCRIPT_DIR/prepare_workload.sh"
             echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "aws_disk.vmdk"
         fi
@@ -323,19 +335,21 @@ case "$COMMAND" in
         ;;
 
     deploy-gcp)
-        # Default values
-        PROJECT_ID=""
-        BUCKET=""
-        VM_NAME="cvm-test"
-        REGION="asia-southeast1-b"
-        VM_TYPE="c3-standard-4"
-        # To specify additional workload ports, pass them as a comma-separated string
-        # eg. "80,443"
-        ADDITIONAL_PORTS=""
+        # Load .env defaults early so CLI flags can override them
+        if [[ -f "$WORKLOAD_DIR/.env" ]]; then
+            set -a; source "$WORKLOAD_DIR/.env"; set +a
+        fi
+
+        PROJECT_ID="${PROJECT_ID:-}"
+        BUCKET="${BUCKET:-}"
+        VM_NAME="${VM_NAME_DEPLOY:-cvm-test}"
+        REGION="${REGION:-asia-southeast1-b}"
+        VM_TYPE="${VM_TYPE:-c3-standard-4}"
+        ADDITIONAL_PORTS="${ADDITIONAL_PORTS:-}"
         IP=""
-        ATTACH_DISK=""
-        DISK_SIZE=""
-        CREATE_IP_NAME=""
+        ATTACH_DISK="${ATTACH_DISK:-}"
+        DISK_SIZE="${DISK_SIZE:-}"
+        CREATE_IP_NAME="${CREATE_IP_NAME:-}"
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -403,6 +417,7 @@ case "$COMMAND" in
                 echo "❌ Workload directory not found: $WORKLOAD_DIR"
                 exit 1
             fi
+            "$SCRIPT_DIR/prepare_workload.sh"
             echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "gcp_disk.tar.gz"
         fi
@@ -446,17 +461,21 @@ case "$COMMAND" in
         ;;
 
  deploy-azure)
-        # Default values
-        VM_NAME="cvm-test"
-        VM_TYPE="Standard_DC2es_v6"
-        REGION="East US"
+        # Load .env defaults early so CLI flags can override them
+        if [[ -f "$WORKLOAD_DIR/.env" ]]; then
+            set -a; source "$WORKLOAD_DIR/.env"; set +a
+        fi
+
+        VM_NAME="${VM_NAME_DEPLOY:-cvm-test}"
+        VM_TYPE="${VM_TYPE:-Standard_DC2es_v6}"
+        REGION="${REGION:-East US}"
         RESOURCE_GROUP=""
         STORAGE_ACC=""
         GALLERY_NAME=""
-        ADDITIONAL_PORTS=""
-        ATTACH_DISK=""
-        DISK_SIZE=""
-        CREATE_IP_NAME=""
+        ADDITIONAL_PORTS="${ADDITIONAL_PORTS:-}"
+        ATTACH_DISK="${ATTACH_DISK:-}"
+        DISK_SIZE="${DISK_SIZE:-}"
+        CREATE_IP_NAME="${CREATE_IP_NAME:-}"
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -559,6 +578,7 @@ case "$COMMAND" in
                 echo "❌ Workload directory not found: $WORKLOAD_DIR"
                 exit 1
             fi
+            "$SCRIPT_DIR/prepare_workload.sh"
             echo "📁 Adding workload from: $WORKLOAD_DIR"
             "$SCRIPT_DIR/update_disk.sh" "azure_disk.vhd"
         fi
@@ -769,6 +789,20 @@ case "$COMMAND" in
         fi
         set -euo pipefail
         "$SCRIPT_DIR/maintenance_mode.sh" "$CSP" "$VM_NAME" "$ACTION" "$DELAY"
+        set +e
+        ;;
+
+    network-mode)
+        CSP=$1; shift 1
+        VM_NAME=$1; shift 1
+        ACTION=$1; shift 1
+        if [[ -z "$CSP" || -z "$VM_NAME" || -z "$ACTION" ]]; then
+            echo "❌ Please provide CSP, VM name, and action (enable/disable)."
+            echo "❌ Usage: $0 network-mode <CSP> <VM_NAME> <enable|disable>"
+            exit 1
+        fi
+        set -euo pipefail
+        "$SCRIPT_DIR/network_mode.sh" "$CSP" "$VM_NAME" "$ACTION"
         set +e
         ;;
 

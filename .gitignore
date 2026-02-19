@@ -12,6 +12,7 @@ _artifacts/*
 *.pub
 
 # Deployment config (contains secrets)
+.env
 workload/.env
 
 # Package artifacts (downloaded by CI, not committed)

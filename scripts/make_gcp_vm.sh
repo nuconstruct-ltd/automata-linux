@@ -178,6 +178,7 @@ gcloud compute instances create $VM_NAME \
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
   --zone="$ZONE" \
+  --project="$PROJECT_ID" \
   --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
 
 echo "Public IP: $PUBLIC_IP"

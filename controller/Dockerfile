@@ -21,7 +21,7 @@ FROM alpine:latest
 
 WORKDIR /app
 
-# Install nftables
+# Install nftables for network isolation rules
 RUN apk add --no-cache nftables
 
 # Copy binary
