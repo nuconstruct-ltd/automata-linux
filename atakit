@@ -176,6 +176,7 @@ usage() {
     echo "Arguments for the 'update-disk' command:"
     echo "  <DISK_PATH>              The path to your disk image."
     echo "  <WORKLOAD_PATH>          Path to the workload directory to copy into the disk."
+    echo "  --disk-size <SIZE>       Expand disk image to SIZE (e.g., 8G, 10G). Default: auto-expand to fit workload."
     echo ""
     echo "Arguments for the 'update-workload/get-logs/cleanup' command:"
     echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
@@ -592,11 +593,28 @@ case "$COMMAND" in
         ;;
 
     update-disk)
-        DISK_FILE="${1:-}"; shift 1 || true
-        WORKLOAD_PATH="${1:-}"; shift 1 || true
+        DISK_FILE=""
+        WORKLOAD_PATH=""
+        DISK_SIZE=""
+
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+                --disk-size) DISK_SIZE=$2; shift 2 ;;
+                *)
+                    if [[ -z "$DISK_FILE" ]]; then
+                        DISK_FILE="$1"; shift 1
+                    elif [[ -z "$WORKLOAD_PATH" ]]; then
+                        WORKLOAD_PATH="$1"; shift 1
+                    else
+                        echo "Unknown argument: $1"; usage
+                    fi
+                    ;;
+            esac
+        done
+
         if [[ -z "$DISK_FILE" || -z "$WORKLOAD_PATH" ]]; then
             echo "❌ Please provide both the disk file and workload path."
-            echo "❌ Usage: $0 update-disk <DISK_PATH> <WORKLOAD_PATH>"
+            echo "❌ Usage: $0 update-disk <DISK_PATH> <WORKLOAD_PATH> [--disk-size NGB]"
             exit 1
         fi
         if [[ ! -d "$WORKLOAD_PATH" ]]; then
@@ -604,8 +622,12 @@ case "$COMMAND" in
             exit 1
         fi
         export WORKLOAD_DIR="$WORKLOAD_PATH"
+        export DISK_SIZE
         echo "📀 Updating disk: $DISK_FILE"
         echo "📁 Workload source: $WORKLOAD_PATH"
+        if [[ -n "$DISK_SIZE" ]]; then
+            echo "📏 Target disk size: $DISK_SIZE"
+        fi
         cd "$DISK_DIR"
         "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
         ;;

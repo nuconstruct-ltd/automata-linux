@@ -40,6 +40,95 @@ populate() {
         mkdir -p /tmp/data
         sudo mount ${LOOP_DEV}p3 /tmp/data
 
+        # --- Expand to target DISK_SIZE if specified ---
+        if [ -n "${DISK_SIZE:-}" ]; then
+            # Parse size: accept formats like 8G, 8GB, 8192M, 8192MB
+            TARGET_MB=$(echo "$DISK_SIZE" | awk '{
+                s = toupper($0);
+                if (match(s, /^([0-9]+)\s*GB?$/, a)) print a[1] * 1024;
+                else if (match(s, /^([0-9]+)\s*MB?$/, a)) print a[1];
+                else print 0;
+            }')
+            if [ "$TARGET_MB" -eq 0 ]; then
+                echo "❌ Invalid --disk-size format: $DISK_SIZE (use e.g. 8G, 8GB, 8192M)"
+                exit 1
+            fi
+            CURRENT_MB=$(( $(stat -c%s "$DISK") / 1024 / 1024 ))
+            if [ "$TARGET_MB" -gt "$CURRENT_MB" ]; then
+                GROW_BY=$(( TARGET_MB - CURRENT_MB ))
+                echo "📏 Expanding disk from ${CURRENT_MB}MB to ${TARGET_MB}MB (+${GROW_BY}MB)..."
+
+                sudo umount ${LOOP_DEV}p3
+                sudo losetup -d $LOOP_DEV
+
+                truncate -s ${TARGET_MB}M "$DISK"
+
+                sudo losetup -fP "$DISK"
+                LOOP_DEV=$(losetup -j "$DISK" | awk -F: '{print $1}')
+
+                sudo growpart $LOOP_DEV 3
+                sudo e2fsck -f -y ${LOOP_DEV}p3 || [ $? -le 1 ]
+                sudo resize2fs ${LOOP_DEV}p3
+
+                sudo mount ${LOOP_DEV}p3 /tmp/data
+                echo "✅ Disk expanded to ${TARGET_MB}MB."
+            else
+                echo "📏 Disk already ${CURRENT_MB}MB >= target ${TARGET_MB}MB, no expansion needed."
+            fi
+        fi
+
+        # --- Auto-expand p3 if workload won't fit (only when --disk-size not specified) ---
+        if [ -z "${DISK_SIZE:-}" ]; then
+        WORKLOAD_SIZE_MB=$(du -sm "$WORKLOAD_FOLDER" | awk '{print $1}')
+        FREE_MB=$(df -BM --output=avail ${LOOP_DEV}p3 | tail -1 | tr -d ' M')
+        if [ -d /tmp/data/workload ]; then
+            OLD_WORKLOAD_MB=$(sudo du -sm /tmp/data/workload | awk '{print $1}')
+        else
+            OLD_WORKLOAD_MB=0
+        fi
+        EFFECTIVE_AVAIL=$((FREE_MB + OLD_WORKLOAD_MB))
+
+        if [ "$WORKLOAD_SIZE_MB" -gt "$EFFECTIVE_AVAIL" ]; then
+            SHORTFALL=$((WORKLOAD_SIZE_MB - EFFECTIVE_AVAIL))
+            # Add 20% margin, 1MB aligned
+            EXTRA=$(( (SHORTFALL * 120 / 100) + 1 ))
+            echo "⚠️  Workload (${WORKLOAD_SIZE_MB}MB) exceeds available space (${EFFECTIVE_AVAIL}MB). Expanding disk by ${EXTRA}MB..."
+
+            sudo umount ${LOOP_DEV}p3
+            sudo losetup -d $LOOP_DEV
+
+            truncate -s +${EXTRA}M "$DISK"
+
+            sudo losetup -fP "$DISK"
+            LOOP_DEV=$(losetup -j "$DISK" | awk -F: '{print $1}')
+
+            # Grow partition 3 to fill the expanded disk
+            sudo growpart $LOOP_DEV 3
+            # e2fsck returns 1 when it fixes errors (expected after resize) — allow it
+            sudo e2fsck -f -y ${LOOP_DEV}p3 || [ $? -le 1 ]
+            sudo resize2fs ${LOOP_DEV}p3
+
+            sudo mount ${LOOP_DEV}p3 /tmp/data
+            echo "✅ Disk expanded successfully."
+        fi
+        fi # end DISK_SIZE guard
+        # --- End auto-expand ---
+
+        # Pre-flight check: verify workload will fit before copying
+        WORKLOAD_CHECK_MB=$(du -sm "$WORKLOAD_FOLDER" | awk '{print $1}')
+        FREE_CHECK_MB=$(df -BM --output=avail ${LOOP_DEV}p3 | tail -1 | tr -d ' M')
+        if [ -d /tmp/data/workload ]; then
+            OLD_CHECK_MB=$(sudo du -sm /tmp/data/workload | awk '{print $1}')
+        else
+            OLD_CHECK_MB=0
+        fi
+        EFFECTIVE_CHECK=$((FREE_CHECK_MB + OLD_CHECK_MB))
+        if [ "$WORKLOAD_CHECK_MB" -gt "$EFFECTIVE_CHECK" ]; then
+            echo "❌ Workload (${WORKLOAD_CHECK_MB}MB) exceeds available p3 space (${EFFECTIVE_CHECK}MB)."
+            echo "   Note: p1+p2 use ~1GB. Use a larger --disk-size (e.g. $((WORKLOAD_CHECK_MB / 1024 + 2))G)."
+            exit 1
+        fi
+
         # Remove existing workload and copy new one (avoids nested workload/workload issue)
         echo "⌛ Copying workload to disk..."
         echo "   Source: $WORKLOAD_FOLDER"
