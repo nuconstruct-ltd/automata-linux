@@ -28,7 +28,7 @@ if [[ "$STATUS" == "Stopped" ]]; then
   multipass start "$VM_NAME"
 elif [[ -z "$STATUS" ]]; then
   echo "🚀 Launching VM '$VM_NAME'..."
-  multipass launch jammy --name "$VM_NAME" --disk 10G --memory 4G --cpus 2
+  multipass launch jammy --name "$VM_NAME" --disk 30G --memory 4G --cpus 2
 fi
 
 # Step 2b: Wait for VM to be fully ready (network/SSH)
@@ -61,6 +61,7 @@ echo "Before: $BEFORE_SUM"
 echo "📤 Transferring project to VM..."
 VM_PROJECT_PATH="/tmp/$VM_PROJECT_DIR"
 multipass exec "$VM_NAME" -- bash -c "
+  rm -rf $VM_PROJECT_PATH
   mkdir -p $VM_PROJECT_PATH
 "
 multipass transfer -r "$SCRIPT_DIR/" "$WORKLOAD_DIR/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
@@ -72,6 +73,7 @@ multipass exec "$VM_NAME" -- bash -c "
   cd $VM_PROJECT_PATH
   export SCRIPT_DIR=$VM_PROJECT_PATH/scripts
   export WORKLOAD_DIR=$VM_PROJECT_PATH/workload
+  export DISK_SIZE='${DISK_SIZE:-}'
   chmod +x \$SCRIPT_DIR/update_disk_locally.sh
   echo '▶️ Running: \$SCRIPT_DIR/update_disk_locally.sh $DISK_FILENAME'
   \$SCRIPT_DIR/update_disk_locally.sh $DISK_FILENAME
