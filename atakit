@@ -305,18 +305,32 @@ case "$COMMAND" in
         ;;
 
     deploy-gcp)
-        # Default values
-        PROJECT_ID=""
-        BUCKET=""
-        VM_NAME="cvm-test"
-        REGION="asia-southeast1-b"
-        VM_TYPE="c3-standard-4"
-        # To specify additional workload ports, pass them as a comma-separated string
-        # eg. "80,443"
-        ADDITIONAL_PORTS=""
+        # Load .env defaults early so CLI flags can override them
+        if [[ -f "$WORKLOAD_DIR/.env" ]]; then
+            set -a
+            source "$WORKLOAD_DIR/.env"
+            set +a
+        fi
+
+        # Auto-populate SSH_PUBLIC_KEY from SSH_PUBLIC_KEY_FILE if not set
+        if [[ -z "${SSH_PUBLIC_KEY:-}" && -n "${SSH_PUBLIC_KEY_FILE:-}" ]]; then
+            EXPANDED_KEY_FILE="${SSH_PUBLIC_KEY_FILE/#\~/$HOME}"
+            if [[ -f "$EXPANDED_KEY_FILE" ]]; then
+                export SSH_PUBLIC_KEY="$(<"$EXPANDED_KEY_FILE")"
+            fi
+        fi
+
+        # Default values (env vars from .env take precedence over hardcoded defaults)
+        PROJECT_ID="${PROJECT_ID:-}"
+        BUCKET="${BUCKET:-}"
+        VM_NAME="${VM_NAME_DEPLOY:-cvm-test}"
+        REGION="${REGION:-asia-southeast1-b}"
+        VM_TYPE="${VM_TYPE:-c3-standard-4}"
+        ADDITIONAL_PORTS="${ADDITIONAL_PORTS:-}"
         IP=""
-        ATTACH_DISK=""
-        DISK_SIZE=""
+        ATTACH_DISK="${ATTACH_DISK:-}"
+        DISK_SIZE="${DISK_SIZE:-}"
+        CREATE_IP_NAME="${CREATE_IP_NAME:-}"
 
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
@@ -327,6 +341,7 @@ case "$COMMAND" in
                 --vm_type) VM_TYPE=$2; shift 2 ;;
                 --bucket) BUCKET=$2; shift 2 ;;
                 --ip) IP=$2; shift 2 ;;
+                --create-ip) CREATE_IP_NAME=$2; shift 2 ;;
                 --attach-disk) ATTACH_DISK=$2; shift 2 ;;
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
                 --add-workload)
@@ -384,7 +399,11 @@ case "$COMMAND" in
                 exit 1
             fi
             echo "📁 Adding workload from: $WORKLOAD_DIR"
+            # Save and unset DISK_SIZE to avoid conflict with update_disk's --disk-size (boot image format e.g. 8G)
+            DATA_DISK_SIZE="$DISK_SIZE"
+            unset DISK_SIZE
             "$SCRIPT_DIR/update_disk.sh" "gcp_disk.tar.gz"
+            DISK_SIZE="$DATA_DISK_SIZE"
         fi
         # Check that CSP CLI dependencies are installed
         "$SCRIPT_DIR/check_csp_deps.sh" "gcp"
@@ -398,6 +417,28 @@ case "$COMMAND" in
                 exit 1
             fi
             echo "ℹ️  Using default gcloud project: $PROJECT_ID"
+        fi
+
+        # Create/reuse static IP if CREATE_IP_NAME is set
+        if [[ -n "$CREATE_IP_NAME" && -z "$IP" ]]; then
+            EXISTING_IP=$(gcloud compute addresses describe "$CREATE_IP_NAME" \
+                --region="$(echo "$REGION" | sed 's/-[a-z]$//')" \
+                --project="$PROJECT_ID" \
+                --format='get(address)' 2>/dev/null || true)
+            if [[ -n "$EXISTING_IP" ]]; then
+                echo "ℹ️  Using existing static IP '$CREATE_IP_NAME': $EXISTING_IP"
+                IP="$EXISTING_IP"
+            else
+                echo "🔧 Creating static IP '$CREATE_IP_NAME'..."
+                gcloud compute addresses create "$CREATE_IP_NAME" \
+                    --region="$(echo "$REGION" | sed 's/-[a-z]$//')" \
+                    --project="$PROJECT_ID"
+                IP=$(gcloud compute addresses describe "$CREATE_IP_NAME" \
+                    --region="$(echo "$REGION" | sed 's/-[a-z]$//')" \
+                    --project="$PROJECT_ID" \
+                    --format='get(address)')
+                echo "ℹ️  Created static IP: $IP"
+            fi
         fi
 
         # Generate API token for disk

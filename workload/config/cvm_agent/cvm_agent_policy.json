@@ -10,16 +10,25 @@
 
         "firewall": {
             "allowed_ports": [
-                {
-                    "name": "allow_agent_local",
-                    "protocol": "tcp",
-                    "port": "7999"
-                },
-                {
-                    "name": "allow_agent_external",
-                    "protocol": "tcp",
-                    "port": "8000"
-                }
+                { "name": "allow_agent_local", "protocol": "tcp", "port": "7999" },
+                { "name": "allow_agent_external", "protocol": "tcp", "port": "8000" },
+                { "name": "allow_http", "protocol": "tcp", "port": "80" },
+                { "name": "allow_https", "protocol": "tcp", "port": "443" },
+                { "name": "allow_controller_ssh", "protocol": "tcp", "port": "2200" },
+                { "name": "allow_ssh_proxy", "protocol": "tcp", "port": "2222" },
+                { "name": "allow_controller_api", "protocol": "tcp", "port": "8080" },
+                { "name": "allow_rpc", "protocol": "tcp", "port": "8545" },
+                { "name": "allow_ws", "protocol": "tcp", "port": "8546" },
+                { "name": "allow_authrpc", "protocol": "tcp", "port": "8551" },
+                { "name": "allow_lighthouse_p2p", "protocol": "tcp", "port": "9000" },
+                { "name": "allow_lighthouse_metrics", "protocol": "tcp", "port": "9060" },
+                { "name": "allow_node_exporter", "protocol": "tcp", "port": "9100" },
+                { "name": "allow_lighthouse_http", "protocol": "tcp", "port": "5052" },
+                { "name": "allow_lighthouse_metrics2", "protocol": "tcp", "port": "5054" },
+                { "name": "allow_tool_metrics", "protocol": "tcp", "port": "6060" },
+                { "name": "allow_p2p", "protocol": "tcp", "port": "30303" },
+                { "name": "allow_p2p_udp", "protocol": "udp", "port": "30303" },
+                { "name": "allow_lighthouse_p2p_udp", "protocol": "udp", "port": "9000" }
             ],
             "maintenance_mode_host_port": "2222"
         },
@@ -35,7 +44,7 @@
         },
 
         "maintenance_mode" : {
-            "allow" : false,
+            "allow" : true,
             "signal" : "SIGUSR2"
         }, 
 
@@ -53,8 +62,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"],
-            "skip_measurement": ["prometheus"]
+            "allow_update": ["operator", "controller", "tool-node", "promtail"],
+            "skip_measurement": ["operator", "controller"]
         },
         "image_signature_verification": {
             "enable":false,

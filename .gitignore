@@ -14,3 +14,11 @@ _artifacts/*
 # Package artifacts (downloaded by CI, not committed)
 *.deb
 macos-arm64.tar.gz
+*.tar
+.env
+*.raw
+*.zip
+secure_boot
+_artifacts
+authorized_keys
+controller/target

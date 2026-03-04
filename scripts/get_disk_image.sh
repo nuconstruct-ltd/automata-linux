@@ -4,7 +4,7 @@ CSP="$1"
 
 # GitHub repository information
 REPO="automata-network/automata-linux"
-RELEASE_TAG="${RELEASE_TAG:-}"  # Use RELEASE_TAG env var or auto-detect
+RELEASE_TAG="${RELEASE_TAG:-v0.0.4}"  # Use RELEASE_TAG env var or default to v0.0.4
 
 # Track whether we downloaded a new disk image
 DOWNLOADED_IMAGE=false
