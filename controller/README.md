@@ -204,42 +204,40 @@ Use `cvm-cli` to retrieve container logs from the deployed CVM:
 ./cvm-cli get-logs gcp <vm-name> | grep "tool-node"
 ```
 
-### Switching Modes with Maintenance Mode
+### Switching Modes
 
-The controller API or the CVM agent's maintenance mode controls the network isolation mode.
+Network mode is controlled exclusively via the controller API on port 8080.
 
 ```bash
-# Get the VM IP and token
 VM_IP=$(cat _artifacts/gcp_<vm-name>_ip)
-TOKEN=$(cat _artifacts/gcp_<vm-name>_token)
 
 # Enable maintenance mode → switches to Internet mode (SSH allowed, tool-node blocked)
-curl -k -X POST \
-  -H "Authorization: Bearer $TOKEN" \
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"action":"enable"}' \
-  "https://${VM_IP}:8000/maintenance-mode"
+  "http://${VM_IP}:8080/maintenance"
 
-# SSH into the operator container (only works in maintenance/internet mode)
+# SSH into the operator container (only works in Internet mode)
 ssh -p 2200 root@${VM_IP}
 
 # Disable maintenance mode → switches to Tool-node mode (isolated, SSH blocked)
-curl -k -X POST \
-  -H "Authorization: Bearer $TOKEN" \
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"action":"disable"}' \
-  "https://${VM_IP}:8000/maintenance-mode"
+  "http://${VM_IP}:8080/maintenance"
 ```
 
 ### Quick Reference
 
 | Action | Command |
 |--------|---------|
-| Check current mode | `curl http://localhost:8080/mode` (from inside operator) |
-| Enable maintenance (→ Internet mode) | `curl -k -X POST -H "Authorization: Bearer $TOKEN" -d '{"action":"enable"}' https://$VM_IP:8000/maintenance-mode` |
-| Disable maintenance (→ Tool-node mode) | `curl -k -X POST -H "Authorization: Bearer $TOKEN" -d '{"action":"disable"}' https://$VM_IP:8000/maintenance-mode` |
-| SSH to operator | `ssh -p 2200 root@$VM_IP` (only in maintenance mode) |
-| Get logs | `./cvm-cli get-logs gcp <vm-name>` |
+| Check current mode | `curl http://$VM_IP:8080/mode` |
+| Enable maintenance (→ Internet mode) | `curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" -H "Content-Type: application/json" -d '{"action":"enable"}' http://$VM_IP:8080/maintenance` |
+| Disable maintenance (→ Tool-node mode) | `curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" -H "Content-Type: application/json" -d '{"action":"disable"}' http://$VM_IP:8080/maintenance` |
+| SSH to operator | `ssh -p 2200 root@$VM_IP` (only in Internet mode) |
+| Get logs | `atakit get-logs gcp <vm-name>` |
 
 ## Security Considerations
 
@@ -271,11 +269,8 @@ This indicates a race condition. Ensure you're using the latest controller versi
 
 ### Cannot SSH even with maintenance mode enabled
 1. Ensure port 2200 is open in the cloud provider's firewall rules
-2. Both the CVM agent maintenance mode **and** the controller must be in Internet mode:
+2. Ensure the controller is in Internet mode:
    ```bash
-   # Step 1: CVM agent maintenance mode (opens host firewall)
-   curl -k -X POST -H "Authorization: Bearer $TOKEN" https://$VM_IP:8000/maintenance-mode
-   # Step 2: Controller network mode (removes nftables SSH block)
    curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" \
      -H "Content-Type: application/json" -d '{"action":"enable"}' \
      http://$VM_IP:8080/maintenance

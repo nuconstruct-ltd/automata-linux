@@ -15,7 +15,6 @@
                 { "name": "allow_http", "protocol": "tcp", "port": "80" },
                 { "name": "allow_https", "protocol": "tcp", "port": "443" },
                 { "name": "allow_controller_ssh", "protocol": "tcp", "port": "2200" },
-                { "name": "allow_ssh_proxy", "protocol": "tcp", "port": "2222" },
                 { "name": "allow_controller_api", "protocol": "tcp", "port": "8080" },
                 { "name": "allow_rpc", "protocol": "tcp", "port": "8545" },
                 { "name": "allow_ws", "protocol": "tcp", "port": "8546" },
@@ -30,7 +29,6 @@
                 { "name": "allow_p2p_udp", "protocol": "udp", "port": "30303" },
                 { "name": "allow_lighthouse_p2p_udp", "protocol": "udp", "port": "9000" }
             ],
-            "maintenance_mode_host_port": "2222"
         },
 
         "https_server" :{
@@ -44,9 +42,9 @@
         },
 
         "maintenance_mode" : {
-            "allow" : true,
+            "allow" : false,
             "signal" : "SIGUSR2"
-        }, 
+        },
 
         "disk_config": {
             "enable": true,

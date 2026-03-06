@@ -283,16 +283,11 @@ The controller enforces two mutually exclusive network modes:
 - **Tool-Node mode** *(default)*: Operator can reach the Tool Node. WAN and inbound SSH are blocked.
 - **Internet mode** *(maintenance)*: Operator has WAN access and SSH is allowed. Tool Node access is blocked.
 
-Switching to Internet mode requires **two steps**:
+Switch to Internet mode via the controller API:
 
 ```bash
 VM_IP=$(cat _artifacts/gcp_<vm-name>_ip)
-TOKEN=$(cat _artifacts/gcp_<vm-name>_token)
 
-# Step 1: Open the host firewall via CVM agent
-curl -sk -X POST -H "Authorization: Bearer $TOKEN" https://$VM_IP:8000/maintenance-mode
-
-# Step 2: Switch controller to Internet mode
 curl -X POST \
   -H "Authorization: Bearer $CONTROLLER_API_KEY" \
   -H "Content-Type: application/json" \
