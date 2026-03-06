@@ -248,6 +248,85 @@ Use this command to deploy a livepatch onto the CVM. Please checkout our [kernel
 atakit livepatch gcp cvm-test /path/to/livepatch.ko
 ```
 
+## Workload Stack
+
+The workload shipped with this repo (`workload/`) runs the following services:
+
+| Service | Description |
+|---------|-------------|
+| `tool-node` | Ethereum execution client with TEE relay support |
+| `lighthouse` | Ethereum beacon chain (consensus) client |
+| `controller` | Network isolation controller — enforces mutual exclusion between WAN and Tool Node access using nftables |
+| `operator` | SSH-accessible management container sharing the controller's network namespace |
+| `caddy` | Reverse proxy with automatic HTTPS via Let's Encrypt |
+| `promtail` | Log shipper — collects podman container logs and forwards to a remote Loki instance |
+| `node-exporter` | Prometheus node metrics exporter |
+
+### Configuration
+
+Copy `workload/.env.example` to `workload/.env` and set your values. Key variables:
+
+```bash
+NETWORK=hoodi                              # Ethereum network (mainnet, hoodi, etc.)
+LOKI_HOST=loki.example.com                 # Remote Loki host for log collection
+LOKI_USER=                                 # Loki basic auth credentials
+LOKI_PASSWORD=
+CONTROLLER_API_KEY=                        # Bearer token for controller maintenance API
+SSH_PUBLIC_KEY_FILE=~/.ssh/id_ed25519.pub  # SSH key for operator access
+CADDY_RPC_DOMAIN=rpc.example.com           # Domain for automatic TLS (optional)
+```
+
+### Network Isolation (Controller)
+
+The controller enforces two mutually exclusive network modes:
+
+- **Tool-Node mode** *(default)*: Operator can reach the Tool Node. WAN and inbound SSH are blocked.
+- **Internet mode** *(maintenance)*: Operator has WAN access and SSH is allowed. Tool Node access is blocked.
+
+Switching to Internet mode requires **two steps**:
+
+```bash
+VM_IP=$(cat _artifacts/gcp_<vm-name>_ip)
+TOKEN=$(cat _artifacts/gcp_<vm-name>_token)
+
+# Step 1: Open the host firewall via CVM agent
+curl -sk -X POST -H "Authorization: Bearer $TOKEN" https://$VM_IP:8000/maintenance-mode
+
+# Step 2: Switch controller to Internet mode
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"enable"}' \
+  http://$VM_IP:8080/maintenance
+```
+
+To restore Tool-Node mode:
+```bash
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"disable"}' \
+  http://$VM_IP:8080/maintenance
+```
+
+See [controller/README.md](controller/README.md) for the full API reference, nftables rules, and security details.
+
+### SSH Access
+
+SSH into the operator container is only available in **Internet mode** (maintenance enabled):
+
+```bash
+ssh -p 2200 root@$VM_IP
+```
+
+The authorized key is configured via `SSH_PUBLIC_KEY_FILE` in `.env` and auto-populated by `atakit` at deploy time.
+
+### Log Collection (Promtail → Loki → Grafana)
+
+Promtail automatically discovers all running podman containers and ships their logs to a remote Loki instance with a `container` label (e.g. `tool-node`, `lighthouse`, `controller`). Set `LOKI_HOST`, `LOKI_USER`, and `LOKI_PASSWORD` in `.env`.
+
+---
+
 ## Live Demo
 Here is a short demo video showing how to deploy workload using our cvm-image on AZURE in action.
 

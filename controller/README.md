@@ -18,7 +18,7 @@ The controller shares its network namespace with the operator container using Do
 1. Both containers share the same network stack
 2. nftables rules applied by the controller affect the operator's network traffic
 3. The operator can reach the controller API on `localhost:8080`
-4. SSH port 22 in the operator is exposed via the controller's port mapping (2222:22)
+4. SSH port 2200 in the operator is exposed via the controller's port mapping (2200:2200)
 
 ### Mode Switching
 
@@ -161,7 +161,7 @@ services:
       - NET_ADMIN          # Required for nftables
     ports:
       - "8080:8080"        # Controller API
-      - "2222:22"          # SSH to operator (via shared network)
+      - "2200:2200"        # SSH to operator (via shared network)
     environment:
       - TOOL_NODE_IP=172.20.0.10
       - NODE_NET_SUBNET=172.20.0.0/24
@@ -221,7 +221,7 @@ curl -k -X POST \
   "https://${VM_IP}:8000/maintenance-mode"
 
 # SSH into the operator container (only works in maintenance/internet mode)
-ssh -p 2222 root@${VM_IP}
+ssh -p 2200 root@${VM_IP}
 
 # Disable maintenance mode → switches to Tool-node mode (isolated, SSH blocked)
 curl -k -X POST \
@@ -238,7 +238,7 @@ curl -k -X POST \
 | Check current mode | `curl http://localhost:8080/mode` (from inside operator) |
 | Enable maintenance (→ Internet mode) | `curl -k -X POST -H "Authorization: Bearer $TOKEN" -d '{"action":"enable"}' https://$VM_IP:8000/maintenance-mode` |
 | Disable maintenance (→ Tool-node mode) | `curl -k -X POST -H "Authorization: Bearer $TOKEN" -d '{"action":"disable"}' https://$VM_IP:8000/maintenance-mode` |
-| SSH to operator | `ssh -p 2222 root@$VM_IP` (only in maintenance mode) |
+| SSH to operator | `ssh -p 2200 root@$VM_IP` (only in maintenance mode) |
 | Get logs | `./cvm-cli get-logs gcp <vm-name>` |
 
 ## Security Considerations
@@ -270,12 +270,16 @@ Check controller logs for RPC calls:
 This indicates a race condition. Ensure you're using the latest controller version with atomic nftables transactions.
 
 ### Cannot SSH even with maintenance mode enabled
-1. Ensure port 2222 is open in the cloud provider's firewall rules
-2. Check that maintenance mode was successfully enabled
-3. Verify the operator container has SSH server running:
+1. Ensure port 2200 is open in the cloud provider's firewall rules
+2. Both the CVM agent maintenance mode **and** the controller must be in Internet mode:
    ```bash
-   ./cvm-cli get-logs gcp <vm-name> | grep "SSH server started"
+   # Step 1: CVM agent maintenance mode (opens host firewall)
+   curl -k -X POST -H "Authorization: Bearer $TOKEN" https://$VM_IP:8000/maintenance-mode
+   # Step 2: Controller network mode (removes nftables SSH block)
+   curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+     -H "Content-Type: application/json" -d '{"action":"enable"}' \
+     http://$VM_IP:8080/maintenance
    ```
 
 ### SSH key authentication fails
-Ensure your public key is in `workload/config/authorized_keys` and the workload was deployed/updated after adding it.
+Ensure `SSH_PUBLIC_KEY` is set in `.env` (or `SSH_PUBLIC_KEY_FILE` pointing to your key), then redeploy the workload.
