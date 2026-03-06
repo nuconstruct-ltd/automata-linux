@@ -33,7 +33,7 @@ services:
       --mainnet
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
-      --http.api=engine,eth,web3,net,tool,admin
+      --http.api=engine,eth,web3,net,tool
       --ws.api=engine,eth,web3,net
       --metrics
       --metrics.addr=0.0.0.0
