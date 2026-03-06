@@ -3,7 +3,11 @@ rpc.tool.limo {
 }
 
 cvm.tool.limo {
-    reverse_proxy host.docker.internal:8000
+    reverse_proxy https://host.docker.internal:8000 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
 }
 
 controller.tool.limo {
