@@ -48,7 +48,7 @@ gcloud compute firewall-rules delete "${VM_NAME}-ingress" --project="$PROJECT_ID
 # Delete the image
 gcloud compute images delete "${VM_NAME}-image" --project="$PROJECT_ID" --quiet
 # Delete the bucket
-gsutil -m rm -r gs://$BUCKET
+gsutil -o "GSUtil:parallel_process_count=1" rm -r gs://$BUCKET
 
 # Remove the artifacts related to this GCP VM
 echo "ℹ️  Removing artifacts for GCP VM '$VM_NAME'..."
