@@ -28,7 +28,8 @@
                 { "name": "allow_p2p", "protocol": "tcp", "port": "30303" },
                 { "name": "allow_p2p_udp", "protocol": "udp", "port": "30303" },
                 { "name": "allow_lighthouse_p2p_udp", "protocol": "udp", "port": "9000" }
-            ]
+            ],
+            "maintenance_mode_host_port": "2222"
         },
 
         "https_server" :{
