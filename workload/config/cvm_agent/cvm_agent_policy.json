@@ -60,7 +60,7 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["operator", "controller", "tool-node", "promtail"],
+            "allow_update": ["operator", "controller", "tool-node", "promtail", "node-exporter"],
             "skip_measurement": ["operator", "controller"]
         },
         "image_signature_verification": {
