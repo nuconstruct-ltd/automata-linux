@@ -1,14 +1,14 @@
 #!/bin/bash
 
-CSP=$1
-VM_NAME=$2
-ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
-
 # Ensure all arguments are provided
 if [[ $# -lt 2 ]]; then
   echo "❌ Error: Arguments are missing! (get_cvm_logs.sh)"
   exit 1
 fi
+
+CSP=$1; shift 1
+VM_NAME=$1; shift 1
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
 
 IP_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
 API_TOKEN_FILE="$ARTIFACT_DIR/${CSP}_${VM_NAME}_token"
@@ -30,7 +30,22 @@ PASSWORD=$(<"$API_TOKEN_FILE")  # Load API token from file
 
 echo "ℹ️  Retrieving VM logs..."
 
-response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $PASSWORD" -k "https://$VM_IP:8000/container-logs")
+REQ="https://$VM_IP:8000/container-logs"
+count=0
+echo "$@"
+if [ "$#" -ne 0 ]; then
+  for arg in "$@"; do
+    if [ "$count" -eq 0 ]; then
+      REQ+="?"
+    else
+      REQ+="&"
+    fi
+    REQ+="name=$arg"
+    ((count += 1))
+  done
+fi
+echo "$REQ"
+response=$(curl -s -w "\n%{http_code}" -H "Authorization: Bearer $PASSWORD" -k "$REQ")
 
 # Split response and status code
 body=$(echo "$response" | sed '$d')
