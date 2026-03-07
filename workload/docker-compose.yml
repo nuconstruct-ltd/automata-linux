@@ -33,7 +33,7 @@ services:
       --hoodi
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
-      --http.api=engine,eth,web3,net,tool
+      --http.api=engine,eth,web3,net,tool,admin
       --ws.api=engine,eth,web3,net
       --metrics
       --metrics.addr=0.0.0.0
@@ -44,7 +44,10 @@ services:
       --allow-unattested
       --tee-verifier=0x0000000000000000000000000000000000000000
       --history.blocks=512
-      --history.chain=all
+      --history.chain=postmerge
+      --history.cutoff-genesis=0xbbe312868b376a3001692a646dd2d7d1e4406380dfd86b98aa8a34d1557c971b
+      --history.cutoff-block=1
+      --history.cutoff-hash=0xc62962979a16131910a073095eadc7e458679bb9336299cd38a6e715c1c47996
 
   lighthouse:
     image: docker.io/sigp/lighthouse:v8.1.0
