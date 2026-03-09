@@ -231,19 +231,27 @@ fn init_nftables() -> anyhow::Result<()> {
         "{ type filter hook input priority 0 ; policy accept ; }"
     ])?;
 
-    // NAT table for forwarding localhost:7999 to host CVM agent API
-    run_nft(&["add", "table", "ip", "nat"])?;
-    run_nft(&[
+    // NAT table for forwarding localhost:7999 to host CVM agent API (best-effort)
+    if let Err(e) = run_nft(&["add", "table", "ip", "nat"]) {
+        info!("NAT table not available ({}), skipping CVM agent forwarding", e);
+        return Ok(());
+    }
+    if let Err(e) = run_nft(&[
         "add", "chain", "ip", "nat", "output",
         "{ type nat hook output priority -100 ; policy accept ; }"
-    ])?;
+    ]) {
+        info!("NAT chain setup failed ({}), skipping CVM agent forwarding", e);
+        return Ok(());
+    }
 
     if let Some(gw) = get_default_gateway() {
         info!("Setting up CVM agent forwarding: 127.0.0.1:7999 -> {}:7999", gw);
         let dnat_rule = format!(
             "add rule ip nat output ip daddr 127.0.0.1 tcp dport 7999 dnat to {}:7999", gw
         );
-        run_nft_atomic(&dnat_rule)?;
+        if let Err(e) = run_nft_atomic(&dnat_rule) {
+            info!("DNAT rule failed ({}), CVM agent forwarding not available", e);
+        }
     } else {
         warn!("No default gateway found, CVM agent localhost forwarding not configured");
     }
