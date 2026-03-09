@@ -31,20 +31,19 @@ services:
         ipv4_address: 172.20.0.2
     command: >-
       --mainnet
+      --config=default
+      --history.chain=postmerge
+      --history.blocks=512
       --datadir=/node
+      --allow-unattested
       --authrpc.jwtsecret=/node/jwtsecret
       --http.api=engine,eth,web3,net,tool
       --ws.api=engine,eth,web3,net
       --metrics
       --metrics.addr=0.0.0.0
       --metrics.port=6060
-      --config=default
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
-      --allow-unattested
-      --tee-verifier=0xffffffffffffffffffffffffffffffffffffffff
-      --history.blocks=512
-      --history.chain=all
 
   lighthouse:
     image: docker.io/sigp/lighthouse:v8.0.1
@@ -64,6 +63,7 @@ services:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
+      --network=mainnet
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
@@ -81,7 +81,6 @@ services:
       --metrics-address=0.0.0.0
       --metrics-port=5054
       --checkpoint-sync-url=https://mainnet.checkpoint.sigp.io
-      --network=${NETWORK:-mainnet}
       --always-prepare-payload
       --prepare-payload-lookahead=12000
       --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
