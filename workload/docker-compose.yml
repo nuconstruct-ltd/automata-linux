@@ -28,17 +28,17 @@ services:
     networks:
       monitoring: {}
       node_net:
-        ipv4_address: 172.20.0.10
+        ipv4_address: 172.20.0.2
     command: >-
       --hoodi
       --datadir=/node
+      --allow-unattested
       --authrpc.jwtsecret=/node/jwtsecret
       --http.api=engine,eth,web3,net,tool,admin
       --ws.api=engine,eth,web3,net
       --metrics
       --metrics.addr=0.0.0.0
       --metrics.port=6060
-      --config=default
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
       --allow-unattested
@@ -61,12 +61,14 @@ services:
       - 5054
       - 5052
     networks:
-      - monitoring
-      - node_net
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.3
     volumes:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
+      --network=mainnet
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
@@ -139,11 +141,11 @@ services:
     volumes:
       - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
     environment:
-      - TOOL_NODE_IP=172.20.0.10
+      - TOOL_NODE_IP=172.20.0.2
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
       - CONTROLLER_API_KEY=${CONTROLLER_API_KEY:-}
-      - AUTHRPC_URL=http://172.20.0.10:8551
+      - AUTHRPC_URL=http://172.20.0.2:8551
       - JWT_SECRET_PATH=/node/jwtsecret
     networks:
       node_net:
@@ -159,7 +161,7 @@ services:
       - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
     volumes:
       - /data/workload/config:/config
-      - /data/data-disk/operator:/app
+      - /data/data-disk/operator:/root/app
 
   caddy:
     image: docker.io/library/caddy:latest

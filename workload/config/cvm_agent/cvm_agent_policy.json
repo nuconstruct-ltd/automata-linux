@@ -61,8 +61,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["operator", "controller", "tool-node", "promtail", "node-exporter"],
-            "skip_measurement": ["operator", "controller"]
+            "allow_update": ["operator", "controller", "tool-node", "lighthouse", "promtail", "node-exporter", "caddy"],
+            "skip_measurement": ["operator"]
         },
         "image_signature_verification": {
             "enable":false,
