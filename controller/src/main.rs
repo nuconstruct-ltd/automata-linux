@@ -197,13 +197,26 @@ fn notify_tool_node(state: &AppState, mode: &Mode) {
 
 // --- nftables ---
 
+fn get_default_gateway() -> Option<String> {
+    let output = Command::new("ip")
+        .args(["route", "show", "default"])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout.split_whitespace()
+        .skip_while(|&w| w != "via")
+        .nth(1)
+        .map(|s| s.to_string())
+}
+
 fn init_nftables() -> anyhow::Result<()> {
     info!("Initializing nftables");
 
-    // Delete existing table if present (clean slate)
+    // Delete existing tables if present (clean slate)
     run_nft(&["delete", "table", "ip", "filter"]).ok();
+    run_nft(&["delete", "table", "ip", "nat"]).ok();
 
-    // Create new table
+    // Create filter table
     run_nft(&["add", "table", "ip", "filter"])?;
 
     // Create output chain with filter hook
@@ -217,6 +230,23 @@ fn init_nftables() -> anyhow::Result<()> {
         "add", "chain", "ip", "filter", "input",
         "{ type filter hook input priority 0 ; policy accept ; }"
     ])?;
+
+    // NAT table for forwarding localhost:7999 to host CVM agent API
+    run_nft(&["add", "table", "ip", "nat"])?;
+    run_nft(&[
+        "add", "chain", "ip", "nat", "output",
+        "{ type nat hook output priority -100 ; policy accept ; }"
+    ])?;
+
+    if let Some(gw) = get_default_gateway() {
+        info!("Setting up CVM agent forwarding: 127.0.0.1:7999 -> {}:7999", gw);
+        let dnat_rule = format!(
+            "add rule ip nat output ip daddr 127.0.0.1 tcp dport 7999 dnat to {}:7999", gw
+        );
+        run_nft_atomic(&dnat_rule)?;
+    } else {
+        warn!("No default gateway found, CVM agent localhost forwarding not configured");
+    }
 
     Ok(())
 }
