@@ -32,13 +32,13 @@ services:
     command: >-
       --hoodi
       --datadir=/node
-      --allow-unattested
       --authrpc.jwtsecret=/node/jwtsecret
       --http.api=engine,eth,web3,net,tool,admin
       --ws.api=engine,eth,web3,net
       --metrics
       --metrics.addr=0.0.0.0
       --metrics.port=6060
+      --config=default
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
       --allow-unattested
@@ -68,7 +68,6 @@ services:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
-      --network=mainnet
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
