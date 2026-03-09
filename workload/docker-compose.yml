@@ -28,7 +28,7 @@ services:
     networks:
       monitoring: {}
       node_net:
-        ipv4_address: 172.20.0.10
+        ipv4_address: 172.20.0.2
     command: >-
       --mainnet
       --datadir=/node
@@ -57,8 +57,9 @@ services:
       - 5054
       - 5052
     networks:
-      - monitoring
-      - node_net
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.3
     volumes:
       - /data/data-disk/node:/node
     command: >-
@@ -135,11 +136,11 @@ services:
     volumes:
       - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
     environment:
-      - TOOL_NODE_IP=172.20.0.10
+      - TOOL_NODE_IP=172.20.0.2
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
       - CONTROLLER_API_KEY=${CONTROLLER_API_KEY:-}
-      - AUTHRPC_URL=http://172.20.0.10:8551
+      - AUTHRPC_URL=http://172.20.0.2:8551
       - JWT_SECRET_PATH=/node/jwtsecret
     networks:
       node_net:
@@ -155,7 +156,7 @@ services:
       - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
     volumes:
       - /data/workload/config:/config
-      - /data/data-disk/operator:/app
+      - /data/data-disk/operator:/root/app
 
   caddy:
     image: docker.io/library/caddy:latest
