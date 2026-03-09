@@ -323,7 +323,7 @@ case "$COMMAND" in
         # Default values (env vars from .env take precedence over hardcoded defaults)
         PROJECT_ID="${PROJECT_ID:-}"
         BUCKET="${BUCKET:-}"
-        VM_NAME="${VM_NAME_DEPLOY:-cvm-test}"
+        VM_NAME="${VM_NAME:-cvm-test}"
         REGION="${REGION:-asia-southeast1-b}"
         VM_TYPE="${VM_TYPE:-c3-standard-4}"
         ADDITIONAL_PORTS="${ADDITIONAL_PORTS:-}"
