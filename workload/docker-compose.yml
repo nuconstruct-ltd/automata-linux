@@ -48,7 +48,7 @@ services:
       --history.cutoff-genesis=0xbbe312868b376a3001692a646dd2d7d1e4406380dfd86b98aa8a34d1557c971b
       --history.cutoff-block=1
       --history.cutoff-hash=0xc62962979a16131910a073095eadc7e458679bb9336299cd38a6e715c1c47996
-      --discovery.tool-dns=enrtree://APMYYCYNOBWN5EW3D3LK6MYPEXVCZQLM3SXXCJ2Y53QTHYYRWZ5H4@tool.hoodi.sdoba.vip
+      # --discovery.tool-dns=enrtree://APMYYCYNOBWN5EW3D3LK6MYPEXVCZQLM3SXXCJ2Y53QTHYYRWZ5H4@tool.hoodi.sdoba.vip
 
   lighthouse:
     image: docker.io/sigp/lighthouse:v8.1.0
