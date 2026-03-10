@@ -89,6 +89,7 @@ services:
       --network=hoodi
       --always-prepare-payload
       --prepare-payload-lookahead=12000
+      --purge-db-force
       --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
 
   node-exporter:
