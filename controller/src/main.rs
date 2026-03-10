@@ -215,16 +215,12 @@ fn get_default_gateway() -> Option<String> {
 // --- CVM agent TCP proxy ---
 
 async fn run_cvm_agent_proxy() {
-    let gateway_ip = match get_default_gateway() {
-        Some(gw) => gw,
-        None => {
-            warn!("No default gateway found, CVM agent proxy not started");
-            return;
-        }
-    };
+    let host = std::env::var("CVM_AGENT_HOST").unwrap_or_else(|_| {
+        get_default_gateway().unwrap_or_else(|| "host.docker.internal".to_string())
+    });
 
     let listen_addr = "127.0.0.1:7999";
-    let target_addr = format!("{}:17999", gateway_ip);
+    let target_addr = format!("{}:17999", host);
 
     let listener = match tokio::net::TcpListener::bind(listen_addr).await {
         Ok(l) => l,
