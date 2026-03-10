@@ -224,7 +224,7 @@ async fn run_cvm_agent_proxy() {
     };
 
     let listen_addr = "127.0.0.1:7999";
-    let target_addr = format!("{}:7999", gateway_ip);
+    let target_addr = format!("{}:17999", gateway_ip);
 
     let listener = match tokio::net::TcpListener::bind(listen_addr).await {
         Ok(l) => l,
