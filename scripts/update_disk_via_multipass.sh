@@ -28,7 +28,7 @@ if [[ "$STATUS" == "Stopped" ]]; then
   multipass start "$VM_NAME"
 elif [[ -z "$STATUS" ]]; then
   echo "🚀 Launching VM '$VM_NAME'..."
-  multipass launch jammy --name "$VM_NAME" --disk 30G --memory 4G --cpus 2
+  multipass launch jammy --name "$VM_NAME" --disk 50G --memory 4G --cpus 2
 fi
 
 # Step 2b: Wait for VM to be fully ready (network/SSH)

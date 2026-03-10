@@ -170,6 +170,7 @@ if [ -f $DISK_FILE ]; then
         # unzip the disk and zip it back again later
         tar -xzvf "$DISK_FILE"
         populate disk.raw
+        rm -f "$DISK_FILE"
         tar -czvf "$DISK_FILE" disk.raw
         rm disk.raw
     else
