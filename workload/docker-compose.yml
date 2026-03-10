@@ -141,6 +141,9 @@ services:
       - CONTROLLER_API_KEY=${CONTROLLER_API_KEY:-}
       - AUTHRPC_URL=http://172.20.0.2:8551
       - JWT_SECRET_PATH=/node/jwtsecret
+      - CVM_AGENT_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       node_net:
         ipv4_address: 172.20.0.20
@@ -156,6 +159,13 @@ services:
     volumes:
       - /data/workload/config:/config
       - /data/data-disk/operator:/root/app
+
+  cvm-agent-bridge:
+    image: docker.io/alpine/socat:latest
+    container_name: cvm-agent-bridge
+    network_mode: host
+    restart: unless-stopped
+    command: TCP-LISTEN:17999,fork,reuseaddr TCP:127.0.0.1:7999
 
   caddy:
     image: docker.io/library/caddy:latest

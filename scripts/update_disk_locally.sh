@@ -27,8 +27,7 @@ populate() {
     local DISK="$1"
 
     # Mount the disk onto a loop device
-    sudo losetup -fP $DISK
-    LOOP_DEV=$(losetup -j $DISK | awk -F: '{print $1}')
+    LOOP_DEV=$(sudo losetup -fP --show "$DISK")
     lsblk $LOOP_DEV
 
     # Check that disk has the right partitioning before reloading workload
@@ -63,14 +62,13 @@ populate() {
 
                 truncate -s ${TARGET_MB}M "$DISK"
 
-                sudo losetup -fP "$DISK"
-                LOOP_DEV=$(losetup -j "$DISK" | awk -F: '{print $1}')
+                LOOP_DEV=$(sudo losetup -fP --show "$DISK")
 
-                sudo growpart $LOOP_DEV 3
-                sudo e2fsck -f -y ${LOOP_DEV}p3 || [ $? -le 1 ]
-                sudo resize2fs ${LOOP_DEV}p3
+                sudo growpart "$LOOP_DEV" 3
+                sudo e2fsck -f -y "${LOOP_DEV}p3" || [ $? -le 1 ]
+                sudo resize2fs "${LOOP_DEV}p3"
 
-                sudo mount ${LOOP_DEV}p3 /tmp/data
+                sudo mount "${LOOP_DEV}p3" /tmp/data
                 echo "✅ Disk expanded to ${TARGET_MB}MB."
             else
                 echo "📏 Disk already ${CURRENT_MB}MB >= target ${TARGET_MB}MB, no expansion needed."
@@ -99,16 +97,15 @@ populate() {
 
             truncate -s +${EXTRA}M "$DISK"
 
-            sudo losetup -fP "$DISK"
-            LOOP_DEV=$(losetup -j "$DISK" | awk -F: '{print $1}')
+            LOOP_DEV=$(sudo losetup -fP --show "$DISK")
 
             # Grow partition 3 to fill the expanded disk
-            sudo growpart $LOOP_DEV 3
+            sudo growpart "$LOOP_DEV" 3
             # e2fsck returns 1 when it fixes errors (expected after resize) — allow it
-            sudo e2fsck -f -y ${LOOP_DEV}p3 || [ $? -le 1 ]
-            sudo resize2fs ${LOOP_DEV}p3
+            sudo e2fsck -f -y "${LOOP_DEV}p3" || [ $? -le 1 ]
+            sudo resize2fs "${LOOP_DEV}p3"
 
-            sudo mount ${LOOP_DEV}p3 /tmp/data
+            sudo mount "${LOOP_DEV}p3" /tmp/data
             echo "✅ Disk expanded successfully."
         fi
         fi # end DISK_SIZE guard

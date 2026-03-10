@@ -61,8 +61,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["operator", "controller", "tool-node", "lighthouse", "promtail", "node-exporter", "caddy"],
-            "skip_measurement": ["operator"]
+            "allow_update": ["operator", "controller", "tool-node", "lighthouse", "promtail", "node-exporter", "caddy", "cvm-agent-bridge"],
+            "skip_measurement": ["operator", "cvm-agent-bridge"]
         },
         "image_signature_verification": {
             "enable":false,
