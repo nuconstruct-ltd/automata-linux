@@ -30,6 +30,7 @@ ENV PATH="/root/.local/bin:$PATH"
 
 # Install free-threaded python
 RUN uv python install 3.14.3t
+ENV PYTHON_GIL=0
 
 WORKDIR /root/app
 
