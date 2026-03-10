@@ -175,7 +175,8 @@ gcloud compute instances create $VM_NAME \
   --project=$PROJECT_ID \
   --tags $RULE_NAME \
   $ADDITIONAL_ARGS \
-  --metadata serial-port-enable=1,serial-port-logging-enable=1
+  --metadata serial-port-enable=1,serial-port-logging-enable=1 \
+  --boot-disk-size=$BOOT_DISK_SIZE_GB
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
   --zone="$ZONE" \
