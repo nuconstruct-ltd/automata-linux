@@ -132,7 +132,7 @@ if [[ -n "$DATA_DISK" ]]; then
       # Create SSD disk from snapshot
       gcloud compute disks create "$NEW_DISK" \
           --source-snapshot="$SNAP_NAME" \
-          --type=pd-balanced \
+          --type=pd-ssd \
           --zone="$ZONE" \
           --project="$PROJECT_ID"
 
@@ -153,7 +153,7 @@ if [[ -n "$DATA_DISK" ]]; then
     echo "Creating and attaching new disk $DATA_DISK (${SIZE}GB)"
     gcloud compute disks create "$DATA_DISK" \
         --size="$SIZE" \
-        --type=pd-balanced \
+        --type=pd-ssd \
         --zone="$ZONE" \
         --project="$PROJECT_ID"
   fi
