@@ -403,7 +403,8 @@ case "$COMMAND" in
             echo "📁 Adding workload from: $WORKLOAD_DIR"
             # Save and unset DISK_SIZE to avoid conflict with update_disk's --disk-size (boot image format e.g. 8G)
             DATA_DISK_SIZE="$DISK_SIZE"
-            unset DISK_SIZE
+            DISK_SIZE="${BOOT_DISK_SIZE:+${BOOT_DISK_SIZE}G}"
+            export DISK_SIZE
             "$SCRIPT_DIR/update_disk.sh" "gcp_disk.tar.gz"
             DISK_SIZE="$DATA_DISK_SIZE"
         fi

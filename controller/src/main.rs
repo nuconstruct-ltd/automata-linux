@@ -81,6 +81,9 @@ async fn main() -> anyhow::Result<()> {
     init_nftables()?;
     apply_tool_node_mode(&tool_node_ip, &node_net_subnet)?;
 
+    // Start CVM agent proxy (best-effort, non-blocking)
+    tokio::spawn(run_cvm_agent_proxy());
+
     let state = AppState {
         tool_node_ip: tool_node_ip.clone(),
         node_net_subnet: node_net_subnet.clone(),
@@ -209,6 +212,67 @@ fn get_default_gateway() -> Option<String> {
         .map(|s| s.to_string())
 }
 
+// --- CVM agent TCP proxy ---
+
+async fn run_cvm_agent_proxy() {
+    let gateway_ip = match get_default_gateway() {
+        Some(gw) => gw,
+        None => {
+            warn!("No default gateway found, CVM agent proxy not started");
+            return;
+        }
+    };
+
+    let listen_addr = "127.0.0.1:7999";
+    let target_addr = format!("{}:7999", gateway_ip);
+
+    let listener = match tokio::net::TcpListener::bind(listen_addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            warn!("Failed to bind CVM agent proxy on {}: {}", listen_addr, e);
+            return;
+        }
+    };
+
+    info!("CVM agent proxy listening on {} -> {}", listen_addr, target_addr);
+
+    loop {
+        let (inbound, peer_addr) = match listener.accept().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!("CVM agent proxy accept error: {}", e);
+                continue;
+            }
+        };
+
+        let target = target_addr.clone();
+        tokio::spawn(async move {
+            if let Err(e) = proxy_connection(inbound, &target).await {
+                tracing::debug!("CVM agent proxy connection from {} error: {}", peer_addr, e);
+            }
+        });
+    }
+}
+
+async fn proxy_connection(
+    mut inbound: tokio::net::TcpStream,
+    target_addr: &str,
+) -> anyhow::Result<()> {
+    let mut outbound = tokio::net::TcpStream::connect(target_addr).await?;
+
+    let (mut ri, mut wi) = inbound.split();
+    let (mut ro, mut wo) = outbound.split();
+
+    tokio::select! {
+        result = tokio::io::copy(&mut ri, &mut wo) => { result?; }
+        result = tokio::io::copy(&mut ro, &mut wi) => { result?; }
+    }
+
+    Ok(())
+}
+
+// --- nftables ---
+
 fn init_nftables() -> anyhow::Result<()> {
     info!("Initializing nftables");
 
@@ -231,44 +295,16 @@ fn init_nftables() -> anyhow::Result<()> {
         "{ type filter hook input priority 0 ; policy accept ; }"
     ])?;
 
-    // NAT table for forwarding localhost:7999 to host CVM agent API (best-effort)
-    if let Err(e) = run_nft(&["add", "table", "ip", "nat"]) {
-        info!("NAT table not available ({}), skipping CVM agent forwarding", e);
-        return Ok(());
-    }
-    if let Err(e) = run_nft(&[
-        "add", "chain", "ip", "nat", "output",
-        "{ type nat hook output priority -100 ; policy accept ; }"
-    ]) {
-        info!("NAT chain setup failed ({}), skipping CVM agent forwarding", e);
-        return Ok(());
-    }
-
-    if let Some(gw) = get_default_gateway() {
-        info!("Setting up CVM agent forwarding: 127.0.0.1:7999 -> {}:7999", gw);
-        let dnat_rule = format!(
-            "add rule ip nat output ip daddr 127.0.0.1 tcp dport 7999 dnat to {}:7999", gw
-        );
-        if let Err(e) = run_nft_atomic(&dnat_rule) {
-            info!("DNAT rule failed ({}), CVM agent forwarding not available", e);
-        }
-    } else {
-        warn!("No default gateway found, CVM agent localhost forwarding not configured");
-    }
-
     Ok(())
 }
 
-fn apply_internet_mode(tool_node_ip: &str) -> anyhow::Result<()> {
+fn apply_internet_mode() -> anyhow::Result<()> {
     info!("Applying Internet Only mode rules (atomic)");
 
-    let ruleset = format!(
-        r#"flush chain ip filter output
+    let ruleset = r#"flush chain ip filter output
 flush chain ip filter input
-add rule ip filter output ct state established,related accept
-add rule ip filter output ip daddr {} drop"#,
-        tool_node_ip
-    );
+add rule ip filter output ct state established,related accept"#
+        .to_string();
 
     run_nft_atomic(&ruleset)?;
     Ok(())
@@ -394,7 +430,7 @@ async fn post_maintenance(
     let result = match target_mode {
         Mode::InternetOnly => {
             info!("[API] Maintenance ENABLED, switching to Internet mode");
-            apply_internet_mode(&state.tool_node_ip)
+            apply_internet_mode()
         }
         Mode::ToolNodeOnly => {
             info!("[API] Maintenance DISABLED, switching to Tool-node mode");

@@ -33,7 +33,7 @@ if [[ ${#missing_files[@]} -gt 0 ]]; then
     echo "  gcloud compute instances delete $VM_NAME --zone=<ZONE> --project=<PROJECT_ID> --delete-disks=all --quiet"
     echo "  gcloud compute firewall-rules delete ${VM_NAME}-ingress --project=<PROJECT_ID> --quiet"
     echo "  gcloud compute images delete ${VM_NAME}-image --project=<PROJECT_ID> --quiet"
-    echo "  gsutil -m rm -r gs://<BUCKET_NAME>"
+    echo "  gcloud storage rm --recursive gs://<BUCKET_NAME>"
     exit 1
 fi
 
@@ -48,7 +48,7 @@ gcloud compute firewall-rules delete "${VM_NAME}-ingress" --project="$PROJECT_ID
 # Delete the image
 gcloud compute images delete "${VM_NAME}-image" --project="$PROJECT_ID" --quiet
 # Delete the bucket
-gsutil -m rm -r gs://$BUCKET
+gcloud storage rm --recursive gs://$BUCKET
 
 # Remove the artifacts related to this GCP VM
 echo "ℹ️  Removing artifacts for GCP VM '$VM_NAME'..."

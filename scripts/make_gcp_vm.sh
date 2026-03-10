@@ -28,7 +28,7 @@ set -e
 set -x
 
 # Create bucket if it does not exist
-if ! gsutil ls -b "gs://$BUCKET" >/dev/null 2>&1; then
+if ! gcloud storage ls "gs://$BUCKET" >/dev/null 2>&1; then
   echo "Bucket gs://$BUCKET does not exist, creating it..."
   BUCKET_REGION=$(echo "$ZONE" | sed 's/-[a-z]$//')
   if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION"; then
@@ -40,7 +40,7 @@ if ! gsutil ls -b "gs://$BUCKET" >/dev/null 2>&1; then
 fi
 
 # Copy the image to bucket and create image
-gsutil cp $COMPRESSED_FILE gs://$BUCKET/$UPLOADED_COMPRESSED_FILE
+gcloud storage cp $COMPRESSED_FILE gs://$BUCKET/$UPLOADED_COMPRESSED_FILE
 
 LOCATION="asia"
 if [[ "$ZONE" == *eu* ]]; then
@@ -175,8 +175,7 @@ gcloud compute instances create $VM_NAME \
   --project=$PROJECT_ID \
   --tags $RULE_NAME \
   $ADDITIONAL_ARGS \
-  --metadata serial-port-enable=1,serial-port-logging-enable=1 \
-  --boot-disk-size=$BOOT_DISK_SIZE_GB
+  --metadata serial-port-enable=1,serial-port-logging-enable=1
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
   --zone="$ZONE" \
