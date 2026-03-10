@@ -31,7 +31,7 @@ set -x
 if ! gcloud storage ls "gs://$BUCKET" >/dev/null 2>&1; then
   echo "Bucket gs://$BUCKET does not exist, creating it..."
   BUCKET_REGION=$(echo "$ZONE" | sed 's/-[a-z]$//')
-  if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION"; then
+  if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION" --project="$PROJECT_ID"; then
     echo "Bucket '$BUCKET' created successfully."
   else
     echo "Failed to create bucket '$BUCKET'."
