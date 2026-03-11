@@ -37,8 +37,8 @@ services:
       --datadir=/node
       --allow-unattested
       --authrpc.jwtsecret=/node/jwtsecret
-      --http.api=engine,eth,web3,net,tool
-      --ws.api=engine,eth,web3,net
+      --http.api=engine,eth,web3,net,tool,debug
+      --ws.api=engine,eth,web3,net,tool,debug
       --metrics
       --metrics.addr=0.0.0.0
       --metrics.port=6060
