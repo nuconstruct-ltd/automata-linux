@@ -16,6 +16,7 @@ _artifacts/*
 macos-arm64.tar.gz
 *.tar
 .env
+scripts/create_gcp_monitoring_vm.env
 *.raw
 *.zip
 secure_boot
