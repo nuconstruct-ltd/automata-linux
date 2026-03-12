@@ -1,0 +1,145 @@
+# Local follower stack: tool-node + lighthouse + Prometheus + Grafana.
+# Metrics: tool-node http://localhost:6060/debug/metrics, lighthouse http://localhost:5054/metrics
+# RPC: http://localhost:8545
+# Prometheus: http://localhost:9090
+# Grafana: http://localhost:3000 (admin / admin)
+
+version: "3.8"
+
+networks:
+  node_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  node_data:
+  grafana_data:
+
+services:
+  init-node:
+    image: alpine:3.19
+    container_name: init-node
+    volumes:
+      - node_data:/node
+    command: >
+      sh -c "
+        if [ ! -f /node/jwtsecret ]; then
+          apk add --no-cache openssl &&
+          openssl rand -hex 32 > /node/jwtsecret &&
+          echo 'Created /node/jwtsecret';
+        fi
+      "
+    restart: "no"
+
+  tool-node:
+    image: gcr.io/constellation-458212/tool-node:cons-rc2
+    container_name: tool-node
+    depends_on:
+      init-node:
+        condition: service_completed_successfully
+    ports:
+      - 8545:8545/tcp
+      - 8546:8546/tcp
+      - 30303:30303/tcp
+      - 30303:30303/udp
+      - 6060:6060/tcp
+    volumes:
+      - node_data:/node
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.2
+    command: >-
+      --hoodi
+      --datadir=/node
+      --authrpc.jwtsecret=/node/jwtsecret
+      --http.api=engine,eth,web3,net,tool,admin
+      --ws.api=engine,eth,web3,net
+      --metrics
+      --metrics.addr=0.0.0.0
+      --metrics.port=6060
+      --config=default
+      --relay.beacon-endpoints=http://lighthouse:5052
+      --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
+      --allow-unattested
+      --tee-verifier=0x0000000000000000000000000000000000000000
+      --leader-preset 0xe56c22b9bfddc0e1e0ecfb8bebcac49b4b7f72918dbd696d52121d4d77ad27dd,0xcead54b9d22fadd46b047f97f16097e41f82bd5605edde403ad900f3c1b6c871,0x85bd6592c28038f335f52ff514f9a0feb0d7329fdf09645c9f4a49fea153ed55,0xd067d627f96014b53036667da4f7cb663c7f654bf0a8c2ef411217f4efbbe771,0xf64e320f8ac8097df891a5648f90d49afb849846b966e0dae86f766c5e306cad
+      --history.blocks=512
+      --history.chain=postmerge
+      --history.cutoff-genesis=0xbbe312868b376a3001692a646dd2d7d1e4406380dfd86b98aa8a34d1557c971b
+      --history.cutoff-block=1
+      --history.cutoff-hash=0xc62962979a16131910a073095eadc7e458679bb9336299cd38a6e715c1c47996
+      --discovery.tool-dns=enrtree://APMYYCYNOBWN5EW3D3LK6MYPEXVCZQLM3SXXCJ2Y53QTHYYRWZ5H4@tool.hoodi.sdoba.vip
+
+  lighthouse:
+    image: docker.io/sigp/lighthouse:v8.1.0
+    container_name: lighthouse
+    depends_on:
+      init-node:
+        condition: service_completed_successfully
+    ports:
+      - 9000:9000/tcp
+      - 9000:9000/udp
+      - 5054:5054/tcp
+    volumes:
+      - node_data:/node
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.3
+    command: >-
+      lighthouse bn
+      --datadir /node
+      --execution-jwt=/node/jwtsecret
+      --execution-endpoint=http://tool-node:8551
+      --disable-upnp
+      --disable-enr-auto-update
+      --enr-tcp-port=9000
+      --enr-udp-port=9000
+      --listen-address=0.0.0.0
+      --port=9000
+      --discovery-port=9000
+      --http
+      --http-address=0.0.0.0
+      --http-port=5052
+      --metrics
+      --metrics-address=0.0.0.0
+      --metrics-port=5054
+      --checkpoint-sync-url=https://checkpoint-sync.hoodi.ethpandaops.io
+      --network=hoodi
+      --always-prepare-payload
+      --prepare-payload-lookahead=12000
+      --purge-db-force
+      --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    ports:
+      - 9090:9090/tcp
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    networks:
+      node_net:
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000/tcp
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      node_net:
