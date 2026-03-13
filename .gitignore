@@ -7,9 +7,10 @@ livepatch.crt
 
 _artifacts/*
 *.pem
-*.json
 *.key
 *.pub
+
+**/secrets/*
 
 # Package artifacts (downloaded by CI, not committed)
 *.deb
@@ -22,3 +23,5 @@ secure_boot
 _artifacts
 authorized_keys
 controller/target
+**.DS_Store
+.claude

@@ -1,0 +1,193 @@
+version: "3.8"
+
+networks:
+  node_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  monitoring:
+    driver: bridge
+
+services:
+  tool-node:
+    image: gcr.io/constellation-458212/tool-node-mev:mev_latest
+    container_name: tool-node
+    restart: unless-stopped
+    ports:
+      - 30303:30303/tcp
+      - 30303:30303/udp
+    expose:
+      - 8545
+      - 8546
+      - 8535
+      - 8536
+      - 8551
+      - 6060
+      - 9060
+    volumes:
+      - /data/data-disk/node:/node
+      - ./secrets/nodekey:/node/nodekey:ro
+      - ./secrets/leaders:/node/leaders:ro
+      - ./secrets/leaders.empty:/node/leaders.empty:ro
+    networks:
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.102
+    command: >-
+      --mainnet
+      --config=default
+      --datadir=/node
+      --authrpc.jwtsecret=/node/jwtsecret
+      --nodekey=/node/nodekey
+      --leader-file=/node/leaders.empty
+      --history.chain=postmerge
+      --history.blocks=512
+      --allow-unattested
+      --http.api=tool,mev
+      --ws.api=tool,mev
+      --relay.beacon-endpoints=http://lighthouse:5052
+      --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
+
+  lighthouse:
+    image: docker.io/sigp/lighthouse:v8.0.1
+    container_name: lighthouse
+    restart: unless-stopped
+    ports:
+      - 9000:9000/tcp
+      - 9000:9000/udp
+    expose:
+      - 5054
+      - 5052
+    networks:
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.103
+    volumes:
+      - /data/data-disk/node:/node
+    command: >-
+      lighthouse bn
+      --network=mainnet
+      --datadir /node
+      --execution-jwt=/node/jwtsecret
+      --execution-endpoint=http://tool-node:8551
+      --disable-upnp
+      --disable-enr-auto-update
+      --enr-tcp-port=9000
+      --enr-udp-port=9000
+      --listen-address=0.0.0.0
+      --port=9000
+      --discovery-port=9000
+      --http
+      --http-address=0.0.0.0
+      --http-port=5052
+      --metrics
+      --metrics-address=0.0.0.0
+      --metrics-port=5054
+      --checkpoint-sync-url=https://mainnet.checkpoint.sigp.io
+      --always-prepare-payload
+      --prepare-payload-lookahead=12000
+      --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
+
+  node-exporter:
+    image: docker.io/prom/node-exporter:v1.9.1
+    container_name: node-exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    ports:
+      - 9100:9100/tcp
+    networks:
+      - monitoring
+
+  promtail:
+    image: docker.io/grafana/promtail:latest
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./secrets/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./secrets/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - /data/user:/data/user:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /data/data-disk/promtail:/data/promtail
+    environment:
+      - HOSTNAME=${HOSTNAME}
+      - VM_NAME=tool-0
+      - LOKI_HOST=loki.dev.nuconstruct.xyz
+      - LOKI_USER=promtail
+      - LOKI_PASSWORD=bb8861bfb16258576c6bbbbb6357373f62f3ce516e2875a4
+    entrypoint: ["/bin/sh", "/etc/promtail/generate-targets.sh"]
+    command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
+    networks:
+      - monitoring
+
+  controller:
+    image: ghcr.io/nuconstruct-ltd/controller:latest
+    container_name: controller
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8080:8080"
+      - "2200:2200"
+    volumes:
+      - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
+    environment:
+      - TOOL_NODE_IP=172.20.0.102
+      - NODE_NET_SUBNET=172.20.0.0/24
+      - PORT=8080
+      - CONTROLLER_API_KEY=67046f714315e9b2a852a67a8f13f860d0093d3033765aa20a4f046227e337e5
+      - AUTHRPC_URL=http://172.20.0.102:8551
+      - JWT_SECRET_PATH=/node/jwtsecret
+      - CVM_AGENT_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.120
+
+  operator:
+    image: ghcr.io/nuconstruct-ltd/operator:latest
+    container_name: operator
+    network_mode: "service:controller"
+    depends_on:
+      - controller
+    environment:
+      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+    volumes:
+      - /data/data-disk/operator:/root/app
+      - ./secrets/authorized_keys:/config/authorized_keys
+
+  cvm-agent-bridge:
+    image: docker.io/alpine/socat:latest
+    container_name: cvm-agent-bridge
+    network_mode: host
+    restart: unless-stopped
+    command: TCP-LISTEN:17999,fork,reuseaddr TCP:127.0.0.1:7999
+
+  caddy:
+    image: docker.io/library/caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./secrets/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.121
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  caddy_data:
+  caddy_config:

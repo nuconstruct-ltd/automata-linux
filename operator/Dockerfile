@@ -7,7 +7,7 @@ RUN apt-get update && \
       build-essential libffi-dev wget cmake \
       lsb-release gnupg software-properties-common \
       zlib1g zlib1g-dev zstd libzstd-dev \
-      tmux vim htop git pkg-config libssl-dev \
+      tmux vim htop git pkg-config libssl-dev lnav \
       locales \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen \

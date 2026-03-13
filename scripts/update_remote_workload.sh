@@ -2,7 +2,8 @@
 
 CSP=$1
 VM_NAME=$2
-ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"  # Use env var or default
+ARTIFACT_DIR="${ARTIFACT_DIR:-_artifacts}"
+WORKLOAD_DIR="${WORKLOAD_DIR:-workload}"
 
 # Ensure all arguments are provided
 if [[ $# -lt 2 ]]; then
@@ -27,11 +28,12 @@ fi
 
 VM_IP=$(<"$IP_FILE")  # Load IP from file
 PASSWORD=$(<"$API_TOKEN_FILE")  # Load API token from file
-
-if [[ ! -f output.zip ]]; then
-  echo "Zipping up the workload/ folder..."
-  zip -r output.zip workload/
+if [[ -f output.zip ]]; then
+  echo "Removing old archive"
+  rm -f output.zip
 fi
+echo "Zipping up the workload/ folder..."
+zip -r output.zip "$WORKLOAD_DIR"
 echo "ℹ️  Sending the zip file to the CVM's agent..."
 
 response=$(curl -s -w "\n%{http_code}" -X POST -F "file=@output.zip" -H "Authorization: Bearer $PASSWORD" -k "https://$VM_IP:8000/update-workload")
