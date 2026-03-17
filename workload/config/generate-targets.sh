@@ -95,8 +95,26 @@ generate() {
 # Initial generation
 generate
 
-# Refresh every 5 minutes in background (handles container restarts)
-while true; do sleep 300; generate; done &
+# Watch for container changes and regenerate targets promptly.
+# Checks containers.json mtime and overlay-containers directory every 10 seconds,
+# but only runs the full generation when something has changed.
+last_mtime=""
+last_dir_listing=""
+get_mtime() {
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo ""
+}
+(
+  while true; do
+    sleep 10
+    cur_mtime=$(get_mtime "$CONTAINERS_DB")
+    cur_dir_listing=$(ls -1 "$CONTAINERS_PATH" 2>/dev/null)
+    if [ "$cur_mtime" != "$last_mtime" ] || [ "$cur_dir_listing" != "$last_dir_listing" ]; then
+      last_mtime="$cur_mtime"
+      last_dir_listing="$cur_dir_listing"
+      generate
+    fi
+  done
+) &
 
 # Start promtail with passed arguments
 exec /usr/bin/promtail "$@"

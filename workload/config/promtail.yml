@@ -18,7 +18,7 @@ scrape_configs:
     file_sd_configs:
       - files:
           - /tmp/container-targets.json
-        refresh_interval: 5m
+        refresh_interval: 15s
     pipeline_stages:
       - cri: {}
 
