@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:cons-rc2
+    image: gcr.io/constellation-458212/tool-node:cons-rc4
     container_name: tool-node
     restart: unless-stopped
     ports:
@@ -52,7 +52,7 @@ services:
       --discovery.tool-dns=enrtree://APMYYCYNOBWN5EW3D3LK6MYPEXVCZQLM3SXXCJ2Y53QTHYYRWZ5H4@tool.hoodi.sdoba.vip
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:v8.1.0
+    image: docker.io/sigp/lighthouse:latest-unstable
     container_name: lighthouse
     restart: unless-stopped
     ports:
