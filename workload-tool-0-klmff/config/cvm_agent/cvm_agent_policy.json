@@ -11,6 +11,7 @@
         "firewall": {
             "allowed_ports": [
                 { "name": "allow_agent_local", "protocol": "tcp", "port": "7999" },
+                { "name": "allow_agent_public", "protocol": "tcp", "port": "17999" },
                 { "name": "allow_agent_external", "protocol": "tcp", "port": "8000" },
                 { "name": "allow_http", "protocol": "tcp", "port": "80" },
                 { "name": "allow_https", "protocol": "tcp", "port": "443" },

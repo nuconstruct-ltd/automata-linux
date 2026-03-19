@@ -40,7 +40,7 @@ services:
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
       --nodekey=/node/nodekey
-      --leader-file=/node/leaders
+      --leader-file=/node/leaders.empty
       --history.chain=postmerge
       --history.blocks=512
       --allow-unattested
