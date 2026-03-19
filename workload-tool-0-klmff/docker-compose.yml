@@ -31,7 +31,7 @@ services:
       - ./secrets/leaders:/node/leaders:ro
       - ./secrets/leaders.empty:/node/leaders.empty:ro
     networks:
-      monitoring: {}
+      monitoring:
       node_net:
         ipv4_address: 172.20.0.102
     command: >-
@@ -52,7 +52,7 @@ services:
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:unstable-latest
+    image: docker.io/sigp/lighthouse:latest-unstable
     container_name: lighthouse
     restart: unless-stopped
     ports:
@@ -62,7 +62,7 @@ services:
       - 5054
       - 5052
     networks:
-      monitoring: {}
+      monitoring:
       node_net:
         ipv4_address: 172.20.0.103
     volumes:
@@ -120,8 +120,6 @@ services:
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
     environment:
-      - HOSTNAME=${HOSTNAME}
-      - VM_NAME=${HOSTNAME}
       - LOKI_HOST=loki.dev.nuconstruct.xyz
       - LOKI_USER=promtail
       - LOKI_PASSWORD=bb8861bfb16258576c6bbbbb6357373f62f3ce516e2875a4

@@ -85,7 +85,7 @@ generate() {
     fi
 
     printf '  {"targets":["localhost"],"labels":{"job":"cvm","vm_name":"%s","container":"%s","__path__":"%s"}}' \
-      "${VM_NAME:-cvm}" "$name" "$logfile" >> "${TARGETS_FILE}.tmp"
+      "${HOSTNAME}" "$name" "$logfile" >> "${TARGETS_FILE}.tmp"
   done
 
   printf '\n]\n' >> "${TARGETS_FILE}.tmp"
