@@ -146,16 +146,6 @@ Copy the example environment file and set your values:
 cp workload-example/secrets/.env.example workload-example/secrets/.env
 ```
 
-Edit `workload-example/secrets/.env` with your configuration. Key variables:
-
-```bash
-LOKI_HOST=loki.example.com                 # Remote Loki host for log collection
-LOKI_USER=                                 # Loki basic auth credentials
-LOKI_PASSWORD=
-CONTROLLER_API_KEY=                        # Bearer token for controller maintenance API
-SSH_PUBLIC_KEY_FILE=~/.ssh/id_ed25519.pub  # SSH key for operator access
-```
-
 ### 2. Edit the Security Policy <!-- omit in toc -->
 
 The CVM agent runs inside the CVM and is responsible for VM management, workload measurement, and related tasks. The tasks that it is allowed to perform depends on a security policy, which can be configured by the user.
