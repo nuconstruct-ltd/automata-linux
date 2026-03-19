@@ -4,6 +4,7 @@ gcp_disk.tar.gz
 
 # Symlink
 workload
+workload/*
 
 aws-uefi-blob.bin
 livepatch.crt

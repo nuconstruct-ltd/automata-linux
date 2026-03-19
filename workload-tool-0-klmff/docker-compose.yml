@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node-mev:mev_latest
+    image: gcr.io/constellation-458212/tool-node:ratls-5
     container_name: tool-node
     restart: unless-stopped
     ports:
@@ -40,12 +40,14 @@ services:
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
       --nodekey=/node/nodekey
-      --leader-file=/node/leaders.empty
+      --leader-file=/node/leaders
       --history.chain=postmerge
       --history.blocks=512
       --allow-unattested
-      --http.api=tool,mev
-      --ws.api=tool,mev
+      --http.api=tool,eth,debug,admin,net,web3
+      --ws.api=tool,eth,debug,admin,net,web3
+      --tee-internal-agent-url=http://host.docker.internal:7999
+      --tee-external-agent-url=https://host.docker.internal:8000
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
 
@@ -152,42 +154,9 @@ services:
       node_net:
         ipv4_address: 172.20.0.120
 
-  operator:
-    image: ghcr.io/nuconstruct-ltd/operator:latest
-    container_name: operator
-    network_mode: "service:controller"
-    depends_on:
-      - controller
-    environment:
-      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
-    volumes:
-      - /data/data-disk/operator:/root/app
-      - ./secrets/authorized_keys:/config/authorized_keys
-
   cvm-agent-bridge:
     image: docker.io/alpine/socat:latest
     container_name: cvm-agent-bridge
     network_mode: host
     restart: unless-stopped
     command: TCP-LISTEN:17999,fork,reuseaddr TCP:127.0.0.1:7999
-
-  caddy:
-    image: docker.io/library/caddy:latest
-    container_name: caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./secrets/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      node_net:
-        ipv4_address: 172.20.0.121
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-volumes:
-  caddy_data:
-  caddy_config:
