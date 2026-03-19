@@ -358,6 +358,12 @@ case "$COMMAND" in
             esac
         done
 
+        # === Check for ATTACH_DISK collision with VM_NAME ===
+        if [[ -n "$ATTACH_DISK" && "$ATTACH_DISK" == "$VM_NAME" ]]; then
+            ATTACH_DISK="${ATTACH_DISK}-data"
+            echo "⚠️  Warning: ATTACH_DISK cannot be the same as VM_NAME. Renamed to: $ATTACH_DISK"
+        fi
+
         # === Derive bucket name if not provided ===
         if [[ -z "$BUCKET" ]]; then
             # Check whether bucket exists in _artifacts, use that first, if not generate a new one
