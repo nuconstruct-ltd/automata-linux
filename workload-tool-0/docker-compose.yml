@@ -17,13 +17,13 @@ services:
     ports:
       - 30303:30303/tcp
       - 30303:30303/udp
+      - 6060:6060/tcp
     expose:
       - 8545
       - 8546
       - 8535
       - 8536
       - 8551
-      - 6060
       - 9060
     volumes:
       - /data/data-disk/node:/node
@@ -56,8 +56,8 @@ services:
     ports:
       - 9000:9000/tcp
       - 9000:9000/udp
+      - 5054:5054/tcp
     expose:
-      - 5054
       - 5052
     networks:
       monitoring:
@@ -114,6 +114,7 @@ services:
     volumes:
       - ./secrets/promtail.yml:/etc/promtail/promtail.yml:ro
       - ./secrets/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
       - /data/user:/data/user:ro
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
@@ -125,6 +126,26 @@ services:
     command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     networks:
       - monitoring
+
+  vmagent:
+    image: docker.io/victoriametrics/vmagent:v1.108.1
+    container_name: vmagent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./secrets/vmagent.yml:/etc/vmagent/vmagent.yml:ro
+      - ./secrets/vmagent-entrypoint.sh:/entrypoint.sh:ro
+      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
+      - ./secrets/identity.env:/etc/identity.env:ro
+      - /data/data-disk:/data/data-disk
+      - /data/data-disk/vmagent:/vmagentdata
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command:
+      - "-remoteWrite.url=https://${METRICS_HOST}/api/v1/write"
+      - "-remoteWrite.basicAuth.username=${METRICS_USER}"
+      - "-remoteWrite.basicAuth.password=${METRICS_PASSWORD}"
+      - "-remoteWrite.tmpDataPath=/vmagentdata"
+      - "-remoteWrite.maxDiskUsagePerURL=128MB"
 
   controller:
     image: ghcr.io/nuconstruct-ltd/controller:latest

@@ -2,6 +2,9 @@
 # Generates promtail file_sd_configs targets with container name labels
 # by reading podman container metadata.
 
+# Discover VM identity from cloud metadata (sets VM_NAME, CSP, PUBLIC_IP, REGION)
+. /etc/discover-identity.sh
+
 TARGETS_FILE="/tmp/container-targets.json"
 CONTAINERS_PATH="/data/user/lib/containers/storage/overlay-containers"
 CONTAINERS_DB="${CONTAINERS_PATH}/containers.json"

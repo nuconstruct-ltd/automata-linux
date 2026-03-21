@@ -53,8 +53,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["prometheus", "node-exporter", "metrics-proxy"],
-            "skip_measurement": ["prometheus"]
+            "allow_update": ["node-exporter", "vmagent"],
+            "skip_measurement": ["node-exporter", "vmagent"]
         },
         "image_signature_verification": {
             "enable":false,

@@ -77,6 +77,30 @@ cleanup_workload_dir() {
     fi
 }
 
+# Generate identity.env in the workload secrets directory.
+# Writes VM_NAME, CSP, REGION, PUBLIC_IP for containers to source at runtime.
+# Call after VM_NAME, CSP, REGION are resolved.
+generate_identity_env() {
+    local secrets_dir="$ACTUAL_WORKLOAD_DIR/secrets"
+    local identity_file="$secrets_dir/identity.env"
+    local ip="${IP:-unknown}"
+
+    # Try to get IP from artifacts if not set
+    if [[ "$ip" == "unknown" && -n "${CSP:-}" && -n "${VM_NAME:-}" ]]; then
+        local ip_file="$ARTIFACT_DIR/${CSP}_${VM_NAME}_ip"
+        [[ -f "$ip_file" ]] && ip=$(<"$ip_file")
+    fi
+
+    mkdir -p "$secrets_dir"
+    cat > "$identity_file" <<EOF
+VM_NAME=${VM_NAME:-unknown}
+CSP=${CSP:-unknown}
+REGION=${REGION:-unknown}
+PUBLIC_IP=${ip}
+EOF
+    echo "ℹ️  Generated identity.env: VM_NAME=${VM_NAME:-unknown} CSP=${CSP:-unknown} REGION=${REGION:-unknown} IP=${ip}"
+}
+
 # ============================================================================
 # Dependency Checking and Auto-Installation
 # ============================================================================
@@ -283,6 +307,9 @@ case "$COMMAND" in
             fi
         fi
 
+        CSP="aws"
+        generate_identity_env
+
         set -euo pipefail
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "aws" "$VM_TYPE" "$REGION"
@@ -378,6 +405,9 @@ case "$COMMAND" in
                 echo "ℹ️  No bucket provided. Using generated bucket name: $BUCKET"
             fi
         fi
+
+        CSP="gcp"
+        generate_identity_env
 
         set -euo pipefail
         # Check vm options
@@ -525,6 +555,9 @@ case "$COMMAND" in
             fi
         fi
 
+        CSP="azure"
+        generate_identity_env
+
         # Check vm options
         "$SCRIPT_DIR/check_options.sh" "azure" "$VM_TYPE" "$REGION"
         # Change to disk directory for disk operations
@@ -568,6 +601,7 @@ case "$COMMAND" in
             echo "❌ Usage: $0 update-workload <WORKLOAD_DIR> <CSP> <VM_NAME>"
             exit 1
         fi
+        generate_identity_env
         set -euo pipefail
         "$SCRIPT_DIR/update_remote_workload.sh" "$CSP" "$VM_NAME"
         echo "Updating golden measurements..."

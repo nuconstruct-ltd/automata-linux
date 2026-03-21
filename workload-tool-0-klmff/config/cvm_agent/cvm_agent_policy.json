@@ -63,8 +63,8 @@
         "services": {
             "allow_remove": false,
             "allow_add_new_service": true,
-            "allow_update": ["controller", "tool-node", "lighthouse", "promtail", "node-exporter", "cvm-agent-bridge"],
-            "skip_measurement": ["cvm-agent-bridge", "promtail", "node-exporter" ]
+            "allow_update": ["controller", "tool-node", "lighthouse", "promtail", "node-exporter", "cvm-agent-bridge", "vmagent"],
+            "skip_measurement": ["cvm-agent-bridge", "promtail", "node-exporter", "vmagent"]
         },
         "image_signature_verification": {
             "enable":false,

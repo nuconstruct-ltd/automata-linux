@@ -2,9 +2,6 @@ networks:
   monitoring:
     driver: bridge
 
-volumes:
-  prometheus_data: {}
-
 services:
   node-exporter:
     image: docker.io/prom/node-exporter:v1.9.1
@@ -19,40 +16,27 @@ services:
       - '--path.rootfs=/rootfs'
       - '--path.sysfs=/host/sys'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    expose:
-      - 9100
-    networks:
-      - monitoring
-
-  prometheus:
-    image: docker.io/prom/prometheus:v3.3.1
-    container_name: prometheus
-    restart: unless-stopped
-    volumes:
-      - "./config/prometheus.yml:/etc/prometheus/prometheus.yml"
-      - "prometheus_data:/prometheus"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    expose:
-      - 9090
-    networks:
-      - monitoring
-
-  metrics-proxy:
-    image: docker.io/nginx:1.27.4-alpine3.21
-    container_name: metrics-proxy
-    restart: unless-stopped
-    volumes:
-      - "./config/nginx.conf:/etc/nginx/templates/default.conf.template:ro"
-      - "./secrets/cert.pem:/etc/nginx/certs/cert.pem:ro"
-      - "./secrets/ca.key:/etc/nginx/certs/ca.key:ro"
-    depends_on:
-      - prometheus
     ports:
-      - 443:443
+      - 9100:9100/tcp
     networks:
       - monitoring
+
+  vmagent:
+    image: docker.io/victoriametrics/vmagent:v1.108.1
+    container_name: vmagent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./secrets/vmagent.yml:/etc/vmagent/vmagent.yml:ro
+      - ./secrets/vmagent-entrypoint.sh:/entrypoint.sh:ro
+      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
+      - ./secrets/identity.env:/etc/identity.env:ro
+      - /data/data-disk:/data/data-disk
+      - /data/data-disk/vmagent:/vmagentdata
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command:
+      - "-remoteWrite.url=https://${METRICS_HOST}/api/v1/write"
+      - "-remoteWrite.basicAuth.username=${METRICS_USER}"
+      - "-remoteWrite.basicAuth.password=${METRICS_PASSWORD}"
+      - "-remoteWrite.tmpDataPath=/vmagentdata"
+      - "-remoteWrite.maxDiskUsagePerURL=128MB"
