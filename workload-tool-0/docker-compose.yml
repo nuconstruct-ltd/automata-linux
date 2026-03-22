@@ -30,6 +30,8 @@ services:
       - ./secrets/nodekey:/node/nodekey:ro
       - ./secrets/leaders:/node/leaders:ro
       - ./secrets/leaders.empty:/node/leaders.empty:ro
+    extra_hosts:
+      - "host.docker.internal:172.20.0.125"
     networks:
       monitoring:
       node_net:
@@ -112,9 +114,8 @@ services:
     container_name: promtail
     restart: unless-stopped
     volumes:
-      - ./secrets/promtail.yml:/etc/promtail/promtail.yml:ro
-      - ./secrets/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
-      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
+      - ./config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./config/promtail/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
       - /data/user:/data/user:ro
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
@@ -133,9 +134,8 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./secrets/vmagent.yml:/etc/vmagent/vmagent.yml:ro
-      - ./secrets/vmagent-entrypoint.sh:/entrypoint.sh:ro
-      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
+      - ./config/vmagent/vmagent.yml:/etc/vmagent/vmagent.yml:ro
+      - ./config/vmagent/entrypoint.sh:/entrypoint.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/data-disk:/data/data-disk
       - /data/data-disk/vmagent:/vmagentdata
@@ -162,11 +162,11 @@ services:
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
       - CONTROLLER_API_KEY=67046f714315e9b2a852a67a8f13f860d0093d3033765aa20a4f046227e337e5
-      - AUTHRPC_URL=http://172.20.0.102:8551
+      - AUTHRPC_URL=http://tool-node:8551
       - JWT_SECRET_PATH=/node/jwtsecret
       - CVM_AGENT_HOST=host.docker.internal
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:172.20.0.125"
     networks:
       node_net:
         ipv4_address: 172.20.0.120
@@ -190,6 +190,21 @@ services:
     restart: unless-stopped
     command: TCP-LISTEN:17999,fork,reuseaddr TCP:127.0.0.1:7999
 
+  cvm-agent-proxy:
+    image: docker.io/alpine/socat:latest
+    container_name: cvm-agent-proxy
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        socat TCP-LISTEN:7999,fork,reuseaddr TCP:host.docker.internal:17999 &
+        socat TCP-LISTEN:17999,fork,reuseaddr TCP:host.docker.internal:17999
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.125
+
   caddy:
     image: docker.io/library/caddy:latest
     container_name: caddy
@@ -198,9 +213,14 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./secrets/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/caddy/entrypoint.sh:/entrypoint.sh:ro
       - caddy_data:/data
       - caddy_config:/config
+    environment:
+      - CADDY_RPC_DOMAIN=${CADDY_RPC_DOMAIN:-}
+      - CADDY_CVM_DOMAIN=${CADDY_CVM_DOMAIN:-}
+      - CADDY_CONTROLLER_DOMAIN=${CADDY_CONTROLLER_DOMAIN:-}
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     networks:
       node_net:
         ipv4_address: 172.20.0.121

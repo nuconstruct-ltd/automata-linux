@@ -11,25 +11,17 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:ratls-5
+    image: gcr.io/constellation-458212/tool-node-mev:mev
     container_name: tool-node
     restart: unless-stopped
     ports:
       - 30303:30303/tcp
       - 30303:30303/udp
-      - 8545:8545/tcp
-      - 8546:8546/tcp
-      - 8535:8535/tcp
-      - 8551:8551/tcp
       - 6060:6060/tcp
-      - 9060:9060/tcp
     expose:
       - 8545
       - 8546
-      - 8535
-      - 8536
       - 8551
-      - 9060
     volumes:
       - /data/data-disk/node:/node
       - ./secrets/nodekey:/node/nodekey:ro
@@ -38,28 +30,25 @@ services:
     extra_hosts:
       - "host.docker.internal:172.20.0.125"
     networks:
-      monitoring:
+      monitoring: {}
       node_net:
         ipv4_address: 172.20.0.102
     command: >-
-      --mainnet
+      --hoodi
       --config=default
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
       --nodekey=/node/nodekey
-      --leader-file=/node/leaders.empty
-      --history.chain=postmerge
+      --history.chain=all
       --history.blocks=512
       --allow-unattested
-      --http.api=tool,eth,debug,admin,net,web3
-      --ws.api=tool,eth,debug,admin,net,web3
-      --tee-internal-agent-url=http://host.docker.internal:7999
-      --tee-external-agent-url=https://host.docker.internal:8000
+      --http.api=tool,mev
+      --ws.api=tool,mev
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:latest-unstable
+    image: docker.io/sigp/lighthouse:latest
     container_name: lighthouse
     restart: unless-stopped
     ports:
@@ -69,14 +58,14 @@ services:
     expose:
       - 5052
     networks:
-      monitoring:
+      monitoring: {}
       node_net:
         ipv4_address: 172.20.0.103
     volumes:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
-      --network=mainnet
+      --network=hoodi
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
@@ -93,7 +82,7 @@ services:
       --metrics
       --metrics-address=0.0.0.0
       --metrics-port=5054
-      --checkpoint-sync-url=https://mainnet.checkpoint.sigp.io
+      --checkpoint-sync-url=https://checkpoint-sync.hoodi.ethpandaops.io
       --always-prepare-payload
       --prepare-payload-lookahead=12000
       --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
@@ -148,9 +137,9 @@ services:
       - /data/data-disk/vmagent:/vmagentdata
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     command:
-      - "-remoteWrite.url=https://${METRICS_HOST}/api/v1/write"
-      - "-remoteWrite.basicAuth.username=${METRICS_USER}"
-      - "-remoteWrite.basicAuth.password=${METRICS_PASSWORD}"
+      - "-remoteWrite.url=https://prometheus-rw.dev.nuconstruct.xyz/api/v1/write"
+      - "-remoteWrite.basicAuth.username=vmagent"
+      - "-remoteWrite.basicAuth.password=ed71867b145ce92b830cb75dc95c04563da2fb553cbfbefb"
       - "-remoteWrite.tmpDataPath=/vmagentdata"
       - "-remoteWrite.maxDiskUsagePerURL=128MB"
 

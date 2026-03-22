@@ -27,9 +27,8 @@ services:
     restart: unless-stopped
     network_mode: host
     volumes:
-      - ./secrets/vmagent.yml:/etc/vmagent/vmagent.yml:ro
-      - ./secrets/vmagent-entrypoint.sh:/entrypoint.sh:ro
-      - ./secrets/discover-identity.sh:/etc/discover-identity.sh:ro
+      - ./config/vmagent/vmagent.yml:/etc/vmagent/vmagent.yml:ro
+      - ./config/vmagent/entrypoint.sh:/entrypoint.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/data-disk:/data/data-disk
       - /data/data-disk/vmagent:/vmagentdata
