@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:ratls-5
+    image: gcr.io/constellation-458212/tool-node:ratls-6
     container_name: tool-node
     restart: unless-stopped
     ports:
