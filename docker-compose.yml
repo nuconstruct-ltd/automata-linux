@@ -64,7 +64,7 @@ services:
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
       --allow-unattested
       --tee-verifier=0x0000000000000000000000000000000000000000
-      --leader-preset 0xe56c22b9bfddc0e1e0ecfb8bebcac49b4b7f72918dbd696d52121d4d77ad27dd,0xcead54b9d22fadd46b047f97f16097e41f82bd5605edde403ad900f3c1b6c871,0x85bd6592c28038f335f52ff514f9a0feb0d7329fdf09645c9f4a49fea153ed55,0xd067d627f96014b53036667da4f7cb663c7f654bf0a8c2ef411217f4efbbe771,0xf64e320f8ac8097df891a5648f90d49afb849846b966e0dae86f766c5e306cad
+      --leader-preset 0xe56c22b9bfddc0e1e0ecfb8bebcac49b4b7f72918dbd696d52121d4d77ad27dd,0xcead54b9d22fadd46b047f97f16097e41f82bd5605edde403ad900f3c1b6c871,0x85bd6592c28038f335f52ff514f9a0feb0d7329fdf09645c9f4a49fea153ed55
       --history.blocks=512
       --history.chain=postmerge
       --history.cutoff-genesis=0xbbe312868b376a3001692a646dd2d7d1e4406380dfd86b98aa8a34d1557c971b
@@ -73,7 +73,7 @@ services:
       --discovery.tool-dns=enrtree://APMYYCYNOBWN5EW3D3LK6MYPEXVCZQLM3SXXCJ2Y53QTHYYRWZ5H4@tool.hoodi.sdoba.vip
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:v8.1.0
+    image: docker.io/sigp/lighthouse:latest-unstable
     container_name: lighthouse
     depends_on:
       init-node:
