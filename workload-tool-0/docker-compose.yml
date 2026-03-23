@@ -199,7 +199,6 @@ services:
     command:
       - |
         socat TCP-LISTEN:7999,fork,reuseaddr TCP:host.docker.internal:17999 &
-        socat TCP-LISTEN:8000,fork,reuseaddr TCP:host.docker.internal:8000 &
         socat TCP-LISTEN:17999,fork,reuseaddr TCP:host.docker.internal:17999
     extra_hosts:
       - "host.docker.internal:host-gateway"
