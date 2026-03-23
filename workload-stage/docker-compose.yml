@@ -112,6 +112,7 @@ services:
     volumes:
       - ./config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
       - ./config/promtail/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - ./secrets/identity.env:/etc/identity.env:ro
       - /data/user:/data/user:ro
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
