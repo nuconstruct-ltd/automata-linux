@@ -63,7 +63,13 @@ setup_workload_dir() {
     export ACTUAL_WORKLOAD_DIR
 
     # Source env from workload directory if present
-    if [[ -f "$ACTUAL_WORKLOAD_DIR/secrets/.env" ]]; then
+    # .env must be at workload root (next to docker-compose.yml) for podman-compose substitution
+    if [[ -f "$ACTUAL_WORKLOAD_DIR/.env" ]]; then
+        set -a
+        source "$ACTUAL_WORKLOAD_DIR/.env"
+        set +a
+    elif [[ -f "$ACTUAL_WORKLOAD_DIR/secrets/.env" ]]; then
+        # Legacy location fallback
         set -a
         source "$ACTUAL_WORKLOAD_DIR/secrets/.env"
         set +a
