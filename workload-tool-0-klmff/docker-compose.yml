@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:ratls-11
+    image: gcr.io/constellation-458212/tool-node:ratls-12
     container_name: tool-node
     restart: unless-stopped
     ports:
@@ -53,7 +53,6 @@ services:
       --http.api=tool,eth,debug,admin,net,web3
       --ws.api=tool,eth,debug,admin,net,web3
       --tee-internal-agent-url=http://host.docker.internal:7999
-      --tee-external-agent-url=https://host.docker.internal:8000
       --relay.beacon-endpoints=http://lighthouse:5052
       --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
 
