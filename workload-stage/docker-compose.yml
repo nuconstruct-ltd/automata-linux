@@ -138,9 +138,9 @@ services:
       - /data/data-disk/vmagent:/vmagentdata
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     command:
-      - "-remoteWrite.url=https://prometheus-rw.dev.nuconstruct.xyz/api/v1/write"
-      - "-remoteWrite.basicAuth.username=vmagent"
-      - "-remoteWrite.basicAuth.password=ed71867b145ce92b830cb75dc95c04563da2fb553cbfbefb"
+      - "-remoteWrite.url=https://${METRICS_HOST}/api/v1/write"
+      - "-remoteWrite.basicAuth.username=${METRICS_USER}"
+      - "-remoteWrite.basicAuth.password=${METRICS_PASSWORD}"
       - "-remoteWrite.tmpDataPath=/vmagentdata"
       - "-remoteWrite.maxDiskUsagePerURL=128MB"
 
@@ -153,15 +153,14 @@ services:
       - 8080:8080
       - 2200:2200
     volumes:
-      - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
-      - /data/data-disk/token_hash:/data/token_hash:ro
+      - /data:/data:ro
     environment:
       - TOOL_NODE_IP=172.20.0.102
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
       - API_KEY_HASH_PATH=/data/token_hash
       - AUTHRPC_URL=http://tool-node:8551
-      - JWT_SECRET_PATH=/node/jwtsecret
+      - JWT_SECRET_PATH=/data/data-disk/node/jwtsecret
       - CVM_AGENT_HOST=host.docker.internal
     extra_hosts:
       - "host.docker.internal:172.20.0.125"

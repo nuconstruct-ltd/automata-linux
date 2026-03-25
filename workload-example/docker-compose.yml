@@ -1,10 +1,94 @@
+version: "3.8"
+
 networks:
+  node_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
   monitoring:
     driver: bridge
 
 services:
+  tool-node:
+    image: ${TOOL_NODE_IMAGE:-gcr.io/constellation-458212/tool-node:latest}
+    container_name: tool-node
+    restart: unless-stopped
+    ports:
+      - 30303:30303/tcp
+      - 30303:30303/udp
+      - 6060:6060/tcp
+    expose:
+      - 8545
+      - 8546
+      - 8551
+    volumes:
+      - /data/data-disk/node:/node
+      - ./secrets/nodekey:/node/nodekey:ro
+      - ./secrets/leaders:/node/leaders:ro
+      - ./secrets/leaders.empty:/node/leaders.empty:ro
+    extra_hosts:
+      - "host.docker.internal:172.20.0.125"
+    networks:
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.102
+    command: >-
+      --mainnet
+      --config=default
+      --datadir=/node
+      --authrpc.jwtsecret=/node/jwtsecret
+      --nodekey=/node/nodekey
+      --history.chain=all
+      --history.blocks=${HISTORY_BLOCKS:-512}
+      --allow-unattested
+      --http.api=tool,eth
+      --ws.api=tool,eth
+      --relay.beacon-endpoints=http://lighthouse:5052
+      --relay.secret-key-hex=${RELAY_SECRET_KEY}
+
+  lighthouse:
+    image: ${LIGHTHOUSE_IMAGE:-docker.io/sigp/lighthouse:latest}
+    container_name: lighthouse
+    restart: unless-stopped
+    ports:
+      - 9000:9000/tcp
+      - 9000:9000/udp
+      - 5054:5054/tcp
+    expose:
+      - 5052
+    networks:
+      monitoring: {}
+      node_net:
+        ipv4_address: 172.20.0.103
+    volumes:
+      - /data/data-disk/node:/node
+    command: >-
+      lighthouse bn
+      --network=${NETWORK:-mainnet}
+      --datadir /node
+      --execution-jwt=/node/jwtsecret
+      --execution-endpoint=http://tool-node:8551
+      --disable-upnp
+      --disable-enr-auto-update
+      --enr-tcp-port=9000
+      --enr-udp-port=9000
+      --listen-address=0.0.0.0
+      --port=9000
+      --discovery-port=9000
+      --http
+      --http-address=0.0.0.0
+      --http-port=5052
+      --metrics
+      --metrics-address=0.0.0.0
+      --metrics-port=5054
+      --checkpoint-sync-url=${CHECKPOINT_SYNC_URL}
+      --always-prepare-payload
+      --prepare-payload-lookahead=12000
+      --suggested-fee-recipient=${FEE_RECIPIENT:-0x00000000000000000000000000000000DeaDBeef}
+
   node-exporter:
-    image: docker.io/prom/node-exporter:v1.9.1
+    image: ${NODE_EXPORTER_IMAGE:-docker.io/prom/node-exporter:v1.9.1}
     container_name: node-exporter
     restart: unless-stopped
     volumes:
@@ -12,12 +96,32 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     command:
-      - '--path.procfs=/host/proc'
-      - '--path.rootfs=/rootfs'
-      - '--path.sysfs=/host/sys'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
       - 9100:9100/tcp
+    networks:
+      - monitoring
+
+  promtail:
+    image: ${PROMTAIL_IMAGE:-docker.io/grafana/promtail:latest}
+    container_name: promtail
+    restart: unless-stopped
+    volumes:
+      - ./config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - ./config/promtail/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - ./secrets/identity.env:/etc/identity.env:ro
+      - /data/user:/data/user:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /data/data-disk/promtail:/data/promtail
+    environment:
+      - LOKI_HOST=${LOKI_HOST}
+      - LOKI_USER=${LOKI_USER}
+      - LOKI_PASSWORD=${LOKI_PASSWORD}
+    entrypoint: ["/bin/sh", "/etc/promtail/generate-targets.sh"]
+    command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     networks:
       - monitoring
 
@@ -39,3 +143,88 @@ services:
       - "-remoteWrite.basicAuth.password=${METRICS_PASSWORD}"
       - "-remoteWrite.tmpDataPath=/vmagentdata"
       - "-remoteWrite.maxDiskUsagePerURL=128MB"
+
+  controller:
+    image: ${CONTROLLER_IMAGE:-ghcr.io/nuconstruct-ltd/controller:latest}
+    container_name: controller
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8080:8080
+      - 2200:2200
+    volumes:
+      - /data:/data:ro
+    environment:
+      - TOOL_NODE_IP=172.20.0.102
+      - NODE_NET_SUBNET=172.20.0.0/24
+      - PORT=8080
+      - API_KEY_HASH_PATH=/data/token_hash
+      - AUTHRPC_URL=http://tool-node:8551
+      - JWT_SECRET_PATH=/data/data-disk/node/jwtsecret
+      - CVM_AGENT_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:172.20.0.125"
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.120
+
+  operator:
+    image: ${OPERATOR_IMAGE:-ghcr.io/nuconstruct-ltd/operator:latest}
+    container_name: operator
+    network_mode: "service:controller"
+    depends_on:
+      - controller
+    environment:
+      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+    volumes:
+      - /data/data-disk/operator:/root/app
+      - ./secrets/authorized_keys:/config/authorized_keys
+
+  cvm-agent-bridge:
+    image: docker.io/alpine/socat:latest
+    container_name: cvm-agent-bridge
+    network_mode: host
+    restart: unless-stopped
+    command: TCP-LISTEN:17999,fork,reuseaddr TCP:127.0.0.1:7999
+
+  cvm-agent-proxy:
+    image: docker.io/alpine/socat:latest
+    container_name: cvm-agent-proxy
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        socat TCP-LISTEN:7999,fork,reuseaddr TCP:host.docker.internal:17999 &
+        socat TCP-LISTEN:8000,fork,reuseaddr TCP:host.docker.internal:8000 &
+        socat TCP-LISTEN:17999,fork,reuseaddr TCP:host.docker.internal:17999
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.125
+
+  caddy:
+    image: ${CADDY_IMAGE:-docker.io/library/caddy:latest}
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/caddy/entrypoint.sh:/entrypoint.sh:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - CADDY_RPC_DOMAIN=${CADDY_RPC_DOMAIN:-}
+      - CADDY_CVM_DOMAIN=${CADDY_CVM_DOMAIN:-}
+      - CADDY_CONTROLLER_DOMAIN=${CADDY_CONTROLLER_DOMAIN:-}
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.121
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  caddy_data:
+  caddy_config:
