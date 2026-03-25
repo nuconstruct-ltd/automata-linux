@@ -41,7 +41,7 @@ services:
       node_net:
         ipv4_address: 172.20.0.102
     command: >-
-      --mainnet
+      --hoodi
       --config=default
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
@@ -74,7 +74,7 @@ services:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
-      --network=mainnet
+      --network=hoodi
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
@@ -91,7 +91,7 @@ services:
       --metrics
       --metrics-address=0.0.0.0
       --metrics-port=5054
-      --checkpoint-sync-url=https://mainnet.checkpoint.sigp.io
+      --checkpoint-sync-url=https://checkpoint-sync.hoodi.ethpandaops.io
       --always-prepare-payload
       --prepare-payload-lookahead=12000
       --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
