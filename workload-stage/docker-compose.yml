@@ -154,11 +154,12 @@ services:
       - 2200:2200
     volumes:
       - /data/data-disk/node/jwtsecret:/node/jwtsecret:ro
+      - /data/data-disk/token_hash:/data/token_hash:ro
     environment:
       - TOOL_NODE_IP=172.20.0.102
       - NODE_NET_SUBNET=172.20.0.0/24
       - PORT=8080
-      - CONTROLLER_API_KEY=67046f714315e9b2a852a67a8f13f860d0093d3033765aa20a4f046227e337e5
+      - API_KEY_HASH_PATH=/data/token_hash
       - AUTHRPC_URL=http://tool-node:8551
       - JWT_SECRET_PATH=/node/jwtsecret
       - CVM_AGENT_HOST=host.docker.internal

@@ -2,7 +2,7 @@ name: Build and Push Controller
 
 on:
   push:
-    branches: [main]
+    branches: [main, toolkit]
     paths:
       - "controller/**"
   workflow_dispatch:

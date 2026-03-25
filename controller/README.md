@@ -100,7 +100,8 @@ curl -X POST \
 | `TOOL_NODE_IP` | `172.20.0.10` | IP address of the Tool Node to allow/block |
 | `NODE_NET_SUBNET` | `172.20.0.0/24` | Subnet of the internal node network |
 | `PORT` | `8080` | Port the controller API listens on |
-| `CONTROLLER_API_KEY` | *(none)* | Bearer token for `POST /maintenance`. If unset, the endpoint rejects all requests. |
+| `API_KEY_HASH_PATH` | `/data/token_hash` | Path to file containing SHA-256 hash of the CVM API token. Used to validate Bearer tokens for `POST /maintenance`. Falls back to `CONTROLLER_API_KEY` env var if file is not found. |
+| `CONTROLLER_API_KEY` | *(none)* | (Fallback) Plaintext Bearer token for `POST /maintenance`. Only used if `API_KEY_HASH_PATH` file is not readable. |
 | `AUTHRPC_URL` | `http://172.20.0.10:8551` | Tool-node authenticated RPC endpoint |
 | `JWT_SECRET_PATH` | `/node/jwtsecret` | Path to shared JWT secret file (Engine API format, 32-byte hex) |
 

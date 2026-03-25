@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+use sha2::{Sha256, Digest};
 use tracing::{info, error, warn};
 
 #[derive(Clone)]
@@ -16,7 +17,7 @@ struct AppState {
     tool_node_ip: String,
     node_net_subnet: String,
     current_mode: Arc<Mutex<Mode>>,
-    api_key: Option<String>,
+    api_key_hash: Option<String>,
     authrpc_url: String,
     jwt_secret: [u8; 32],
 }
@@ -57,9 +58,7 @@ async fn main() -> anyhow::Result<()> {
     let tool_node_ip = std::env::var("TOOL_NODE_IP").unwrap_or_else(|_| "172.20.0.10".to_string());
     let node_net_subnet = std::env::var("NODE_NET_SUBNET").unwrap_or_else(|_| "172.20.0.0/24".to_string());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8080".to_string());
-    let api_key = std::env::var("CONTROLLER_API_KEY")
-        .ok()
-        .filter(|k| !k.is_empty());
+    let api_key_hash = read_api_key_hash();
     let authrpc_url = std::env::var("AUTHRPC_URL")
         .unwrap_or_else(|_| "http://172.20.0.10:8551".to_string());
     let jwt_secret_path = std::env::var("JWT_SECRET_PATH")
@@ -68,10 +67,10 @@ async fn main() -> anyhow::Result<()> {
     let jwt_secret = read_jwt_secret(&jwt_secret_path);
 
     info!("Starting Controller");
-    if api_key.is_some() {
-        info!("API key configured - POST /maintenance endpoint enabled");
+    if api_key_hash.is_some() {
+        info!("API key hash loaded - POST /maintenance endpoint enabled");
     } else {
-        info!("No CONTROLLER_API_KEY set - POST /maintenance endpoint will reject all requests");
+        info!("No API key hash found - POST /maintenance endpoint will reject all requests");
     }
     info!("Tool Node IP: {}", tool_node_ip);
     info!("Node Net Subnet: {}", node_net_subnet);
@@ -88,7 +87,7 @@ async fn main() -> anyhow::Result<()> {
         tool_node_ip: tool_node_ip.clone(),
         node_net_subnet: node_net_subnet.clone(),
         current_mode: Arc::new(Mutex::new(Mode::ToolNodeOnly)),
-        api_key,
+        api_key_hash,
         authrpc_url,
         jwt_secret,
     };
@@ -105,6 +104,38 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+// --- API key hash (CVM API token) ---
+
+fn read_api_key_hash() -> Option<String> {
+    let path = std::env::var("API_KEY_HASH_PATH")
+        .unwrap_or_else(|_| "/data/token_hash".to_string());
+    match std::fs::read_to_string(&path) {
+        Ok(content) => {
+            let hash = content.trim().to_string();
+            if hash.is_empty() {
+                warn!("API key hash file at {} is empty", path);
+                None
+            } else {
+                info!("API key hash loaded from {}", path);
+                Some(hash)
+            }
+        }
+        Err(e) => {
+            warn!("Cannot read API key hash from {}: {}. Falling back to CONTROLLER_API_KEY env var.", path, e);
+            std::env::var("CONTROLLER_API_KEY")
+                .ok()
+                .filter(|k| !k.is_empty())
+        }
+    }
+}
+
+fn verify_api_key(provided_key: &str, stored_hash: &str) -> bool {
+    let mut hasher = Sha256::new();
+    hasher.update(provided_key.as_bytes());
+    let computed = format!("{:x}", hasher.finalize());
+    computed == stored_hash
 }
 
 // --- JWT + JSON-RPC for tool-node authrpc ---
@@ -345,8 +376,8 @@ async fn post_maintenance(
     headers: HeaderMap,
     Json(payload): Json<MaintenanceRequest>,
 ) -> (StatusCode, Json<MaintenanceResponse>) {
-    // Auth check: require CONTROLLER_API_KEY to be set and matched
-    match &state.api_key {
+    // Auth check: verify Bearer token against stored hash
+    match &state.api_key_hash {
         None => {
             return (
                 StatusCode::UNAUTHORIZED,
@@ -358,13 +389,13 @@ async fn post_maintenance(
                 }),
             );
         }
-        Some(expected_key) => {
+        Some(expected_hash) => {
             let auth_header = headers
                 .get("authorization")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("");
             let provided_key = auth_header.strip_prefix("Bearer ").unwrap_or("");
-            if provided_key != expected_key {
+            if !verify_api_key(provided_key, expected_hash) {
                 return (
                     StatusCode::UNAUTHORIZED,
                     Json(MaintenanceResponse {
