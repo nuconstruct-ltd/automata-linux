@@ -65,12 +65,12 @@ resolve_workload_source() {
         local clone_args=("--depth" "1")
         [[ -n "$GIT_REF" ]] && clone_args+=("--branch" "$GIT_REF")
 
-        echo "📦 Cloning workload from: $GIT_URL"
-        [[ -n "$GIT_REF" ]] && echo "   ref: $GIT_REF"
-        [[ -n "$GIT_PATH" ]] && echo "   path: $GIT_PATH"
+        echo "📦 Cloning workload from: $GIT_URL" >&2
+        [[ -n "$GIT_REF" ]] && echo "   ref: $GIT_REF" >&2
+        [[ -n "$GIT_PATH" ]] && echo "   path: $GIT_PATH" >&2
 
-        if ! git clone "${clone_args[@]}" "$GIT_URL" "$CLONE_TMPDIR" 2>&1; then
-            echo "❌ Failed to clone workload repository: $GIT_URL"
+        if ! git clone "${clone_args[@]}" "$GIT_URL" "$CLONE_TMPDIR" >&2 2>&1; then
+            echo "❌ Failed to clone workload repository: $GIT_URL" >&2
             rm -rf "$CLONE_TMPDIR"
             CLONE_TMPDIR=""
             exit 1
@@ -80,7 +80,7 @@ resolve_workload_source() {
         if [[ -n "$GIT_PATH" ]]; then
             local resolved="$CLONE_TMPDIR/$GIT_PATH"
             if [[ ! -d "$resolved" ]]; then
-                echo "❌ Path not found in repository: $GIT_PATH"
+                echo "❌ Path not found in repository: $GIT_PATH" >&2
                 rm -rf "$CLONE_TMPDIR"
                 CLONE_TMPDIR=""
                 exit 1
