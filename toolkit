@@ -166,6 +166,7 @@ usage() {
     echo "  download-build-provenance  Download SLSA build provenance from GitHub Release."
     echo "  verify-build-provenance    Verify SLSA build provenance for a disk image."
     echo "  update-disk              Update the workload on a specified disk file."
+    echo "  resize-disk              Resize a disk image to a specified size."
     echo "  get-logs                 Retrieve logs from a deployed CVM."
     echo "  cleanup                  Clean up resources for a specific Cloud Provider and VM Name."
     echo "  cleanup-local            Remove all locally downloaded disk images, build provenance, and artifacts."
@@ -220,9 +221,13 @@ usage() {
     echo "  [BUNDLE_FILE]  Optional: Path to build provenance bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
-    echo "  <WORKLOAD_DIR>           Path to the workload directory to copy into the disk (required)"
+    echo "  [WORKLOAD_DIR]           Path to the workload directory (optional, defaults to ./workload)"
     echo "  <DISK_PATH>              The path to your disk image."
     echo "  --disk-size <SIZE>       Expand disk image to SIZE (e.g., 8G, 10G). Default: auto-expand to fit workload."
+    echo ""
+    echo "Arguments for the 'resize-disk' command:"
+    echo "  <DISK_PATH>              The path to your disk image."
+    echo "  <SIZE>                   Target size (e.g., 8G, 10G, 8192M)."
     echo ""
     echo "Arguments for the 'update-workload' command:"
     echo "  <WORKLOAD_DIR>   Path to workload directory (required)"
@@ -643,14 +648,19 @@ case "$COMMAND" in
         ;;
 
     update-disk)
-        # Setup workload directory symlink
-        setup_workload_dir "${1:-}" "update-disk"
-        shift 1
-        trap cleanup_workload_dir EXIT
-
         DISK_FILE=""
         DISK_SIZE="${DISK_SIZE:-}"
+        HAS_WORKLOAD_ARG=false
 
+        # Check if first arg is a directory (workload) or file (disk)
+        if [[ -n "${1:-}" && -d "$1" ]]; then
+            setup_workload_dir "$1" "update-disk"
+            shift 1
+            trap cleanup_workload_dir EXIT
+            HAS_WORKLOAD_ARG=true
+        fi
+
+        # Parse remaining args
         while [[ "$#" -gt 0 ]]; do
             case "$1" in
                 --disk-size) DISK_SIZE=$2; shift 2 ;;
@@ -666,18 +676,59 @@ case "$COMMAND" in
 
         if [[ -z "$DISK_FILE" ]]; then
             echo "❌ Please provide the disk file path."
-            echo "❌ Usage: $0 update-disk <WORKLOAD_DIR> <DISK_PATH> [--disk-size NGB]"
+            echo "❌ Usage: $0 update-disk [WORKLOAD_DIR] <DISK_PATH> [--disk-size NGB]"
             exit 1
         fi
+
         export DISK_SIZE
         echo "📀 Updating disk: $DISK_FILE"
-        echo "📁 Workload source: $ACTUAL_WORKLOAD_DIR"
+        if [[ "$HAS_WORKLOAD_ARG" == true ]]; then
+            echo "📁 Workload source: $ACTUAL_WORKLOAD_DIR"
+        else
+            echo "📁 Workload source: ./workload (default)"
+            # Set WORKLOAD_DIR for update_disk.sh when using default
+            export WORKLOAD_DIR="./workload"
+        fi
         if [[ -n "$DISK_SIZE" ]]; then
             echo "📏 Target disk size: $DISK_SIZE"
         fi
         cd "$DISK_DIR"
         "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
-        cleanup_workload_dir
+        [[ "$HAS_WORKLOAD_ARG" == true ]] && cleanup_workload_dir
+        ;;
+
+    resize-disk)
+        DISK_FILE=""
+        DISK_SIZE=""
+
+        # Parse args: accept both positional and --disk-size flag
+        while [[ "$#" -gt 0 ]]; do
+            case "$1" in
+                --disk-size) DISK_SIZE="$2"; shift 2 ;;
+                *)
+                    if [[ -z "$DISK_FILE" ]]; then
+                        DISK_FILE="$1"; shift 1
+                    elif [[ -z "$DISK_SIZE" ]]; then
+                        DISK_SIZE="$1"; shift 1
+                    else
+                        echo "Unknown argument: $1"; usage
+                    fi
+                    ;;
+            esac
+        done
+
+        if [[ -z "$DISK_FILE" || -z "$DISK_SIZE" ]]; then
+            echo "❌ Please provide the disk file path and target size."
+            echo "❌ Usage: $0 resize-disk <DISK_PATH> <SIZE>"
+            echo "❌    or: $0 resize-disk <DISK_PATH> --disk-size <SIZE>"
+            exit 1
+        fi
+
+        echo "📀 Resizing disk: $DISK_FILE"
+        echo "📏 Target size: $DISK_SIZE"
+        cd "$DISK_DIR"
+        # Unset WORKLOAD_DIR to trigger resize-only mode
+        WORKLOAD_DIR="" DISK_SIZE="$DISK_SIZE" "$SCRIPT_DIR/update_disk.sh" "$DISK_FILE"
         ;;
 
     get-logs)

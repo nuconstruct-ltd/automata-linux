@@ -2,8 +2,8 @@
 
 # Detect script directory - this is where all the scripts live
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-# Workload directory - passed from parent or default to current directory
-WORKLOAD_DIR="${WORKLOAD_DIR:-$(pwd)/workload}"
+# Workload directory - passed from parent, empty means resize-only mode
+WORKLOAD_DIR="${WORKLOAD_DIR:-}"
 
 set -euo pipefail
 
@@ -64,7 +64,15 @@ multipass exec "$VM_NAME" -- bash -c "
   rm -rf $VM_PROJECT_PATH
   mkdir -p $VM_PROJECT_PATH
 "
-multipass transfer -r "$SCRIPT_DIR/" "$WORKLOAD_DIR/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
+
+# Transfer scripts and disk; only transfer workload if provided
+if [[ -n "$WORKLOAD_DIR" && -d "$WORKLOAD_DIR" ]]; then
+  multipass transfer -r "$SCRIPT_DIR/" "$WORKLOAD_DIR/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
+  VM_WORKLOAD_DIR="$VM_PROJECT_PATH/workload"
+else
+  multipass transfer -r "$SCRIPT_DIR/" "$DISK_FILE" "$VM_NAME:$VM_PROJECT_PATH"
+  VM_WORKLOAD_DIR=""
+fi
 
 # Step 7: Run update logic inside VM
 echo "🛠️ Running update logic inside VM..."
@@ -72,7 +80,7 @@ multipass exec "$VM_NAME" -- bash -c "
   set -euo pipefail
   cd $VM_PROJECT_PATH
   export SCRIPT_DIR=$VM_PROJECT_PATH/scripts
-  export WORKLOAD_DIR=$VM_PROJECT_PATH/workload
+  export WORKLOAD_DIR='$VM_WORKLOAD_DIR'
   export DISK_SIZE='${DISK_SIZE:-}'
   chmod +x \$SCRIPT_DIR/update_disk_locally.sh
   echo '▶️ Running: \$SCRIPT_DIR/update_disk_locally.sh $DISK_FILENAME'
@@ -90,7 +98,7 @@ echo "After:  $AFTER_SUM"
 
 # Step 10: Compare
 if [[ "$BEFORE_SUM" == "$AFTER_SUM" ]]; then
-  echo "❌ No change — update failed!"
+  echo "⚠️  No change — disk unchanged (may be expected if already at target size)"
 else
   echo "✅ Disk successfully updated!"
 fi

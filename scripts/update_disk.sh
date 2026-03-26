@@ -2,8 +2,8 @@
 
 # Use SCRIPT_DIR from environment, or detect from this script's location
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-# Workload directory - passed from parent or default to current directory
-WORKLOAD_DIR="${WORKLOAD_DIR:-$(pwd)/workload}"
+# Workload directory - passed from parent, empty means resize-only mode
+WORKLOAD_DIR="${WORKLOAD_DIR:-}"
 
 # Export for child scripts
 export SCRIPT_DIR WORKLOAD_DIR

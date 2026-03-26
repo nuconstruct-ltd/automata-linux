@@ -25,16 +25,25 @@ trap 'exit 1' INT HUP TERM
 
 populate() {
     local DISK="$1"
+    local WORKLOAD_FOLDER="${WORKLOAD_DIR:-}"
+    local RESIZE_ONLY=false
+
+    # Determine mode: resize-only if no workload dir specified
+    if [ -z "$WORKLOAD_FOLDER" ] || [ ! -d "$WORKLOAD_FOLDER" ]; then
+        RESIZE_ONLY=true
+        if [ -z "${DISK_SIZE:-}" ]; then
+            echo "❌ No workload directory and no --disk-size specified. Nothing to do."
+            exit 1
+        fi
+    fi
 
     # Mount the disk onto a loop device
     LOOP_DEV=$(sudo losetup -fP --show "$DISK")
     lsblk $LOOP_DEV
 
-    # Check that disk has the right partitioning before reloading workload
+    # Check that disk has the right partitioning
     PART_COUNT=$(lsblk -l $LOOP_DEV | grep -E "^\s*$(basename "$LOOP_DEV")p[0-9]+" | wc -l)
     if [ "$PART_COUNT" -eq 3 ]; then
-        # Reload workload
-        WORKLOAD_FOLDER="${WORKLOAD_DIR:-./workload}"
         echo "⌛ Mounting disk partition..."
         mkdir -p /tmp/data
         sudo mount ${LOOP_DEV}p3 /tmp/data
@@ -73,6 +82,14 @@ populate() {
             else
                 echo "📏 Disk already ${CURRENT_MB}MB >= target ${TARGET_MB}MB, no expansion needed."
             fi
+        fi
+
+        # --- Resize-only mode: skip workload operations ---
+        if [ "$RESIZE_ONLY" = true ]; then
+            sync
+            sudo umount ${LOOP_DEV}p3
+            echo "✅ Disk resize complete!"
+            return
         fi
 
         # --- Auto-expand p3 if workload won't fit (only when --disk-size not specified) ---
