@@ -21,6 +21,7 @@ _artifacts/*
 macos-arm64.tar.gz
 *.tar
 .env
+!workload-example/.env
 *.raw
 *.zip
 secure_boot

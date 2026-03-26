@@ -24,8 +24,79 @@ export TOOLS_DIR
 WORKLOAD_DIR="./workload"
 export WORKLOAD_DIR
 
+# Temp directory for git clones (cleaned up on exit)
+CLONE_TMPDIR=""
+
+# Parse a git URL with optional ?ref=...&path=... query parameters
+# Sets: GIT_URL, GIT_REF, GIT_PATH
+parse_git_url() {
+    local input="$1"
+    GIT_URL="" GIT_REF="" GIT_PATH=""
+
+    # Split on '?' to get base URL and query params
+    local base="${input%%\?*}"
+    local query=""
+    [[ "$input" == *"?"* ]] && query="${input#*\?}"
+
+    GIT_URL="$base"
+
+    # Parse query params (ref=..., path=...)
+    if [[ -n "$query" ]]; then
+        IFS='&' read -ra params <<< "$query"
+        for param in "${params[@]}"; do
+            case "$param" in
+                ref=*) GIT_REF="${param#ref=}" ;;
+                path=*) GIT_PATH="${param#path=}" ;;
+            esac
+        done
+    fi
+}
+
+# Resolve workload source: git URL or local path
+# If git URL detected, clones to temp dir and returns the local path
+resolve_workload_source() {
+    local source="$1"
+
+    # Detect git URLs
+    if [[ "$source" =~ ^(git@|https://|http://|ssh://) ]]; then
+        parse_git_url "$source"
+
+        CLONE_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/workload-XXXXXX")
+        local clone_args=("--depth" "1")
+        [[ -n "$GIT_REF" ]] && clone_args+=("--branch" "$GIT_REF")
+
+        echo "📦 Cloning workload from: $GIT_URL"
+        [[ -n "$GIT_REF" ]] && echo "   ref: $GIT_REF"
+        [[ -n "$GIT_PATH" ]] && echo "   path: $GIT_PATH"
+
+        if ! git clone "${clone_args[@]}" "$GIT_URL" "$CLONE_TMPDIR" 2>&1; then
+            echo "❌ Failed to clone workload repository: $GIT_URL"
+            rm -rf "$CLONE_TMPDIR"
+            CLONE_TMPDIR=""
+            exit 1
+        fi
+
+        # If path specified, use subdirectory within clone
+        if [[ -n "$GIT_PATH" ]]; then
+            local resolved="$CLONE_TMPDIR/$GIT_PATH"
+            if [[ ! -d "$resolved" ]]; then
+                echo "❌ Path not found in repository: $GIT_PATH"
+                rm -rf "$CLONE_TMPDIR"
+                CLONE_TMPDIR=""
+                exit 1
+            fi
+            echo "$resolved"
+        else
+            echo "$CLONE_TMPDIR"
+        fi
+    else
+        echo "$source"
+    fi
+}
+
 # Validate and setup workload directory symlink
 # Sets ACTUAL_WORKLOAD_DIR to absolute path and creates symlink at ./workload
+# Accepts local paths or git URLs (https://...?ref=main&path=subdir)
 setup_workload_dir() {
     local dir_arg="$1"
     local cmd_name="$2"
@@ -33,9 +104,13 @@ setup_workload_dir() {
     # Check argument is provided
     if [[ -z "$dir_arg" || "${dir_arg:0:2}" == "--" ]]; then
         echo "❌ WORKLOAD_DIR is required as the first argument."
-        echo "❌ Usage: $0 $cmd_name <WORKLOAD_DIR> [options]"
+        echo "❌ Usage: $0 $cmd_name <WORKLOAD_DIR|GIT_URL> [options]"
+        echo "   Git URL format: https://github.com/org/repo.git?ref=main&path=subdir"
         exit 1
     fi
+
+    # Resolve git URL to local path if needed
+    dir_arg=$(resolve_workload_source "$dir_arg")
 
     # Validate directory exists
     if [[ ! -d "$dir_arg" ]]; then
@@ -62,19 +137,72 @@ setup_workload_dir() {
     # Export for child scripts that need the real path (e.g., file transfers)
     export ACTUAL_WORKLOAD_DIR
 
-    # Source env from workload directory if present
-    if [[ -f "$ACTUAL_WORKLOAD_DIR/secrets/.env" ]]; then
+    # Source toolkit deployment params if present (NOT .env — that's for compose)
+    if [[ -f "$ACTUAL_WORKLOAD_DIR/secrets/toolkit.env" ]]; then
         set -a
-        source "$ACTUAL_WORKLOAD_DIR/secrets/.env"
+        source "$ACTUAL_WORKLOAD_DIR/secrets/toolkit.env"
         set +a
     fi
 }
 
-# Cleanup workload symlink
+# Cleanup workload symlink and temp clone directory
 cleanup_workload_dir() {
     if [[ -L "$WORKLOAD_DIR" ]]; then
         rm -f "$WORKLOAD_DIR"
     fi
+    if [[ -n "$CLONE_TMPDIR" && -d "$CLONE_TMPDIR" ]]; then
+        rm -rf "$CLONE_TMPDIR"
+        CLONE_TMPDIR=""
+    fi
+}
+
+# Download image archives listed in secrets/images.json
+# Each entry has: name (filename), url (download URL), sha256 (optional checksum)
+# Archives are placed in the workload root for cvm-agent to auto-load at runtime.
+download_image_archives() {
+    local workload_dir="$1"
+    local manifest="$workload_dir/secrets/images.json"
+    [[ ! -f "$manifest" ]] && return 0
+
+    local count
+    count=$(jq '.images | length' "$manifest")
+    [[ "$count" -eq 0 ]] && return 0
+
+    echo "📦 Downloading image archives ($count)..."
+    for ((i=0; i<count; i++)); do
+        local name url sha256
+        name=$(jq -r ".images[$i].name" "$manifest")
+        url=$(jq -r ".images[$i].url" "$manifest")
+        sha256=$(jq -r ".images[$i].sha256 // empty" "$manifest")
+        local target="$workload_dir/$name"
+
+        if [[ -f "$target" ]]; then
+            echo "   ✅ Already exists: $name"
+            continue
+        fi
+
+        echo "   ⬇️  Downloading: $name"
+        if ! curl -fSL "$url" -o "$target"; then
+            echo "❌ Failed to download: $url"
+            rm -f "$target"
+            exit 1
+        fi
+
+        if [[ -n "$sha256" ]]; then
+            local actual
+            if command -v sha256sum &> /dev/null; then
+                actual=$(sha256sum "$target" | awk '{print $1}')
+            else
+                actual=$(shasum -a 256 "$target" | awk '{print $1}')
+            fi
+            if [[ "$actual" != "$sha256" ]]; then
+                echo "❌ Checksum mismatch for $name (expected: $sha256, got: $actual)"
+                rm -f "$target"
+                exit 1
+            fi
+            echo "   ✅ Checksum verified: $name"
+        fi
+    done
 }
 
 # Generate identity.env in the workload secrets directory.
@@ -106,7 +234,7 @@ EOF
 # ============================================================================
 check_and_install_dependencies() {
     local missing=()
-    local deps=("curl" "jq" "unzip" "openssl")
+    local deps=("curl" "jq" "unzip" "openssl" "git")
 
     for dep in "${deps[@]}"; do
         if ! command -v "$dep" &> /dev/null; then
@@ -174,8 +302,15 @@ usage() {
     echo "  sign-livepatch           Sign a livepatch file."
     echo "  livepatch                Deploy a kernel livepatch to a deployed CVM."
     echo ""
+    echo "Workload source:"
+    echo "  WORKLOAD_DIR can be a local path or a git URL:"
+    echo "    ./my-workload                                         Local directory"
+    echo "    https://github.com/org/repo.git                       Git repo (HEAD, root)"
+    echo "    https://github.com/org/repo.git?ref=main              Git repo with branch/tag"
+    echo "    git@github.com:org/repo.git?ref=v1.0&path=workload    Git repo with ref and subdirectory"
+    echo ""
     echo "Arguments for 'deploy-azure' command:"
-    echo "  <WORKLOAD_DIR>              Path to workload directory (required, .env file will be sourced if present)"
+    echo "  <WORKLOAD_DIR>              Path or git URL to workload directory (required)"
     echo "Optional:"
     echo "  --resource_group <group>    The resource group for the deployment. Default: randomly generated"
     echo "  --storage_account <name>    The name of a custom storage account. Default: randomly generated"
@@ -188,7 +323,7 @@ usage() {
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
     echo "Arguments for 'deploy-gcp' command:"
-    echo "  <WORKLOAD_DIR>              Path to workload directory (required, .env file will be sourced if present)"
+    echo "  <WORKLOAD_DIR>              Path or git URL to workload directory (required)"
     echo "Optional:"
     echo "  --project_id <id>           The project id for the deployment. Default: the default gcloud project"
     echo "  --bucket <name>             The name of a gcp bucket to store the vm image to. Default: randomly generated"
@@ -201,7 +336,7 @@ usage() {
     echo "  --disk-size                 The data disk size. Default: 10 GB"
     echo ""
     echo "Arguments for 'deploy-aws' command:"
-    echo "  <WORKLOAD_DIR>              Path to workload directory (required, .env file will be sourced if present)"
+    echo "  <WORKLOAD_DIR>              Path or git URL to workload directory (required)"
     echo "Optional:"
     echo "  --bucket <name>             The name of an AWS bucket to store the vm image to. Default: randomly generated"
     echo "  --additional_ports <ports>  Comma-separated list of additional ports to open (e.g., \"80,443\"). Default: None"
@@ -220,12 +355,12 @@ usage() {
     echo "  [BUNDLE_FILE]  Optional: Path to build provenance bundle (defaults to <DISK_FILE>.bundle)"
     echo ""
     echo "Arguments for the 'update-disk' command:"
-    echo "  <WORKLOAD_DIR>           Path to the workload directory to copy into the disk (required)"
+    echo "  <WORKLOAD_DIR>           Path or git URL to the workload directory (required)"
     echo "  <DISK_PATH>              The path to your disk image."
     echo "  --disk-size <SIZE>       Expand disk image to SIZE (e.g., 8G, 10G). Default: auto-expand to fit workload."
     echo ""
     echo "Arguments for the 'update-workload' command:"
-    echo "  <WORKLOAD_DIR>   Path to workload directory (required)"
+    echo "  <WORKLOAD_DIR>   Path or git URL to workload directory (required)"
     echo "  <CSP>            The cloud service provider (aws, gcp, azure)"
     echo "  <VM_NAME>        The name of the virtual machine to update"
     echo ""
@@ -267,8 +402,9 @@ case "$COMMAND" in
         setup_workload_dir "${1:-}" "deploy-aws"
         shift 1
         trap cleanup_workload_dir EXIT
+        download_image_archives "$ACTUAL_WORKLOAD_DIR"
 
-        # Default values (env vars from .env take precedence over hardcoded defaults)
+        # Default values (env vars from toolkit.env take precedence over hardcoded defaults)
         VM_NAME="${VM_NAME:-cvm-test}"
         BUCKET="${BUCKET:-}"
         REGION="${REGION:-us-east-2}"
@@ -346,6 +482,7 @@ case "$COMMAND" in
         setup_workload_dir "${1:-}" "deploy-gcp"
         shift 1
         trap cleanup_workload_dir EXIT
+        download_image_archives "$ACTUAL_WORKLOAD_DIR"
 
         # Auto-populate SSH_PUBLIC_KEY from SSH_PUBLIC_KEY_FILE if not set
         if [[ -z "${SSH_PUBLIC_KEY:-}" && -n "${SSH_PUBLIC_KEY_FILE:-}" ]]; then
@@ -485,6 +622,7 @@ case "$COMMAND" in
         setup_workload_dir "${1:-}" "deploy-azure"
         shift 1
         trap cleanup_workload_dir EXIT
+        download_image_archives "$ACTUAL_WORKLOAD_DIR"
 
         # Default values (env vars from .env take precedence over hardcoded defaults)
         VM_NAME="${VM_NAME:-cvm-test}"
@@ -593,6 +731,7 @@ case "$COMMAND" in
         setup_workload_dir "${1:-}" "update-workload"
         shift 1
         trap cleanup_workload_dir EXIT
+        download_image_archives "$ACTUAL_WORKLOAD_DIR"
 
         CSP="${1:-}"; shift 1 || true
         VM_NAME="${1:-}"; shift 1 || true
@@ -647,6 +786,7 @@ case "$COMMAND" in
         setup_workload_dir "${1:-}" "update-disk"
         shift 1
         trap cleanup_workload_dir EXIT
+        download_image_archives "$ACTUAL_WORKLOAD_DIR"
 
         DISK_FILE=""
         DISK_SIZE="${DISK_SIZE:-}"

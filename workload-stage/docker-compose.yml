@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node-mev:mev
+    image: ${TOOL_NODE_IMAGE}
     container_name: tool-node
     restart: unless-stopped
     ports:
@@ -34,21 +34,21 @@ services:
       node_net:
         ipv4_address: 172.20.0.102
     command: >-
-      --hoodi
+      --${NETWORK:-mainnet}
       --config=default
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
       --nodekey=/node/nodekey
-      --history.chain=all
-      --history.blocks=512
+      --history.chain=${HISTORY_CHAIN:-all}
+      --history.blocks=${HISTORY_BLOCKS:-512}
       --allow-unattested
       --http.api=tool,mev
       --ws.api=tool,mev
       --relay.beacon-endpoints=http://lighthouse:5052
-      --relay.secret-key-hex=28c3cd61b687fdd03488e167a5d84f50269df2a4c29a2cfb1390903aa775c5d0
+      --relay.secret-key-hex=${RELAY_SECRET_KEY}
 
   lighthouse:
-    image: docker.io/sigp/lighthouse:latest
+    image: ${LIGHTHOUSE_IMAGE}
     container_name: lighthouse
     restart: unless-stopped
     ports:
@@ -65,7 +65,7 @@ services:
       - /data/data-disk/node:/node
     command: >-
       lighthouse bn
-      --network=hoodi
+      --network=${NETWORK:-mainnet}
       --datadir /node
       --execution-jwt=/node/jwtsecret
       --execution-endpoint=http://tool-node:8551
@@ -82,13 +82,13 @@ services:
       --metrics
       --metrics-address=0.0.0.0
       --metrics-port=5054
-      --checkpoint-sync-url=https://checkpoint-sync.hoodi.ethpandaops.io
+      --checkpoint-sync-url=${CHECKPOINT_SYNC_URL}
       --always-prepare-payload
       --prepare-payload-lookahead=12000
-      --suggested-fee-recipient=0x00000000000000000000000000000000DeaDBeef
+      --suggested-fee-recipient=${FEE_RECIPIENT:-0x00000000000000000000000000000000DeaDBeef}
 
   node-exporter:
-    image: docker.io/prom/node-exporter:v1.9.1
+    image: ${NODE_EXPORTER_IMAGE}
     container_name: node-exporter
     restart: unless-stopped
     volumes:
@@ -106,33 +106,31 @@ services:
       - monitoring
 
   promtail:
-    image: docker.io/grafana/promtail:latest
+    image: ${PROMTAIL_IMAGE}
     container_name: promtail
     restart: unless-stopped
+    env_file: ./.env
     volumes:
       - ./config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
-      - ./config/promtail/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - ./config/scripts/promtail-entrypoint.sh:/etc/promtail/generate-targets.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/user:/data/user:ro
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
-    environment:
-      - LOKI_HOST=loki.dev.nuconstruct.xyz
-      - LOKI_USER=promtail
-      - LOKI_PASSWORD=bb8861bfb16258576c6bbbbb6357373f62f3ce516e2875a4
     entrypoint: ["/bin/sh", "/etc/promtail/generate-targets.sh"]
     command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     networks:
       - monitoring
 
   vmagent:
-    image: docker.io/victoriametrics/vmagent:v1.108.1
+    image: ${VMAGENT_IMAGE}
     container_name: vmagent
     restart: unless-stopped
+    env_file: ./.env
     network_mode: host
     volumes:
       - ./config/vmagent/vmagent.yml:/etc/vmagent/vmagent.yml:ro
-      - ./config/vmagent/entrypoint.sh:/entrypoint.sh:ro
+      - ./config/scripts/vmagent-entrypoint.sh:/entrypoint.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/data-disk:/data/data-disk
       - /data/data-disk/vmagent:/vmagentdata
@@ -145,7 +143,7 @@ services:
       - "-remoteWrite.maxDiskUsagePerURL=128MB"
 
   controller:
-    image: ghcr.io/nuconstruct-ltd/controller:latest
+    image: ${CONTROLLER_IMAGE}
     container_name: controller
     cap_add:
       - NET_ADMIN
@@ -169,13 +167,12 @@ services:
         ipv4_address: 172.20.0.120
 
   operator:
-    image: ghcr.io/nuconstruct-ltd/operator:latest
+    image: ${OPERATOR_IMAGE}
     container_name: operator
     network_mode: "service:controller"
     depends_on:
       - controller
-    environment:
-      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+    env_file: ./.env
     volumes:
       - /data/data-disk/operator:/root/app
       - ./secrets/authorized_keys:/config/authorized_keys
@@ -204,20 +201,17 @@ services:
         ipv4_address: 172.20.0.125
 
   caddy:
-    image: docker.io/library/caddy:latest
+    image: ${CADDY_IMAGE}
     container_name: caddy
     restart: unless-stopped
+    env_file: ./.env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./config/caddy/entrypoint.sh:/entrypoint.sh:ro
+      - ./config/scripts/caddy-entrypoint.sh:/entrypoint.sh:ro
       - caddy_data:/data
       - caddy_config:/config
-    environment:
-      - CADDY_RPC_DOMAIN=${CADDY_RPC_DOMAIN:-}
-      - CADDY_CVM_DOMAIN=${CADDY_CVM_DOMAIN:-}
-      - CADDY_CONTROLLER_DOMAIN=${CADDY_CONTROLLER_DOMAIN:-}
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     networks:
       node_net:

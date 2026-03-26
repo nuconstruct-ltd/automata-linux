@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: ${TOOL_NODE_IMAGE:-gcr.io/constellation-458212/tool-node:latest}
+    image: ${TOOL_NODE_IMAGE}
     container_name: tool-node
     restart: unless-stopped
     ports:
@@ -34,12 +34,12 @@ services:
       node_net:
         ipv4_address: 172.20.0.102
     command: >-
-      --mainnet
+      --${NETWORK:-mainnet}
       --config=default
       --datadir=/node
       --authrpc.jwtsecret=/node/jwtsecret
       --nodekey=/node/nodekey
-      --history.chain=all
+      --history.chain=${HISTORY_CHAIN:-all}
       --history.blocks=${HISTORY_BLOCKS:-512}
       --allow-unattested
       --http.api=tool,eth
@@ -48,7 +48,7 @@ services:
       --relay.secret-key-hex=${RELAY_SECRET_KEY}
 
   lighthouse:
-    image: ${LIGHTHOUSE_IMAGE:-docker.io/sigp/lighthouse:latest}
+    image: ${LIGHTHOUSE_IMAGE}
     container_name: lighthouse
     restart: unless-stopped
     ports:
@@ -88,7 +88,7 @@ services:
       --suggested-fee-recipient=${FEE_RECIPIENT:-0x00000000000000000000000000000000DeaDBeef}
 
   node-exporter:
-    image: ${NODE_EXPORTER_IMAGE:-docker.io/prom/node-exporter:v1.9.1}
+    image: ${NODE_EXPORTER_IMAGE}
     container_name: node-exporter
     restart: unless-stopped
     volumes:
@@ -106,33 +106,31 @@ services:
       - monitoring
 
   promtail:
-    image: ${PROMTAIL_IMAGE:-docker.io/grafana/promtail:latest}
+    image: ${PROMTAIL_IMAGE}
     container_name: promtail
     restart: unless-stopped
+    env_file: ./.env
     volumes:
       - ./config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
-      - ./config/promtail/generate-targets.sh:/etc/promtail/generate-targets.sh:ro
+      - ./config/scripts/promtail-entrypoint.sh:/etc/promtail/generate-targets.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/user:/data/user:ro
       - /run/log/journal:/run/log/journal:ro
       - /data/data-disk/promtail:/data/promtail
-    environment:
-      - LOKI_HOST=${LOKI_HOST}
-      - LOKI_USER=${LOKI_USER}
-      - LOKI_PASSWORD=${LOKI_PASSWORD}
     entrypoint: ["/bin/sh", "/etc/promtail/generate-targets.sh"]
     command: -config.file=/etc/promtail/promtail.yml -config.expand-env=true
     networks:
       - monitoring
 
   vmagent:
-    image: docker.io/victoriametrics/vmagent:v1.108.1
+    image: ${VMAGENT_IMAGE}
     container_name: vmagent
     restart: unless-stopped
+    env_file: ./.env
     network_mode: host
     volumes:
       - ./config/vmagent/vmagent.yml:/etc/vmagent/vmagent.yml:ro
-      - ./config/vmagent/entrypoint.sh:/entrypoint.sh:ro
+      - ./config/scripts/vmagent-entrypoint.sh:/entrypoint.sh:ro
       - ./secrets/identity.env:/etc/identity.env:ro
       - /data/data-disk:/data/data-disk
       - /data/data-disk/vmagent:/vmagentdata
@@ -145,7 +143,7 @@ services:
       - "-remoteWrite.maxDiskUsagePerURL=128MB"
 
   controller:
-    image: ${CONTROLLER_IMAGE:-ghcr.io/nuconstruct-ltd/controller:latest}
+    image: ${CONTROLLER_IMAGE}
     container_name: controller
     cap_add:
       - NET_ADMIN
@@ -169,13 +167,12 @@ services:
         ipv4_address: 172.20.0.120
 
   operator:
-    image: ${OPERATOR_IMAGE:-ghcr.io/nuconstruct-ltd/operator:latest}
+    image: ${OPERATOR_IMAGE}
     container_name: operator
     network_mode: "service:controller"
     depends_on:
       - controller
-    environment:
-      - SSH_PUBLIC_KEY=${SSH_PUBLIC_KEY:-}
+    env_file: ./.env
     volumes:
       - /data/data-disk/operator:/root/app
       - ./secrets/authorized_keys:/config/authorized_keys
@@ -204,20 +201,17 @@ services:
         ipv4_address: 172.20.0.125
 
   caddy:
-    image: ${CADDY_IMAGE:-docker.io/library/caddy:latest}
+    image: ${CADDY_IMAGE}
     container_name: caddy
     restart: unless-stopped
+    env_file: ./.env
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./config/caddy/entrypoint.sh:/entrypoint.sh:ro
+      - ./config/scripts/caddy-entrypoint.sh:/entrypoint.sh:ro
       - caddy_data:/data
       - caddy_config:/config
-    environment:
-      - CADDY_RPC_DOMAIN=${CADDY_RPC_DOMAIN:-}
-      - CADDY_CVM_DOMAIN=${CADDY_CVM_DOMAIN:-}
-      - CADDY_CONTROLLER_DOMAIN=${CADDY_CONTROLLER_DOMAIN:-}
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     networks:
       node_net:
