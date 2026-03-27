@@ -70,6 +70,25 @@ setup_workload_dir() {
     fi
 }
 
+# Load IP and TOKEN from artifacts for a given CSP and VM_NAME.
+# Sets IP and TOKEN in the caller's scope; exits on missing files.
+load_vm_credentials() {
+    local csp="$1"
+    local vm_name="$2"
+    local ip_file="$ARTIFACT_DIR/${csp}_${vm_name}_ip"
+    local token_file="$ARTIFACT_DIR/${csp}_${vm_name}_token"
+    if [[ ! -f "$ip_file" ]]; then
+        echo "❌ IP file not found: $ip_file"
+        exit 1
+    fi
+    if [[ ! -f "$token_file" ]]; then
+        echo "❌ Token file not found: $token_file"
+        exit 1
+    fi
+    IP=$(<"$ip_file")
+    TOKEN=$(<"$token_file")
+}
+
 # Cleanup workload symlink
 cleanup_workload_dir() {
     if [[ -L "$WORKLOAD_DIR" ]]; then
@@ -174,6 +193,9 @@ usage() {
     echo "  generate-livepatch-keys  Generate livepatch keys to use with the CVM."
     echo "  sign-livepatch           Sign a livepatch file."
     echo "  livepatch                Deploy a kernel livepatch to a deployed CVM."
+    echo "  enable-maintenance       Enable maintenance mode on a deployed CVM."
+    echo "  disable-maintenance      Disable maintenance mode on a deployed CVM."
+    echo "  get-mode                 Get the current mode of a deployed CVM."
     echo ""
     echo "Arguments for 'deploy-azure' command:"
     echo "  <WORKLOAD_DIR>              Path to workload directory (required, .env file will be sourced if present)"
@@ -255,6 +277,10 @@ usage() {
     echo "  <CSP>                The cloud provider (aws, gcp, azure)"
     echo "  <VM_NAME>            The name of the virtual machine"
     echo "  <PATH_TO_LIVEPATCH>  The path to the livepatch file (e.g., /path/to/livepatch.ko)"
+    echo ""
+    echo "Arguments for 'enable-maintenance', 'disable-maintenance', 'get-mode' commands:"
+    echo "  <CSP>          The cloud service provider (aws, gcp, azure)"
+    echo "  <VM_NAME>      The name of the virtual machine"
     echo ""
     exit 1
 }
@@ -838,6 +864,36 @@ case "$COMMAND" in
             exit 1
         fi
         "$SCRIPT_DIR/sign-and-verify.sh" "$SOURCE_IMAGE" "$TARGET_IMAGE" "$COSIGN_PRI" "$COSIGN_PUB"
+        ;;
+
+    enable-maintenance|disable-maintenance)
+        CSP=$1; shift 1
+        VM_NAME=$1; shift 1
+        if [[ -z "$CSP" || -z "$VM_NAME" ]]; then
+            echo "❌ Please provide the CSP (aws, gcp or azure) and VM name."
+            echo "❌ Usage: $0 $COMMAND <CSP> <VM_NAME>"
+            exit 1
+        fi
+        load_vm_credentials "$CSP" "$VM_NAME"
+        ACTION="${COMMAND%-*}"  # "enable" or "disable"
+        curl -H "Authorization: Bearer $TOKEN" \
+             -H "Content-Type: application/json" \
+             -d "{\"action\":\"$ACTION\"}" \
+             "http://$IP:8080/maintenance"
+        ;;
+
+    get-mode)
+        CSP=$1; shift 1
+        VM_NAME=$1; shift 1
+        if [[ -z "$CSP" || -z "$VM_NAME" ]]; then
+            echo "❌ Please provide the CSP (aws, gcp or azure) and VM name."
+            echo "❌ Usage: $0 get-mode <CSP> <VM_NAME>"
+            exit 1
+        fi
+        load_vm_credentials "$CSP" "$VM_NAME"
+        curl -H "Authorization: Bearer $TOKEN" \
+             -H "Content-Type: application/json" \
+             "http://$IP:8080/mode"
         ;;
 
     *)
