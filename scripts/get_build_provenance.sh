@@ -187,7 +187,7 @@ if [[ -d "build-provenance" ]] || [[ -f "aws_disk.vmdk.bundle" ]]; then
   ls -lh *.bundle 2>/dev/null || ls -lh build-provenance/*.bundle 2>/dev/null || true
   echo ""
   echo "🔐 To verify build provenance:"
-  echo "   ./atakit verify-build-provenance aws_disk.vmdk"
+  echo "   ./toolkit verify-build-provenance aws_disk.vmdk"
   echo ""
   echo "📖 For detailed documentation, see:"
   echo "   docs/ATTESTATION_VERIFICATION.md"

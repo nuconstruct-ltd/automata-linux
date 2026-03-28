@@ -1,6 +1,6 @@
 #!/bin/bash
 VM_NAME=$1
-ARTIFACT_DIR="${2:-_artifacts}"  # Artifact directory (passed from atakit)
+ARTIFACT_DIR="${2:-_artifacts}"  # Artifact directory (passed from toolkit)
 
 # quit when any error occurs
 set -Eeuo pipefail

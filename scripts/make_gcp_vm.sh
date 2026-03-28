@@ -7,8 +7,7 @@ ADDITIONAL_PORTS=$6
 IP=$7
 DATA_DISK="$8"          # Optional disk name
 DISK_SIZE_GB="$9"       # Optional disk size (for new disk)
-ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from atakit)
-BOOT_DISK_SIZE_GB="${11}"
+ARTIFACT_DIR="${10:-_artifacts}"  # Artifact directory (passed from toolkit)
 
 
 
@@ -28,10 +27,10 @@ set -e
 set -x
 
 # Create bucket if it does not exist
-if ! gcloud storage ls "gs://$BUCKET" >/dev/null 2>&1; then
+if ! gsutil ls -b "gs://$BUCKET" >/dev/null 2>&1; then
   echo "Bucket gs://$BUCKET does not exist, creating it..."
   BUCKET_REGION=$(echo "$ZONE" | sed 's/-[a-z]$//')
-  if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION" --project="$PROJECT_ID"; then
+  if gcloud storage buckets create "gs://$BUCKET" --location="$BUCKET_REGION"; then
     echo "Bucket '$BUCKET' created successfully."
   else
     echo "Failed to create bucket '$BUCKET'."
@@ -40,7 +39,7 @@ if ! gcloud storage ls "gs://$BUCKET" >/dev/null 2>&1; then
 fi
 
 # Copy the image to bucket and create image
-gcloud storage cp $COMPRESSED_FILE gs://$BUCKET/$UPLOADED_COMPRESSED_FILE
+gsutil cp $COMPRESSED_FILE gs://$BUCKET/$UPLOADED_COMPRESSED_FILE
 
 LOCATION="asia"
 if [[ "$ZONE" == *eu* ]]; then
@@ -108,7 +107,7 @@ fi
 
 ADDITIONAL_ARGS=""
 if [[ -n "$IP" ]]; then
-  ADDITIONAL_ARGS="--address=$IP "
+  ADDITIONAL_ARGS="--address=$IP --network-tier=STANDARD "
 fi
 
 # Check if disk exists and create or attach
@@ -132,7 +131,7 @@ if [[ -n "$DATA_DISK" ]]; then
       # Create SSD disk from snapshot
       gcloud compute disks create "$NEW_DISK" \
           --source-snapshot="$SNAP_NAME" \
-          --type=pd-ssd \
+          --type=pd-balanced \
           --zone="$ZONE" \
           --project="$PROJECT_ID"
 
@@ -153,13 +152,13 @@ if [[ -n "$DATA_DISK" ]]; then
     echo "Creating and attaching new disk $DATA_DISK (${SIZE}GB)"
     gcloud compute disks create "$DATA_DISK" \
         --size="$SIZE" \
-        --type=pd-ssd \
+        --type=pd-balanced \
         --zone="$ZONE" \
         --project="$PROJECT_ID"
   fi
 
   # Final attach args (either original or converted disk)
-  ADDITIONAL_ARGS+=" --disk=name=$DATA_DISK,auto-delete=no,boot=no"
+  ADDITIONAL_ARGS="--disk=name=$DATA_DISK,auto-delete=no,boot=no"
 fi
 # create the vm
 gcloud compute instances create $VM_NAME \
@@ -179,7 +178,6 @@ gcloud compute instances create $VM_NAME \
 
 PUBLIC_IP=$(gcloud compute instances describe "$VM_NAME" \
   --zone="$ZONE" \
-  --project="$PROJECT_ID" \
   --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
 
 echo "Public IP: $PUBLIC_IP"
