@@ -16,9 +16,14 @@ pub struct ResolvedWorkload {
 }
 
 /// Resolve the workload source: custom dir or embedded template.
+/// `ip` is passed when known (e.g., during update) for identity.env.
 pub fn resolve(config: &Config) -> Result<ResolvedWorkload> {
+    resolve_with_ip(config, None)
+}
+
+/// Resolve workload with a known IP address (for update command).
+pub fn resolve_with_ip(config: &Config, ip: Option<&str>) -> Result<ResolvedWorkload> {
     if let Some(ref workload_dir) = config.workload_dir {
-        // User specified a custom workload directory
         let path = PathBuf::from(workload_dir);
         if !path.exists() {
             bail!("Workload directory not found: {}", path.display());
@@ -29,10 +34,8 @@ pub fn resolve(config: &Config) -> Result<ResolvedWorkload> {
 
         info!(path = %path.display(), "Using custom workload directory");
 
-        // Write .env from config
         write_dotenv(config, &path)?;
-
-        // Copy image tars and secret files
+        write_identity_env(config, &path, ip)?;
         copy_image_tars(config, &path)?;
         copy_secret_files(config, &path)?;
 
@@ -41,19 +44,14 @@ pub fn resolve(config: &Config) -> Result<ResolvedWorkload> {
             _temp_dir: None,
         })
     } else {
-        // Use embedded template
         info!("Using built-in workload template");
 
         let temp_dir = TempDir::new().context("Failed to create temp directory")?;
         let workload_path = temp_dir.path().to_path_buf();
 
-        // Write embedded template files (resolves {{IMAGE}} placeholders)
         templates::write_all(&workload_path, config)?;
-
-        // Write .env from config
         write_dotenv(config, &workload_path)?;
-
-        // Copy image tars and secret files
+        write_identity_env(config, &workload_path, ip)?;
         copy_image_tars(config, &workload_path)?;
         copy_secret_files(config, &workload_path)?;
 
@@ -116,5 +114,28 @@ fn write_dotenv(config: &Config, workload_dir: &Path) -> Result<()> {
     fs::write(&env_path, &content)
         .with_context(|| format!("Failed to write .env to {}", env_path.display()))?;
     info!(path = %env_path.display(), "Generated .env file");
+    Ok(())
+}
+
+/// Write identity.env for promtail/vmagent (VM_NAME, CSP, REGION, PUBLIC_IP).
+/// Cloud metadata is unreachable from TDX VMs, so we provision this at deploy time.
+fn write_identity_env(config: &Config, workload_dir: &Path, ip: Option<&str>) -> Result<()> {
+    let secrets_dir = workload_dir.join("secrets");
+    fs::create_dir_all(&secrets_dir)?;
+
+    let mut lines = vec![
+        format!("VM_NAME={}", config.vm_name),
+        format!("CSP={}", config.csp),
+        format!("REGION={}", config.region),
+    ];
+    if let Some(ip) = ip {
+        lines.push(format!("PUBLIC_IP={}", ip));
+    }
+
+    let content = lines.join("\n") + "\n";
+    let path = secrets_dir.join("identity.env");
+    fs::write(&path, &content)
+        .with_context(|| format!("Failed to write identity.env to {}", path.display()))?;
+    info!(path = %path.display(), "Generated identity.env");
     Ok(())
 }

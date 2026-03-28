@@ -73,3 +73,17 @@ Primary command: `prepare-disk` (single mount cycle for workload + token).
 - c3-standard-* requires pd-ssd and maintenance-policy=TERMINATE
 - Cloud metadata (169.254.169.254) unreachable from TDX VMs — use secrets/identity.env
 - `losetup -fP` doesn't create partition nodes in Docker — use `kpartx`
+
+## Roadmap
+
+Planned features (not yet implemented):
+
+- **JWT secret pre-provisioning** — generate `secrets/jwtsecret` during workload resolve to fix tool-node/controller bind mount race condition
+- **Livepatch commands** — `toolkit livepatch generate-keys`, `toolkit livepatch sign <module.ko>`, `toolkit livepatch deploy --config cvm.yaml <ko>` (agent client has `deploy_livepatch()` stub)
+- **Build provenance** — `toolkit provenance download`, `toolkit provenance verify <disk_file>` (download + SLSA attestation verification)
+- **`toolkit status`** — show running VM status, container health, sync progress in one command
+- **Retry logic** — backoff retries for transient GCP API errors (rate limits, network)
+- **Progress bars** — disk upload and image creation have no progress feedback (`indicatif` already a dep)
+- **Unit tests** — zero test coverage currently
+- **AWS provider** — `cloud/aws.rs` for EC2 SEV-SNP deployment (deferred)
+- **Azure provider** — `cloud/azure.rs` for Azure CVM deployment (deferred)

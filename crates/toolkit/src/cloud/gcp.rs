@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use anyhow::{bail, Context, Result};
-use base64::Engine;
+// use base64::Engine;
 use tracing::info;
 
 use google_cloud_compute_v1::client::{

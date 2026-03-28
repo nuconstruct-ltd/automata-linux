@@ -14,8 +14,8 @@ pub fn run(config: Config) -> Result<()> {
     let token = state.api_token.as_deref()
         .ok_or_else(|| anyhow::anyhow!("No API token found in state for '{}'", config.vm_name))?;
 
-    // Resolve workload
-    let workload = workload::resolve::resolve(&config)?;
+    // Resolve workload (pass IP for identity.env)
+    let workload = workload::resolve::resolve_with_ip(&config, Some(ip))?;
 
     // Update via CVM agent
     let client = AgentClient::new(ip, token)?;
