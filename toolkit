@@ -378,14 +378,6 @@ case "$COMMAND" in
         shift 1
         trap cleanup_workload_dir EXIT
 
-        # Auto-populate SSH_PUBLIC_KEY from SSH_PUBLIC_KEY_FILE if not set
-        if [[ -z "${SSH_PUBLIC_KEY:-}" && -n "${SSH_PUBLIC_KEY_FILE:-}" ]]; then
-            EXPANDED_KEY_FILE="${SSH_PUBLIC_KEY_FILE/#\~/$HOME}"
-            if [[ -f "$EXPANDED_KEY_FILE" ]]; then
-                export SSH_PUBLIC_KEY="$(<"$EXPANDED_KEY_FILE")"
-            fi
-        fi
-
         # Default values (env vars from .env take precedence over hardcoded defaults)
         PROJECT_ID="${PROJECT_ID:-}"
         BUCKET="${BUCKET:-}"
