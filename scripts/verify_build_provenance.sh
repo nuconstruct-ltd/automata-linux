@@ -14,10 +14,10 @@ if [[ ! -f "$DISK_FILE" ]]; then
   echo "❌ Error: Disk file not found: $DISK_FILE"
   echo ""
   echo "💡 Hint: Disk images are downloaded to:"
-  echo "   - Installed mode: ~/.atakit/disks/"
+  echo "   - Installed mode: ~/.toolkit/disks/"
   echo "   - Development mode: ./ (project root)"
   echo ""
-  echo "   Try: atakit verify-build-provenance ~/.atakit/disks/$(basename "$DISK_FILE")"
+  echo "   Try: toolkit verify-build-provenance ~/.toolkit/disks/$(basename "$DISK_FILE")"
   exit 1
 fi
 
@@ -25,7 +25,7 @@ if [[ ! -f "$BUNDLE_FILE" ]]; then
   echo "❌ Error: Build provenance bundle not found: $BUNDLE_FILE"
   echo ""
   echo "💡 Hint: Download build provenance first with:"
-  echo "   atakit download-build-provenance"
+  echo "   toolkit download-build-provenance"
   echo ""
   echo "   Build provenance bundles are saved alongside disk images."
   exit 1

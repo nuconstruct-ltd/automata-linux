@@ -1,0 +1,91 @@
+# ==============================================================================
+# CVM Deployment Configuration
+# ==============================================================================
+# Generate with: toolkit init --csp gcp -o cvm.yaml
+
+# === Cloud ===
+csp: gcp
+project_id: ""
+region: europe-west4-a
+vm_type: c3-standard-4     # c3-standard-* (TDX) or n2d-standard-* (SEV-SNP)
+vm_name: cvm-test
+
+# === Workload (optional — omit to use built-in template) ===
+# workload_dir: ./my-custom-workload
+
+# === Storage ===
+bucket: ""
+# attach_disk: ""          # existing data disk name to attach
+disk_size: 10              # data disk size in GB (if creating new)
+boot_disk_size: 50         # boot disk size in GB (must fit all container images)
+
+# === Networking ===
+ports: [80, 443, 2200, 8080, 8545, 8546, 8551, 9000, 9100, 5052, 5054, 6060, 30303]
+# create_ip_name: ""       # GCP static IP reservation name
+
+# === Operator ports (custom ports exposed via controller network) ===
+# operator_ports: [3000, 3001]
+
+# === SSH ===
+ssh_public_key_file: ~/.ssh/id_ed25519.pub
+
+# === Private image archives (local tar files copied into workload) ===
+# image_tars:
+#   - path/to/tool-node.tar
+
+# === Secret files (copied to workload/secrets/) ===
+# secret_files:
+#   nodekey: path/to/nodekey
+#   leaders: path/to/leaders
+#   leaders.empty: path/to/leaders.empty
+#   authorized_keys: path/to/authorized_keys
+
+# === Container images (defaults shown — override to pin versions) ===
+# images:
+#   tool_node: gcr.io/constellation-458212/tool-node:ratls-13
+#   lighthouse: docker.io/sigp/lighthouse:latest-unstable
+#   node_exporter: docker.io/prom/node-exporter:v1.9.1
+#   promtail: docker.io/grafana/promtail:latest
+#   vmagent: docker.io/victoriametrics/vmagent:v1.108.1
+#   controller: ghcr.io/nuconstruct-ltd/controller:latest
+#   operator: ghcr.io/nuconstruct-ltd/operator:latest
+#   socat: docker.io/alpine/socat:latest
+#   caddy: docker.io/library/caddy:latest
+
+# === Runtime environment (written as .env — does NOT affect PCR measurements) ===
+env:
+  # Tool Node
+  tool_node:
+    NETWORK: mainnet                                            # mainnet, hoodi, etc.
+    RELAY_SECRET_KEY: ""                                        # hex private key for relay
+    # TEE_VERIFIER_ADDRESS: ""                                  # optional: TEE verifier contract
+    # TOOL_DNS_ENDPOINT: ""                                     # optional: ENR tree endpoint
+    # HISTORY_BLOCKS: "512"                                     # optional: block history depth
+    # HISTORY_CHAIN: all                                        # optional: chain history scope
+
+  # Lighthouse beacon node
+  lighthouse:
+    CHECKPOINT_SYNC_URL: https://mainnet.checkpoint.sigp.io
+    # FEE_RECIPIENT: "0x00000000000000000000000000000000DeaDBeef"
+
+  # Logging (Promtail → Loki) — leave empty to disable
+  # logging:
+  #   LOKI_HOST: ""
+  #   LOKI_USER: ""
+  #   LOKI_PASSWORD: ""
+
+  # Metrics (vmagent → Prometheus) — leave empty to disable
+  # metrics:
+  #   METRICS_HOST: ""
+  #   METRICS_USER: ""
+  #   METRICS_PASSWORD: ""
+
+  # Caddy reverse proxy — uses self-signed certs if empty
+  # caddy:
+  #   CADDY_RPC_DOMAIN: ""
+  #   CADDY_CVM_DOMAIN: ""
+  #   CADDY_CONTROLLER_DOMAIN: ""
+
+  # Operator
+  # operator:
+  #   SSH_PUBLIC_KEY: ""

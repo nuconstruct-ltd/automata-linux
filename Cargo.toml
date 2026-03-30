@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/toolkit"]
+resolver = "2"

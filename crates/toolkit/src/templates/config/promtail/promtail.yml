@@ -1,0 +1,32 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /data/promtail/positions.yaml
+
+clients:
+  - url: https://${LOKI_HOST}/loki/api/v1/push
+    basic_auth:
+      username: ${LOKI_USER}
+      password: ${LOKI_PASSWORD}
+
+scrape_configs:
+  - job_name: containers
+    file_sd_configs:
+      - files:
+          - /tmp/container-targets.json
+        refresh_interval: 15s
+    pipeline_stages:
+      - cri: {}
+
+  - job_name: journal
+    journal:
+      max_age: 12h
+      path: /run/log/journal
+      labels:
+        job: cvm
+        vm_name: ${VM_NAME}
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'unit'

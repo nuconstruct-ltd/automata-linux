@@ -1,50 +1,39 @@
-# CVM Network Controller
+# Network Isolation Controller
 
-Network isolation controller for Confidential VM environments. Enforces mutual exclusion between internet access and tool-node data feed — at no point are both active simultaneously.
+A Rust-based network controller that manages WAN (Internet) access for operator workloads running in Confidential VMs while maintaining persistent Tool Node connectivity.
 
-## Security Model
+## Overview
 
-The controller manages two resources that must **never be open at the same time**:
+The controller acts as a network firewall using `nftables` to manage operator network access. The operator always has access to the Tool Node, while WAN access and SSH are controlled by the current mode:
 
-| Resource | `tool-node` mode | `internet` mode |
-|----------|-----------------|-----------------|
-| Internet/SSH access | **blocked** | **open** |
-| Tool-node data feed | **running** | **stopped** |
+- **Tool-Node Mode** (default): Access to the Tool Node, no access to the WAN, SSH blocked
+- **Internet Mode**: Access to both the Tool Node and the WAN (Internet), SSH allowed
 
-**Security invariant: internet and feed are never both active at the same time.**
-
-`error` state means a transition failed partway. The invariant is preserved because the restrict step (which disables the dangerous resource) always runs before the enable step (which activates the target resource). If the restrict step itself fails, the enable step is never attempted. The client should retry.
+This provides a security boundary ensuring that when in the default mode, the operator cannot access the WAN or be accessed remotely via SSH, while always maintaining Tool Node connectivity.
 
 ## How It Works
 
-The controller shares its network namespace with the operator container via Docker Compose `network_mode: "service:controller"`. Both containers share the same network stack — nftables rules applied by the controller affect the operator's traffic directly.
+The controller shares its network namespace with the operator container using Docker Compose's `network_mode: "service:controller"`. This means:
 
-```
-┌─ Shared Network Namespace ───────────────────────────┐
-│                                                      │
-│  ┌─────────────┐          ┌─────────────┐            │
-│  │  Controller │◄─────────│  Operator   │            │
-│  │  :8080 API  │ localhost│             │            │
-│  └──────┬──────┘          └─────────────┘            │
-│         │                                            │
-│    nftables rules                                    │
-│    (applied here, affect both)                       │
-│         │                                            │
-├─────────┼────────────────────────────────────────────┤
-│         ▼                                            │
-│   ┌───────────┐    ┌───────────┐    ┌───────────┐    │
-│   │ Tool Node │    │ Internet  │    │ SSH :2200 │    │
-│   │ (always)  │    │ (gated)   │    │ (gated)   │    │
-│   └───────────┘    └───────────┘    └───────────┘    │
-└───────────────────────────────────────────────────────┘
-```
+1. Both containers share the same network stack
+2. nftables rules applied by the controller affect the operator's network traffic
+3. The operator can reach the controller API on `localhost:8080`
+4. SSH port 2200 in the operator is exposed via the controller's port mapping (2200:2200)
+
+### Mode Switching
+
+Mode switching is controlled via the `POST /maintenance` API endpoint. When the mode changes, the controller also notifies the tool-node via authenticated JSON-RPC calls (`maintenance_stopAPIFeed` / `maintenance_startAPIFeed`) over the authrpc port (8551) using JWT authentication.
+
+- **Maintenance ENABLED** → Internet mode (WAN access, tool-node access, SSH allowed, API feed stopped)
+- **Maintenance DISABLED** → Tool-node mode (tool-node access, no WAN, SSH blocked, API feed started)
+
+This design ensures that SSH debugging access is only available in Internet mode, while tool-node connectivity is always maintained.
 
 ### Network Modes
 
-**tool-node (default)** — isolated, normal operation:
-
+**Tool-Node Mode (default on startup)**
 ```
-                  Inbound SSH (:2200)
+                    Inbound SSH
                         │
                         ▼
                        ❌ BLOCKED
@@ -54,13 +43,12 @@ The controller shares its network namespace with the operator container via Dock
 └─────────────┘             └─────────────┘
        │
        │          ✅
-       └──────────────────► Tool Node (always allowed)
+       └──────────────────► Tool Node (allowed)
 ```
 
-**internet (maintenance)** — open, debugging/maintenance:
-
+**Internet Mode (maintenance enabled)**
 ```
-                  Inbound SSH (:2200)
+                    Inbound SSH
                         │
                         ▼
                        ✅ ALLOWED
@@ -70,268 +58,232 @@ The controller shares its network namespace with the operator container via Dock
 └─────────────┘             └─────────────┘
        │
        │          ✅
-       └──────────────────► Tool Node (always allowed)
+       └──────────────────► Tool Node (allowed)
 ```
 
-## Switching Flow
+## API Endpoints
 
-Every mode switch has two steps: **restrict** the dangerous resource, then **enable** the target resource. Only one resource is touched in each step.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mode` | GET | Returns current mode as string (`internet` or `tool-node`) |
+| `/status` | GET | Returns current mode as JSON |
+| `/maintenance` | POST | Enable/disable maintenance mode (requires `CONTROLLER_API_KEY`) |
 
-### Entering maintenance (`→ internet`)
-
-```
-  ┌─────────────────────────────────────────────────┐
-  │  RESTRICT: Stop data feed                       │
-  │                                                 │
-  │  status = "error"                               │
-  │  (feed OFF, internet state unchanged)           │
-  │                                                 │
-  │  Security invariant holds: feed is OFF,         │
-  │  so it doesn't matter if internet is on or off  │
-  └───────────────────────┬─────────────────────────┘
-                          │
-                     wait 30 seconds
-                          │
-  ┌───────────────────────▼─────────────────────────┐
-  │  ENABLE: Open internet/SSH access               │
-  │                                                 │
-  │  status = "internet"                            │
-  └─────────────────────────────────────────────────┘
-```
-
-### Leaving maintenance (`→ tool-node`)
-
-```
-  ┌─────────────────────────────────────────────────┐
-  │  RESTRICT: Block internet/SSH                   │
-  │                                                 │
-  │  status = "error"                               │
-  │  (internet OFF, feed state unchanged)           │
-  │                                                 │
-  │  Security invariant holds: internet is OFF,     │
-  │  so it doesn't matter if feed is on or off      │
-  └───────────────────────┬─────────────────────────┘
-                          │
-                     wait 30 seconds
-                          │
-  ┌───────────────────────▼─────────────────────────┐
-  │  ENABLE: Start data feed                        │
-  │                                                 │
-  │  status = "tool-node"                           │
-  └─────────────────────────────────────────────────┘
-```
-
-**If the ENABLE step fails**, the system stays in `error` — the dangerous resource is already restricted. The client can retry safely.
-
-**If the RESTRICT step fails**, the system enters `error` immediately. The target resource was never enabled, so the invariant cannot be violated.
-
-**Why this is safe:**
-- The restrict step alone guarantees the invariant (feed and internet never both active)
-- We don't touch the "other" resource — fewer operations means fewer failure points
-- All operations are idempotent — repeating them from any state is harmless
-
-## States
-
-```
-                 POST enable              POST disable
-  tool-node ◄──────────────────► internet
-       ▲                              ▲
-       │ POST disable                 │ POST enable
-       │                              │
-       └─────────── error ────────────┘
-                (retry either action)
-```
-
-| Status | Meaning | What to do |
-|--------|---------|------------|
-| `tool-node` | Normal operation. Data feed is running, internet is blocked. | — |
-| `internet` | Maintenance mode. Internet/SSH is open, data feed is stopped. | — |
-| `error` | A step failed. The dangerous resource was restricted but the target was not enabled. | Retry the same or different action. |
-| `switching` | A transition is in progress (returned by GET only). | Wait and check again. |
-
-## API
-
-### `GET /mode`
-
-Returns current mode as plain text.
-
-```
-tool-node
-internet
-error
-switching
-```
-
-### `GET /status`
-
-Returns current mode as JSON.
-
-```json
-{"status":"tool-node"}
-{"status":"error"}
-{"status":"switching"}
-```
-
-### `POST /maintenance`
-
-Triggers a mode switch. Always executes the full transition sequence regardless of current state.
-
-**Request:**
+### Example Usage
 
 ```bash
-# Enter maintenance (open internet, stop feed)
-curl -X POST http://localhost:8080/maintenance \
-  -H "Authorization: Bearer <api-key>" \
+# Check current mode from inside the operator container
+curl http://localhost:8080/mode
+
+# Check status
+curl http://localhost:8080/status
+
+# Enable maintenance mode (switch to internet mode)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"action":"enable"}'
+  -d '{"action":"enable"}' \
+  https://controller.tool.limo/maintenance
 
-# Leave maintenance (block internet, start feed)
-curl -X POST http://localhost:8080/maintenance \
-  -H "Authorization: Bearer <api-key>" \
+# Disable maintenance mode (switch to tool-node mode)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"action":"disable"}'
+  -d '{"action":"disable"}' \
+  https://controller.tool.limo/maintenance
 ```
 
-**Responses:**
-
-Success — `status` is the mode after the operation:
-
-```json
-HTTP 200
-{"status":"internet"}
-```
-
-Failure — system is in error state, safe to retry:
-
-```json
-HTTP 500
-{"status":"error","message":"Failed to switch mode: start feed: rpc maintenance_startAPIFeed: connection refused"}
-```
-
-Other errors:
-
-| Code | When | Example |
-|------|------|---------|
-| 401 | Bad or missing auth | `{"status":"error","message":"Invalid or missing API key"}` |
-| 400 | Bad request | `{"status":"error","message":"Invalid action 'foo'. Use 'enable' or 'disable'."}` |
-| 409 | Switch already running | `{"status":"error","message":"Another mode switch is already in progress"}` |
-
-### Client Integration Guide
-
-```
-1. Send POST /maintenance with desired action
-2. Check HTTP status code:
-   - 200 → done, read "status" for current mode
-   - 500 → failed, system is in "error" (dangerous resource restricted, target not enabled)
-           wait a moment, retry the same request
-   - 409 → another switch in progress, wait and retry
-3. To check state without switching: GET /status
-```
-
-**Retries are always safe.** Every request executes the full sequence from scratch.
-
-## Configuration
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `8080` | HTTP listen port |
-| `SSH_PORT` | `2200` | SSH port to block in tool-node mode |
-| `TOOL_NODE_IP` | `172.20.0.10` | Tool-node IP |
-| `NODE_NET_SUBNET` | `172.20.0.0/24` | Node network subnet |
-| `AUTHRPC_URL` | `http://172.20.0.10:8551` | Tool-node RPC endpoint |
-| `JWT_SECRET_PATH` | `/node/jwtsecret` | JWT secret file (32-byte hex) |
-| `API_KEY_HASH_PATH` | `/data/token_hash` | SHA-256 hash of API key |
-| `CONTROLLER_API_KEY` | _(none)_ | Fallback: raw API key |
-| `SWITCH_DELAY` | `30s` | Delay between restrict and enable steps |
-| `CVM_AGENT_HOST` | _(auto-detect)_ | CVM agent proxy target host |
-
-## nftables Rules
-
-All rule changes use atomic transactions (`nft -f -`) to prevent inconsistent states.
-
-**tool-node mode:**
-
-```
-flush chain ip filter output
-flush chain ip filter input
-add rule ip filter input tcp dport <SSH_PORT> drop      # Block SSH
-add rule ip filter output ip daddr 127.0.0.0/8 accept   # Allow localhost (API + CVM agent proxy)
-add rule ip filter output ct state established,related accept
-add rule ip filter output ip daddr <TOOL_NODE_IP> accept
-add rule ip filter output ip daddr <NODE_NET_SUBNET> accept
-add rule ip filter output drop                          # Block everything else
-```
-
-**internet mode:**
-
-```
-flush chain ip filter output
-flush chain ip filter input                             # SSH allowed (no drop rule)
-add rule ip filter output ct state established,related accept
-```
+| `TOOL_NODE_IP` | `172.20.0.10` | IP address of the Tool Node to allow/block |
+| `NODE_NET_SUBNET` | `172.20.0.0/24` | Subnet of the internal node network |
+| `PORT` | `8080` | Port the controller API listens on |
+| `API_KEY_HASH_PATH` | `/data/token_hash` | Path to file containing SHA-256 hash of the CVM API token. Used to validate Bearer tokens for `POST /maintenance`. Falls back to `CONTROLLER_API_KEY` env var if file is not found. |
+| `CONTROLLER_API_KEY` | *(none)* | (Fallback) Plaintext Bearer token for `POST /maintenance`. Only used if `API_KEY_HASH_PATH` file is not readable. |
+| `AUTHRPC_URL` | `http://172.20.0.10:8551` | Tool-node authenticated RPC endpoint |
+| `JWT_SECRET_PATH` | `/node/jwtsecret` | Path to shared JWT secret file (Engine API format, 32-byte hex) |
 
 ## CVM Agent Proxy
 
-A TCP proxy that makes the host VM's CVM agent API accessible inside the shared network namespace.
+The controller runs a userspace TCP proxy that makes the host's CVM agent API accessible to the operator at `localhost:7999`. Since the operator shares the controller's network namespace, its loopback is isolated from the host — the proxy bridges this gap without requiring kernel NAT modules.
 
-- Listens on `127.0.0.1:7999`
-- Forwards to `<default-gateway>:17999` (the host VM)
-- Best-effort — bind failure does not prevent controller startup
-- Works in both modes (gateway IP is within `NODE_NET_SUBNET`, always allowed by nftables)
-- Uses TCP half-close for clean connection teardown
+- Listens on `127.0.0.1:7999` (in the shared namespace)
+- Forwards connections to `<default-gateway>:7999` (the host VM)
+- Best-effort: if no gateway is found or the port can't be bound, the controller continues without it
+- Works in both network modes (gateway IP is within `NODE_NET_SUBNET`, allowed by nftables)
 
-## Security Considerations
+## nftables Rules
 
-1. **Mutual exclusion.** Internet access and API feed are never active simultaneously. The switching sequence always restricts the dangerous resource before enabling the target, with a configurable delay between steps.
+The controller uses atomic nftables transactions to avoid race conditions during mode switches.
 
-2. **Fail-safe on error.** If any step fails, the system enters `error` state. The restrict step has already run (or was never needed), so the invariant holds. No automatic recovery — the operator must explicitly retry.
+**Tool-Node Mode Rules:**
+```
+flush chain ip filter output
+flush chain ip filter input
+add rule ip filter input tcp dport 22 drop              # Block SSH
+add rule ip filter output ip daddr 127.0.0.0/8 accept   # Allow localhost (for API + CVM agent proxy)
+add rule ip filter output ct state established,related accept
+add rule ip filter output ip daddr <TOOL_NODE_IP> accept
+add rule ip filter output ip daddr <NODE_NET_SUBNET> accept
+add rule ip filter output drop                          # Block everything else (WAN)
+```
 
-3. **Default isolated.** The controller starts in `tool-node` mode. The operator cannot access the internet or be reached via SSH until explicitly enabled.
+**Internet Mode Rules:**
+```
+flush chain ip filter output
+flush chain ip filter input                             # Clear SSH block
+add rule ip filter output ct state established,related accept
+```
 
-4. **Fail-closed auth.** If no API key is configured (`API_KEY_HASH_PATH` missing and `CONTROLLER_API_KEY` not set), the `POST /maintenance` endpoint rejects all requests.
+## Building
 
-5. **Constant-time token comparison.** API key verification uses `crypto/subtle.ConstantTimeCompare` to prevent timing attacks.
+### Prerequisites
+- Rust toolchain
+- Docker (for building container image)
 
-6. **Atomic firewall rules.** Mode switches use atomic nftables transactions — rules are applied as a single unit, preventing partial/inconsistent states.
+### Build locally
+```bash
+cd controller
+cargo build --release
+```
 
-7. **Connection tracking.** The `ct state established,related` rule ensures existing connections (like controller API responses) continue to work across mode transitions.
+### Build Docker image (for AMD64 deployment)
+```bash
+cd controller
+docker build --platform linux/amd64 -t gcr.io/<project>/controller:latest .
+docker push gcr.io/<project>/controller:latest
+```
 
-8. **CAP_NET_ADMIN isolation.** The controller requires `NET_ADMIN` capability for nftables, scoped to its network namespace only.
+## Docker Compose Integration
 
-9. **JWT-authenticated RPC.** Tool-node notifications use short-lived JWT tokens (60s expiry) over the authenticated RPC port.
+Add the controller to your `docker-compose.yml`:
 
-10. **Request body limit.** POST body is limited to 64KB to prevent memory exhaustion attacks.
+```yaml
+services:
+  controller:
+    image: gcr.io/<project>/controller:latest
+    pull_policy: never
+    container_name: controller
+    cap_add:
+      - NET_ADMIN          # Required for nftables
+    ports:
+      - "8080:8080"        # Controller API
+      - "2200:2200"        # SSH to operator (via shared network)
+    environment:
+      - TOOL_NODE_IP=172.20.0.10
+      - NODE_NET_SUBNET=172.20.0.0/24
+      - PORT=8080
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.20
 
-## Quick Reference
+  operator:
+    image: gcr.io/<project>/operator:latest
+    pull_policy: never
+    container_name: operator
+    network_mode: "service:controller"  # Share controller's network
+    depends_on:
+      - controller
+    volumes:
+      - /data/workload/config:/config
+
+  tool-node:
+    image: gcr.io/<project>/tool-node:latest
+    container_name: tool-node
+    networks:
+      node_net:
+        ipv4_address: 172.20.0.10
+```
+
+## CVM Management
+
+### Checking Logs
+
+Use `cvm-cli` to retrieve container logs from the deployed CVM:
+
+```bash
+# Get all container logs
+./cvm-cli get-logs gcp <vm-name>
+
+# Filter for specific containers
+./cvm-cli get-logs gcp <vm-name> | grep "controller"
+./cvm-cli get-logs gcp <vm-name> | grep "operator"
+./cvm-cli get-logs gcp <vm-name> | grep "tool-node"
+```
+
+### Switching Modes
+
+Network mode is controlled exclusively via the controller API on port 8080.
+
+```bash
+VM_IP=$(cat _artifacts/gcp_<vm-name>_ip)
+
+# Enable maintenance mode → switches to Internet mode (SSH allowed, tool-node + WAN access)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"enable"}' \
+  "http://${VM_IP}:8080/maintenance"
+
+# SSH into the operator container (only works in Internet mode)
+ssh -p 2200 root@${VM_IP}
+
+# Disable maintenance mode → switches to Tool-node mode (tool-node only, no WAN, SSH blocked)
+curl -X POST \
+  -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"disable"}' \
+  "http://${VM_IP}:8080/maintenance"
+```
+
+### Quick Reference
 
 | Action | Command |
 |--------|---------|
-| Check mode | `curl http://$HOST:8080/mode` |
-| Check status (JSON) | `curl http://$HOST:8080/status` |
-| Enable maintenance | `curl -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"action":"enable"}' http://$HOST:8080/maintenance` |
-| Disable maintenance | `curl -X POST -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" -d '{"action":"disable"}' http://$HOST:8080/maintenance` |
-| SSH to operator | `ssh -p 2200 root@$HOST` _(internet mode only)_ |
+| Check current mode | `curl http://$VM_IP:8080/mode` |
+| Enable maintenance (→ Internet + Tool-node) | `curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" -H "Content-Type: application/json" -d '{"action":"enable"}' http://$VM_IP:8080/maintenance` |
+| Disable maintenance (→ Tool-node only) | `curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" -H "Content-Type: application/json" -d '{"action":"disable"}' http://$VM_IP:8080/maintenance` |
+| SSH to operator | `ssh -p 2200 root@$VM_IP` (only in Internet mode) |
+| Get logs | `toolkit get-logs gcp <vm-name>` |
+
+## Security Considerations
+
+1. **CAP_NET_ADMIN**: The controller requires `NET_ADMIN` capability to manage nftables rules. This is isolated to the controller's network namespace.
+
+2. **SSH Isolation**: SSH access to the operator is only available in Internet mode (maintenance enabled). When in Tool-node mode, inbound SSH is blocked at the nftables level.
+
+3. **Authenticated API Mode Switching**: The `POST /maintenance` endpoint requires a Bearer token (`CONTROLLER_API_KEY`). If no key is configured, the endpoint rejects all requests (fail-closed). On mode switch, the controller notifies tool-node via JWT-authenticated JSON-RPC.
+
+4. **Atomic Rules**: Mode switches use atomic nftables transactions to prevent inconsistent states during transitions.
+
+5. **Connection Tracking**: The `ct state established,related` rule ensures that existing connections (like the controller's API responses) continue to work.
+
+6. **Default Isolated**: The controller starts in Tool-node mode (isolated), ensuring the operator cannot access the WAN until explicitly enabled via maintenance mode.
 
 ## Troubleshooting
 
 ### Controller API not reachable in tool-node mode
+Ensure the localhost exception rule is present. The operator uses `127.0.0.1:8080` to reach the controller when they share a network namespace.
 
-The operator reaches the controller via `localhost:8080` (shared network namespace). The localhost exception (`127.0.0.0/8`) is always present in nftables rules — if the API is unreachable, check that the controller process is running.
+### Mode doesn't switch when toggling maintenance
+Check controller logs for RPC calls:
+```bash
+./cvm-cli get-logs gcp <vm-name> | grep "RPC\|maintenance"
+```
 
-### Operator can access internet in tool-node mode
+### Operator can access WAN in Tool-node mode
+This indicates a race condition or stale rules. Ensure you're using the latest controller version with atomic nftables transactions.
 
-Indicates stale or missing nftables rules. Restart the controller — it re-initializes rules on startup.
+### Cannot SSH even with maintenance mode enabled
+1. Ensure port 2200 is open in the cloud provider's firewall rules
+2. Ensure the controller is in Internet mode:
+   ```bash
+   curl -X POST -H "Authorization: Bearer $CONTROLLER_API_KEY" \
+     -H "Content-Type: application/json" -d '{"action":"enable"}' \
+     http://$VM_IP:8080/maintenance
+   ```
 
-### Cannot SSH even in internet mode
-
-1. Verify the controller is in internet mode: `curl http://$HOST:8080/mode`
-2. Check that port 2200 is open in your cloud provider's firewall
-3. Verify SSH keys are configured in the operator container
-
-### Status shows "error" after a failed switch
-
-The system is in a safe state (the dangerous resource was restricted). Retry the same or a different action — all operations are idempotent.
-
-## Graceful Shutdown
-
-On `SIGINT`/`SIGTERM`: HTTP server drains (15s timeout), CVM proxy closes, process exits.
+### SSH key authentication fails
+Ensure `SSH_PUBLIC_KEY` is set in `.env` (or `SSH_PUBLIC_KEY_FILE` pointing to your key), then redeploy the workload.
