@@ -11,7 +11,7 @@ networks:
 
 services:
   tool-node:
-    image: gcr.io/constellation-458212/tool-node:restore-accept-leadership
+    image: gcr.io/constellation-458212/tool-node:next-deploy
     container_name: tool-node
     restart: unless-stopped
     ports:
